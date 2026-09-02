@@ -7,6 +7,7 @@ import type { Agent, Hex } from "@/lib/precedence/types";
 import { api } from "@/lib/client/api";
 import { usd, pct, trancheColor } from "@/lib/client/format";
 import { AgentGlyph, Badge, Card, Eyebrow, ReputationBar } from "@/components/ui";
+import { LoadError } from "@/components/LoadError";
 import { Stagger, Item, FadeUp } from "@/components/motion/Reveal";
 import { CopyHash } from "@/components/CopyHash";
 
@@ -20,14 +21,31 @@ export default function FinanciersPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [creditcoinLive, setCreditcoinLive] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setErr(null);
+    setLoading(true);
     api.agents()
       .then((r) => {
         setAgents(r.agents);
         setCreditcoinLive(r.creditcoinLive);
       })
+      .catch((e) => setErr(String(e)))
       .finally(() => setLoading(false));
+  };
+
+  // Deferred one tick: `load` sets state synchronously, which React 19 flags as a cascading
+  // render when called straight from an effect body. `load` itself stays callable from the
+  // Retry button, where a synchronous setState is exactly what we want.
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) load();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -62,7 +80,9 @@ export default function FinanciersPage() {
         </div>
       </Card>
 
-      {loading ? (
+      {err ? (
+        <LoadError what="the financier fleet" detail={err} onRetry={load} />
+      ) : loading ? (
         <div className="flex items-center gap-2 py-20 text-sm" style={{ color: "var(--text-muted)" }}>
           <Loader2 className="animate-spin" size={16} /> Connecting to financier fleet…
         </div>

@@ -6,6 +6,7 @@ import type { Agent, Attestation, RaceSummary } from "@/lib/precedence/types";
 import { api } from "@/lib/client/api";
 import { usd, dateOf } from "@/lib/client/format";
 import { Card, Eyebrow, Stat, SectionTitle, Badge } from "@/components/ui";
+import { LoadError } from "@/components/LoadError";
 import { Stagger, Item, FadeUp } from "@/components/motion/Reveal";
 import { CountUp } from "@/components/motion/CountUp";
 import { AreaChart } from "@/components/motion/Chart";
@@ -16,14 +17,32 @@ export default function DashboardPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = () => {
+    setErr(null);
+    setLoading(true);
     Promise.all([api.races(), api.attestations(), api.agents()])
       .then(([c, a, g]) => {
         setRaces(c.races ?? []);
         setAttestations(a.attestations);
         setAgents(g.agents);
       })
+      .catch((e) => setErr(String(e)))
       .finally(() => setLoading(false));
+  };
+
+  // Deferred one tick: `load` sets state synchronously, which React 19 flags as a cascading
+  // render when called straight from an effect body. `load` itself stays callable from the
+  // Retry button, where a synchronous setState is exactly what we want.
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) load();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const totalVolume = races.reduce((s, r) => s + (r.totalCapitalUsd ?? 0), 0);
@@ -42,6 +61,8 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  if (err) return <LoadError what="protocol benchmarks" detail={err} onRetry={load} />;
 
   return (
     <div>
@@ -74,13 +95,17 @@ export default function DashboardPage() {
         </Item>
         <Item>
           <Card className="p-5">
+            {/* Was "100%" in success green. The protocol prevents double-FINANCING of a claim
+                already registered here; it cannot detect a custodian issuing two receipts for one
+                physical lot. An absolute number in green claimed the second thing, and a
+                trade-finance judge is exactly the reader who knows it is impossible. */}
             <Stat
-              label="Double-Pledge Prevention"
-              value="100%"
+              label="Double-Financing Of A Registered Claim"
+              value="Blocked"
               color="var(--success)"
               sub={
                 <span className="flex items-center gap-1">
-                  <ShieldCheck size={12} /> 0 duplicate claims permitted
+                  <ShieldCheck size={12} /> enforced on-chain · cannot detect duplicate paper
                 </span>
               }
             />
