@@ -1,0 +1,21 @@
+{
+  "name": "precedence-worker",
+  "private": true,
+  "type": "module",
+  "description": "PRECEDENCE readability worker: Attestcoin proof generation and priority settlement.",
+  "scripts": {
+    "prove": "bun run src/cli.ts prove",
+    "watch": "bun run src/cli.ts watch",
+    "keeper": "bun run src/cli.ts keeper",
+    "status": "bun run src/cli.ts status"
+  },
+  "dependencies": {
+    "@gluwa/usc-sdk": "0.18.0",
+    "ethers": "^6.15.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.0",
+    "@types/node": "^26.4.1",
+    "typescript": "^7.0.2"
+  }
+}
