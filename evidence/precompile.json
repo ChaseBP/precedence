@@ -1,0 +1,82 @@
+{
+  "measuredAtZ": "2026-09-02T05:19:55.200Z",
+  "creditcoin": {
+    "rpc": "https://rpc.cc3-testnet.creditcoin.network",
+    "chainId": 102031,
+    "head": 5415817,
+    "gasLimit": "75000000",
+    "baseFeePerGasWei": "500000000",
+    "blockProverPrecompile": "0x0000000000000000000000000000000000000FD2",
+    "chainInfoPrecompile": "0x0000000000000000000000000000000000000fd3",
+    "supportsPush0": true
+  },
+  "sepolia": {
+    "chainKey": 1,
+    "chainId": 11155111,
+    "head": 11617498,
+    "attestationGenesisHeight": 0,
+    "latestAttestedHeight": 11617460,
+    "latestCheckpointHeight": 11617300,
+    "lagBlocks": 38,
+    "lagMinutes": 8.32
+  },
+  "calculateTxIndex": {
+    "emptyPath": "0",
+    "threeStepPath": "5",
+    "note": "Derives the intra-block transaction position from the Merkle path. Without it, two locks in one Sepolia block cannot be ordered and the protocol has no mechanism."
+  },
+  "checks": [
+    {
+      "check": "CC3 reachable",
+      "ok": true,
+      "detail": "chainId 102031 · head 5415817 · gasLimit 75000000 · baseFee 500000000 wei"
+    },
+    {
+      "check": "Sepolia is chainKey 1, read from 0x0FD3 itself",
+      "ok": true,
+      "detail": "chainKey 3 = Ethereum (chainId 1) · chainKey 1 = Sepolia ethereum (chainId 11155111)"
+    },
+    {
+      "check": "attestation state is live",
+      "ok": true,
+      "detail": "genesis 0 · latest attestation 11617460 · latest checkpoint 11617300"
+    },
+    {
+      "check": "attestation lags the source chain (proofs are NOT instant)",
+      "ok": true,
+      "detail": "Sepolia head 11617498 vs attested 11617460 = 38 blocks / 8.32 min behind"
+    },
+    {
+      "check": "a future height is not yet attested",
+      "ok": true,
+      "detail": "is_height_attested(1, 11627460) = false — this gap IS the wait"
+    },
+    {
+      "check": "calculateTxIndex is live and callable",
+      "ok": true,
+      "detail": "calculateTxIndex(empty path) = 0 — this is what orders two locks inside ONE Sepolia block"
+    },
+    {
+      "check": "calculateTxIndex derives a position from the proof path",
+      "ok": true,
+      "detail": "a 3-step path derives index 5 — the position comes out of the proof, not from anyone's claim"
+    },
+    {
+      "check": "single verify() exists on the deployed precompile",
+      "ok": true,
+      "detail": "reverted with a VALIDATION error, which means the selector decoded and ran: \"execution reverted: \"Transaction data cannot be empty\"\""
+    },
+    {
+      "check": "BATCH verify() exists on the deployed precompile",
+      "ok": true,
+      "detail": "reverted with a VALIDATION error, which means the selector decoded and ran: \"execution reverted: \"Continuity chain cannot be empty\"\""
+    },
+    {
+      "check": "CC3 supports PUSH0 (Shanghai+), so default-profile bytecode deploys",
+      "ok": true,
+      "detail": "eth_estimateGas on PUSH0 init code succeeded — no need to downgrade evm_version for deployment"
+    }
+  ],
+  "allPassed": true,
+  "note": "Verified by direct RPC. A Foundry fork CANNOT test these: 0x0FD2 is a Substrate runtime precompile with no EVM bytecode, so a fork executes the call against an empty account."
+}

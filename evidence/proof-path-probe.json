@@ -1,0 +1,103 @@
+{
+  "kind": "proof-path-probe",
+  "capturedAtZ": "2026-09-02T05:52:59.606Z",
+  "note": "End-to-end probe of the Attestcoin proof path against real, pre-existing Sepolia transactions. Runs without any PRECEDENCE contract deployed, so it isolates the protocol integration from our own code.",
+  "chainKey": 1,
+  "txHashes": [
+    "0x144bc395f407d98d722e780d805786125e07283e141006c6c9bfafa64c5f6f78",
+    "0xc58e9177d4dea9a25dc205d80e458da11efb56635f73900e2ae413ad699f77cf",
+    "0xf2b901f9898354cfbb01af86150105eceb1cc04d93a5365066f12fd3a6b6bd09"
+  ],
+  "sourceTransactions": [
+    {
+      "txHash": "0x144bc395f407d98d722e780d805786125e07283e141006c6c9bfafa64c5f6f78",
+      "blockNumber": 11613749,
+      "transactionIndex": 102,
+      "status": 1,
+      "explorerUrl": "https://sepolia.etherscan.io/tx/0x144bc395f407d98d722e780d805786125e07283e141006c6c9bfafa64c5f6f78"
+    },
+    {
+      "txHash": "0xc58e9177d4dea9a25dc205d80e458da11efb56635f73900e2ae413ad699f77cf",
+      "blockNumber": 11613750,
+      "transactionIndex": 131,
+      "status": 1,
+      "explorerUrl": "https://sepolia.etherscan.io/tx/0xc58e9177d4dea9a25dc205d80e458da11efb56635f73900e2ae413ad699f77cf"
+    },
+    {
+      "txHash": "0xf2b901f9898354cfbb01af86150105eceb1cc04d93a5365066f12fd3a6b6bd09",
+      "blockNumber": 11613751,
+      "transactionIndex": 163,
+      "status": 1,
+      "explorerUrl": "https://sepolia.etherscan.io/tx/0xf2b901f9898354cfbb01af86150105eceb1cc04d93a5365066f12fd3a6b6bd09"
+    }
+  ],
+  "batchProof": {
+    "fromHeader": 11613749,
+    "toHeader": 11613751,
+    "continuityRoots": 52,
+    "sharedContinuityProof": true,
+    "merkleProofCount": 3
+  },
+  "provenOrder": [
+    {
+      "txHash": "0x144bc395f407d98d722e780d805786125e07283e141006c6c9bfafa64c5f6f78",
+      "height": 11613749,
+      "txIndex": 102
+    },
+    {
+      "txHash": "0xc58e9177d4dea9a25dc205d80e458da11efb56635f73900e2ae413ad699f77cf",
+      "height": 11613750,
+      "txIndex": 131
+    },
+    {
+      "txHash": "0xf2b901f9898354cfbb01af86150105eceb1cc04d93a5365066f12fd3a6b6bd09",
+      "height": 11613751,
+      "txIndex": 163
+    }
+  ],
+  "indexCrossCheck": [
+    {
+      "txHash": "0x144bc395f407d98d722e780d805786125e07283e141006c6c9bfafa64c5f6f78",
+      "proofTxIndex": 102,
+      "receiptTxIndex": 102,
+      "agrees": true
+    },
+    {
+      "txHash": "0xc58e9177d4dea9a25dc205d80e458da11efb56635f73900e2ae413ad699f77cf",
+      "proofTxIndex": 131,
+      "receiptTxIndex": 131,
+      "agrees": true
+    },
+    {
+      "txHash": "0xf2b901f9898354cfbb01af86150105eceb1cc04d93a5365066f12fd3a6b6bd09",
+      "proofTxIndex": 163,
+      "receiptTxIndex": 163,
+      "agrees": true
+    }
+  ],
+  "indexCrossCheckAgrees": true,
+  "precompileCalculateTxIndex": [
+    {
+      "txHash": "0x144bc395f407d98d722e780d805786125e07283e141006c6c9bfafa64c5f6f78",
+      "derived": 102,
+      "receiptTxIndex": 102,
+      "agrees": true
+    },
+    {
+      "txHash": "0xc58e9177d4dea9a25dc205d80e458da11efb56635f73900e2ae413ad699f77cf",
+      "derived": 131,
+      "receiptTxIndex": 131,
+      "agrees": true
+    },
+    {
+      "txHash": "0xf2b901f9898354cfbb01af86150105eceb1cc04d93a5365066f12fd3a6b6bd09",
+      "derived": 163,
+      "receiptTxIndex": 163,
+      "agrees": true
+    }
+  ],
+  "precompileTxIndexAgrees": true,
+  "offChainVerifiedAtPrecompile": true,
+  "estimatedVerifyCostCtc": "3.81e-5",
+  "allPassed": true
+}
