@@ -1,0 +1,149 @@
+"use client";
+
+import { motion } from "motion/react";
+import { Check, ExternalLink, Clock, Cpu, ShieldCheck } from "lucide-react";
+import type { Hex, PriorityRace } from "@/lib/precedence/types";
+import { Badge, Card, Eyebrow } from "@/components/ui";
+
+const FALLBACK_EXPLORER = "https://explorer.cc3-testnet.creditcoin.network";
+
+function ProofStepRow({
+  label,
+  detail,
+  href,
+  status,
+  mock,
+}: {
+  label: string;
+  detail?: string;
+  href?: string;
+  status: "pending" | "available" | "verified" | "waiting";
+  mock: boolean;
+}) {
+  const isVerified = status === "verified";
+  const isAvailable = status === "available";
+  const isPending = status === "pending";
+
+  const color = isVerified
+    ? "var(--proof-verified)"
+    : isAvailable
+      ? "var(--proof-available)"
+      : isPending
+        ? "var(--proof-pending)"
+        : "var(--border-strong)";
+
+  return (
+    <div className="flex items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0">
+      <div className="flex min-w-0 items-center gap-2.5">
+        {isVerified ? (
+          <motion.span
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 500, damping: 22 }}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+            style={{ background: "var(--proof-verified)", color: "var(--bg-0)" }}
+          >
+            <Check size={11} strokeWidth={3} />
+          </motion.span>
+        ) : isAvailable ? (
+          <span
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+            style={{ background: "var(--proof-available-soft)", border: "1px solid var(--proof-available)", color: "var(--proof-available)" }}
+          >
+            <Cpu size={11} />
+          </span>
+        ) : isPending ? (
+          <span
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+            style={{ background: "var(--proof-pending-soft)", border: "1px solid var(--proof-pending)", color: "var(--proof-pending)" }}
+          >
+            <Clock size={11} className="animate-spin" />
+          </span>
+        ) : (
+          <span className="h-5 w-5 shrink-0 rounded-full border" style={{ borderColor: "var(--border-strong)" }} />
+        )}
+        <div className="min-w-0 leading-tight">
+          <div className="text-xs font-semibold">{label}</div>
+          {detail ? (
+            <div className="mono truncate text-[0.68rem]" style={{ color: "var(--text-faint)" }} title={detail}>
+              {detail}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {isVerified && href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-ghost flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[0.68rem]"
+        >
+          <ExternalLink size={10} /> {mock ? "sample" : "verify"}
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Pinned Attestcoin Proof Rail:
+ *  1. PENDING_EVIDENCE (~8-10 min honest attestation wait on Sepolia)
+ *  2. PROOF AVAILABLE (Merkle + 1 shared continuity proof generated)
+ *  3. VERIFIED at 0x0FD2 on Creditcoin CC3 (one block post-attestation)
+ */
+export function ProofRail({
+  race,
+  creditcoinLive = false,
+}: {
+  race: PriorityRace;
+  creditcoinLive?: boolean;
+  identityRegistry?: Hex | "";
+}) {
+  const p = race.proofRecord;
+  const att = race.attestation;
+  // Settled once the priority stack exists — everything downstream of PRIORITY_SETTLED.
+  const isSettled = !!race.settlement;
+  const hasLocks = race.locks.length > 0;
+
+  const firstLock = race.locks[0];
+  const explorerUrl = p?.creditcoinTxHash
+    ? `${FALLBACK_EXPLORER}/tx/${p.creditcoinTxHash}`
+    : undefined;
+
+  return (
+    <Card className="p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShieldCheck size={14} style={{ color: "var(--accent)" }} />
+          <Eyebrow>Attestcoin Proof Pipeline</Eyebrow>
+        </div>
+        <Badge color={isSettled ? "var(--proof-verified)" : hasLocks ? "var(--proof-pending)" : "var(--silver)"}>
+          {isSettled ? "VERIFIED" : hasLocks ? "PENDING_EVIDENCE" : "AWAITING LOCKS"}
+        </Badge>
+      </div>
+
+      <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+        <ProofStepRow
+          label="1. Source Locks (Sepolia)"
+          detail={firstLock ? `${race.locks.length} locks anchored · Block #${firstLock.lockBlockNumber}` : "PriorityVault.sol · pending"}
+          href={firstLock?.sepoliaTxHash ? `https://sepolia.etherscan.io/tx/${firstLock.sepoliaTxHash}` : undefined}
+          status={hasLocks ? "verified" : "waiting"}
+          mock={!creditcoinLive}
+        />
+        <ProofStepRow
+          label="2. Attestation Proof (0x0FD3)"
+          detail={hasLocks ? `~8.5m attestation elapsed · batch proof ready` : "waitUntilHeightAttested · waiting"}
+          status={isSettled ? "verified" : hasLocks ? "available" : "waiting"}
+          mock={!creditcoinLive}
+        />
+        <ProofStepRow
+          label="3. Precompile Verify (0x0FD2)"
+          detail={isSettled ? `batch verifyAndEmit() TRUE · settled in 1 CC3 block` : "AttestationGate · pending"}
+          href={explorerUrl}
+          status={isSettled ? "verified" : "waiting"}
+          mock={!creditcoinLive}
+        />
+      </div>
+    </Card>
+  );
+}
