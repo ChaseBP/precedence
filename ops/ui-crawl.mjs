@@ -5,8 +5,8 @@ const BASE = "http://localhost:3117";
 const OUT = "/home/raven_bp/projects/ctc/analysis/ui/shots";
 mkdirSync(OUT, { recursive: true });
 
-const ROUTES = ["/", "/collateral", "/race", "/financiers", "/dashboard", "/registry",
-                "/portfolio", "/agents", "/deals", "/history"];
+// /agents, /deals and /history were orphan re-exports of other pages and are deleted.
+const ROUTES = ["/", "/collateral", "/race", "/financiers", "/dashboard", "/registry", "/portfolio"];
 // Breakpoint boundaries on purpose: Tailwind sm/md/lg/xl/2xl are 640/768/1024/1280/1536.
 const WIDTHS = [360, 414, 639, 640, 767, 768, 1023, 1024, 1279, 1280, 1535, 1536, 1920];
 
