@@ -1,0 +1,453 @@
+@import "tailwindcss";
+
+/*
+  PRECEDENCE — "First-Lien" theme. Dark glassmorphism with an indigo → silver →
+  white accent gradient. Continuity with the design mockup, executed with
+  restraint: motion reserved for meaningful moments, on-chain ids never hidden.
+*/
+
+:root {
+  /* PRECEDENCE — "First-Lien" theme. Attestcoin-family indigo on institutional
+     slate. Cold indigo is action, emerald is a verified proof, vermilion is a
+     breach, and amber is deliberately reserved for the future writability path. */
+  --bg-0: #090B10;
+  --bg-1: #0C0E17;
+  --bg-2: #11141E;
+  --panel: rgba(17, 20, 30, 0.55);
+  --panel-heavy: rgba(9, 11, 16, 0.72);
+  --border: #22283A;
+  --border-strong: #333D56;
+
+  --accent: #536DFE;
+  --accent-dim: #3B4CD6;
+  --accent-glow: rgba(83, 109, 254, 0.35);
+  --silver: #8896AD;
+  --success: #10B981;
+  --warn: #FB923C;
+  --danger: #EF4444;
+
+  --text: #F8FAFC;
+  --text-muted: #8896AD;
+  --text-faint: #5E6E87;
+
+  --grad: linear-gradient(135deg, #536DFE 0%, #8896AD 55%, #F8FAFC 100%);
+  --grad-soft: linear-gradient(135deg, rgba(83, 109, 254, 0.18), rgba(255, 255, 255, 0.04));
+
+  --track: rgba(255, 255, 255, 0.06);
+  --logo-edge-a: #F8FAFC;
+  --logo-edge-b: #8896AD;
+
+  /* ── PRECEDENCE semantics ──────────────────────────────────────────────
+     Priority rank is ORDINAL: one descending ramp, so seniority reads from
+     colour alone without the label. */
+  --rank-senior: #E2E8F0;        --rank-senior-soft: rgba(226, 232, 240, 0.12);
+  --rank-junior: #94A3B8;        --rank-junior-soft: rgba(148, 163, 184, 0.12);
+  --rank-subordinate: #5E6E87;   --rank-subordinate-soft: rgba(94, 110, 135, 0.14);
+
+  --state-clear: #10B981;        --state-clear-soft: rgba(16, 185, 129, 0.14);
+  --state-encumbered: #60A5FA;   --state-encumbered-soft: rgba(96, 165, 250, 0.12);
+  --state-breached: #EF4444;     --state-breached-soft: rgba(239, 68, 68, 0.14);
+
+  --proof-pending: #C084FC;      --proof-pending-soft: rgba(192, 132, 252, 0.14);
+  --proof-available: #38BDF8;    --proof-available-soft: rgba(56, 189, 248, 0.14);
+  --proof-verified: #10B981;     --proof-verified-soft: rgba(16, 185, 129, 0.14);
+
+  --event-refund: #94A3B8;       --event-refund-soft: rgba(148, 163, 184, 0.12);
+  --event-refinance: #818CF8;    --event-refinance-soft: rgba(129, 140, 248, 0.14);
+  --event-liquidation: #FB923C;  --event-liquidation-soft: rgba(251, 146, 60, 0.14);
+
+  /* RESERVED — Attestcoin codes amber as the writability path. PRECEDENCE v1 is
+     read-only, so this slot stays defined and unused rather than reallocated. */
+  --write: #F59E0B;              --write-soft: rgba(245, 158, 11, 0.14);
+
+  --font-display: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
+}
+
+/* ── Light theme ("cool paper") — same accent, ink on paper ── */
+html { color-scheme: dark; }
+html.light { color-scheme: light; }
+html.light {
+  --bg-0: #F4F5F8;
+  --bg-1: #FFFFFF;
+  --bg-2: #EBECEF;
+  --panel: rgba(255, 255, 255, 0.7);
+  --panel-heavy: rgba(255, 255, 255, 0.85);
+  --border: #D3D6DF;
+  --border-strong: #B8BCCB;
+  --accent: #2535F5;
+  --accent-dim: #1623D4;
+  --accent-glow: rgba(37, 53, 245, 0.22);
+  /* status colours darkened — pastel-on-paper washes out under projector light */
+  --silver: #565C70;
+  --success: #047857;
+  --warn: #C2410C;
+  --danger: #DC2626;
+  --text: #060810;
+  --text-muted: #565C70;
+  --text-faint: #7A8195;
+  --grad: linear-gradient(135deg, #2535F5 0%, #1623D4 55%, #060810 100%);
+  --grad-soft: linear-gradient(135deg, rgba(37, 53, 245, 0.12), rgba(0, 0, 0, 0.03));
+  --track: rgba(0, 0, 0, 0.08);
+  --logo-edge-a: #171C2A;
+  --logo-edge-b: #8896AD;
+
+  --rank-senior: #050A1A;        --rank-senior-soft: rgba(5, 10, 26, 0.08);
+  --rank-junior: #334155;        --rank-junior-soft: rgba(51, 65, 85, 0.08);
+  --rank-subordinate: #5B6B82;   --rank-subordinate-soft: rgba(91, 107, 130, 0.09);
+
+  --state-clear: #047857;        --state-clear-soft: rgba(4, 120, 87, 0.08);
+  --state-encumbered: #1D4ED8;   --state-encumbered-soft: rgba(29, 78, 216, 0.08);
+  --state-breached: #DC2626;     --state-breached-soft: rgba(220, 38, 38, 0.08);
+
+  --proof-pending: #6D28D9;      --proof-pending-soft: rgba(109, 40, 217, 0.08);
+  --proof-available: #0284C7;    --proof-available-soft: rgba(2, 132, 199, 0.08);
+  --proof-verified: #059669;     --proof-verified-soft: rgba(5, 150, 105, 0.08);
+
+  --event-refund: #475569;       --event-refund-soft: rgba(71, 85, 105, 0.08);
+  --event-refinance: #4338CA;    --event-refinance-soft: rgba(67, 56, 202, 0.08);
+  --event-liquidation: #C2410C;  --event-liquidation-soft: rgba(194, 65, 12, 0.08);
+
+  --write: #D97706;              --write-soft: rgba(217, 119, 6, 0.08);
+}
+html.light .precedence-bg {
+  background:
+    radial-gradient(60rem 60rem at 12% -10%, rgba(83, 109, 254, 0.07), transparent 60%),
+    radial-gradient(50rem 50rem at 100% 10%, rgba(120, 60, 200, 0.05), transparent 55%),
+    linear-gradient(160deg, #fbfafc 0%, #f6f5f8 55%, #efedf2 100%);
+}
+html.light .precedence-grid {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.035) 1px, transparent 1px);
+}
+html.light .glass {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 8px 30px rgba(20, 15, 30, 0.08);
+}
+html.light .grain { mix-blend-mode: multiply; opacity: 0.05; }
+html.light .vignette {
+  background: radial-gradient(ellipse 120% 90% at 50% 42%, transparent 60%, rgba(20, 15, 30, 0.12) 100%);
+}
+html.light .atmo { opacity: 0.5; }
+html.light .btn-accent { background: rgba(255, 255, 255, 0.8); }
+html.light .btn-accent:hover { background: var(--accent); }
+html.light .shimmer-text {
+  background: linear-gradient(90deg, var(--text) 0%, var(--accent) 35%, #3B4CD6 50%, var(--accent) 65%, var(--text) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+/* censored-on-paper: deep crimson block — still sealed, but on-brand */
+html.light .redacted { background: #260a0e; }
+html.light ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.18); }
+/* theme toggle icons — CSS picks one, markup stays identical on server/client */
+html.light .theme-icon-dark { display: none; }
+html:not(.light) .theme-icon-light { display: none; }
+
+@theme inline {
+  --color-bg: var(--bg-1);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  letter-spacing: -0.03em;
+}
+
+/* Atmospheric backdrop: layered radial glows + faint grid. */
+.precedence-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(60rem 60rem at 12% -10%, rgba(83, 109, 254, 0.12), transparent 60%),
+    radial-gradient(50rem 50rem at 100% 10%, rgba(120, 60, 200, 0.08), transparent 55%),
+    linear-gradient(160deg, #0c0a10 0%, #0a080c 55%, #060508 100%);
+}
+.precedence-grid {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: radial-gradient(circle at 30% 20%, black, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at 30% 20%, black, transparent 80%);
+}
+
+.glass {
+  background: var(--panel);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+.glass-heavy {
+  background: var(--panel-heavy);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--border);
+}
+
+.text-gradient {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-variant-numeric: tabular-nums;
+}
+.eyebrow {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  color: var(--text-faint);
+}
+/* Every load-bearing numeral: mono voice, columns that line up. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-variant-ligatures: none;
+}
+
+/* Full on-chain identifiers: wrap, never truncate (hard project rule). */
+.hash {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  word-break: break-all;
+  color: var(--silver);
+}
+
+/* ── Redaction — the signature element. Sealed data is the trust story.
+   A blurred energy haze with particles drifting up through it; the content
+   itself is transparent (the blocks only size the field). ── */
+@keyframes precedence-haze {
+  0%, 100% { transform: translateX(-14%) scale(1); }
+  50% { transform: translateX(14%) scale(1.18); }
+}
+/* Brownian jitter — each particle layer takes its own erratic walk. */
+@keyframes precedence-brownian {
+  0% { background-position: 0px 0px, 0px 0px, 0px 0px; }
+  16% { background-position: 5px -3px, -4px 4px, 3px 5px; }
+  34% { background-position: -3px 5px, 5px -5px, -5px -2px; }
+  52% { background-position: 6px 2px, -2px -6px, 4px -5px; }
+  70% { background-position: -4px -4px, 6px 3px, -3px 6px; }
+  86% { background-position: 2px 5px, -5px -3px, 6px 1px; }
+  100% { background-position: 0px 0px, 0px 0px, 0px 0px; }
+}
+.redacted {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  color: transparent;
+  background: rgba(5, 4, 7, 0.8);
+  border-radius: 5px;
+  padding: 0.1em 0.45em;
+  overflow: hidden;
+  user-select: none;
+}
+.redacted::before {
+  content: "";
+  position: absolute;
+  inset: -60% -20%;
+  background:
+    radial-gradient(closest-side at 30% 55%, color-mix(in srgb, var(--accent) 55%, transparent), transparent 75%),
+    radial-gradient(closest-side at 72% 40%, color-mix(in srgb, var(--accent-dim) 45%, transparent), transparent 75%);
+  filter: blur(9px);
+  animation: precedence-haze 6s ease-in-out infinite;
+  will-change: transform;
+}
+.redacted::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 7px 14px, var(--accent) 1px, transparent 1.7px),
+    radial-gradient(circle at 19px 5px, color-mix(in srgb, var(--accent) 70%, white) 0.8px, transparent 1.4px),
+    radial-gradient(circle at 30px 10px, color-mix(in srgb, var(--accent) 80%, transparent) 1px, transparent 1.6px);
+  background-size: 37px 19px, 41px 17px, 39px 21px;
+  animation: precedence-brownian 4.5s ease-in-out infinite;
+  opacity: 0.9;
+}
+
+/* ── Buttons — terminal cut-corner language. One clipped corner, hairline
+   edge, mono caps; primary glows red on hover with a sheen sweep. ── */
+.btn-accent,
+.btn-ghost {
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, filter 0.25s ease, transform 0.1s ease;
+}
+/* the diagonal hairline along the clipped corner */
+.btn-accent::after,
+.btn-ghost::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--cut) * 0.5 - 0.5px);
+  right: calc(var(--cut) * -0.25);
+  width: calc(var(--cut) * 1.5);
+  height: 1px;
+  background: var(--btn-edge);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+.btn-accent:active,
+.btn-ghost:active {
+  transform: translateY(1px);
+}
+
+.btn-accent {
+  --cut: 12px;
+  --btn-edge: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: rgba(10, 7, 11, 0.9);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+}
+/* sheen sweep */
+.btn-accent::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.28) 50%, transparent 60%);
+  transform: translateX(-130%);
+  transition: transform 0.5s ease;
+  pointer-events: none;
+}
+.btn-accent:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  /* drop-shadow follows the clipped silhouette (box-shadow would be clipped) */
+  filter: drop-shadow(0 0 14px var(--accent-glow));
+}
+.btn-accent:hover::before {
+  transform: translateX(130%);
+}
+
+.btn-ghost {
+  --cut: 8px;
+  --btn-edge: var(--border-strong);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+.btn-ghost:hover {
+  --btn-edge: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: rgba(83, 109, 254, 0.07);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  filter: drop-shadow(0 0 8px rgba(83, 109, 254, 0.18));
+}
+
+@keyframes precedence-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.pulse-dot {
+  animation: precedence-pulse 1.8s ease-in-out infinite;
+}
+
+/* ── GPU-friendly motion (transform/opacity only) ── */
+@keyframes precedence-orb-1 { 0%,100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(48px,-36px,0) scale(1.08); } }
+@keyframes precedence-orb-2 { 0%,100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(-40px,28px,0) scale(0.94); } }
+@keyframes precedence-orb-3 { 0%,100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(26px,40px,0) scale(1.05); } }
+@keyframes precedence-rise { 0% { transform: translateY(30px); opacity: 0; } 12% { opacity: 0.5; } 88% { opacity: 0.5; } 100% { transform: translateY(-160px); opacity: 0; } }
+@keyframes precedence-ripple { 0% { transform: scale(0.2); opacity: 0.55; } 100% { transform: scale(1); opacity: 0; } }
+@keyframes precedence-spin-slow { to { transform: rotate(360deg); } }
+@keyframes precedence-shimmer { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+.atmo { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.atmo-orb { position: absolute; border-radius: 9999px; filter: blur(40px); will-change: transform; }
+.atmo-particle { position: absolute; width: 2px; height: 2px; border-radius: 9999px; background: var(--silver); opacity: 0; will-change: transform, opacity; }
+
+.shimmer-text {
+  background: linear-gradient(90deg, var(--text) 0%, var(--accent) 35%, #fff 50%, var(--accent) 65%, var(--text) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: precedence-shimmer 6s linear infinite;
+}
+.scan-line { display: none; }
+
+/* ── Texture layers (landing) — film grain kills banding, vignette adds depth ── */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  background: radial-gradient(ellipse 120% 90% at 50% 42%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* Spotlight dwell — fills over the stage's reading time, advance fires on end. */
+@keyframes precedence-dwell { from { width: 0%; } to { width: 100%; } }
+.spot-progress {
+  height: 100%;
+  background: var(--accent);
+  animation-name: precedence-dwell;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes precedence-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.caret { animation: precedence-blink 1.1s step-end infinite; }
+
+::selection { background: var(--accent); color: #fff; }
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Keyboard focus — a visible ring for keyboard users, none on mouse click. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
