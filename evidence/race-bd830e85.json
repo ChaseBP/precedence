@@ -1,0 +1,155 @@
+{
+  "kind": "priority-race",
+  "collateralId": "0xbd830e85cf2392ca213be779bca46da75bfbba2483060529ce1444569c46d7b9",
+  "capturedAtZ": "2026-09-02T15:16:18.524Z",
+  "attestation": {
+    "waitMinutes": 6.39,
+    "attestedHeight": 11620360,
+    "note": "Attestation is the slow stage and takes MINUTES. The 'one block' claim covers only verification plus the state transition, which happened inside the Creditcoin transaction above."
+  },
+  "sourceChain": {
+    "name": "Ethereum Sepolia",
+    "chainId": 11155111,
+    "chainKey": 1,
+    "vault": "0x5EdaD363e0529198940c4f5706853ca6a573072A",
+    "vaultExplorerUrl": "https://sepolia.etherscan.io/address/0x5EdaD363e0529198940c4f5706853ca6a573072A",
+    "locks": [
+      {
+        "financier": "0x8E83a933390BffD0618E0d0c3Ab2DAdab6683225",
+        "tranche": "SENIOR",
+        "amount": "$5,100.00",
+        "txHash": "0x9dc03dad9594cc0bc7b08468153d15486d404c64feb618810bf660faf0ecd9c8",
+        "blockNumber": 11620352,
+        "txIndex": 73,
+        "seq": 0,
+        "explorerUrl": "https://sepolia.etherscan.io/tx/0x9dc03dad9594cc0bc7b08468153d15486d404c64feb618810bf660faf0ecd9c8"
+      },
+      {
+        "financier": "0x537fC71385e01619a23e5C60Cf9A729A11dDCaBD",
+        "tranche": "refunded",
+        "amount": "—",
+        "txHash": "0xe75316e7e71c1a1b751831b7f8e45453867830297598730b1e6e76981e7bd1c2",
+        "blockNumber": 11620352,
+        "txIndex": 74,
+        "seq": 0,
+        "explorerUrl": "https://sepolia.etherscan.io/tx/0xe75316e7e71c1a1b751831b7f8e45453867830297598730b1e6e76981e7bd1c2"
+      },
+      {
+        "financier": "0x4f3F60128e3d3BafccE3A5361091435d1f5b65FE",
+        "tranche": "JUNIOR",
+        "amount": "$2,550.00",
+        "txHash": "0x80aa6761ee99ace69735299ebb905ac1ab27e6430c2a54db9383f38816f37ee0",
+        "blockNumber": 11620353,
+        "txIndex": 80,
+        "seq": 0,
+        "explorerUrl": "https://sepolia.etherscan.io/tx/0x80aa6761ee99ace69735299ebb905ac1ab27e6430c2a54db9383f38816f37ee0"
+      },
+      {
+        "financier": "0x78a5C38cB0194Ca4e7cf5742248a92b7e15Efc1C",
+        "tranche": "SUBORDINATE",
+        "amount": "$850.00",
+        "txHash": "0xd2a5ca7ffbdec4f9a6b5ffcd3b67dd8136ff6bbd81288a7812045548ff2438b6",
+        "blockNumber": 11620354,
+        "txIndex": 101,
+        "seq": 0,
+        "explorerUrl": "https://sepolia.etherscan.io/tx/0xd2a5ca7ffbdec4f9a6b5ffcd3b67dd8136ff6bbd81288a7812045548ff2438b6"
+      }
+    ]
+  },
+  "creditcoin": {
+    "chainId": 102031,
+    "gate": "0x9095626df27AD319D7FcD4976b8b4f412949A56C",
+    "gateExplorerUrl": "https://creditcoin-testnet.blockscout.com/address/0x9095626df27AD319D7FcD4976b8b4f412949A56C",
+    "settleTxHash": "0xb0e325db4c229a96739541c507f1d4be965bd0b174d768b7420291659d3caf40",
+    "settleExplorerUrl": "https://creditcoin-testnet.blockscout.com/tx/0xb0e325db4c229a96739541c507f1d4be965bd0b174d768b7420291659d3caf40",
+    "blockNumber": 5418196,
+    "gasUsed": "1107019",
+    "provenPositions": [
+      {
+        "height": 11620352,
+        "txIndex": 73,
+        "financier": "0x8E83a933390BffD0618E0d0c3Ab2DAdab6683225"
+      },
+      {
+        "height": 11620352,
+        "txIndex": 74,
+        "financier": "0x537fC71385e01619a23e5C60Cf9A729A11dDCaBD"
+      },
+      {
+        "height": 11620353,
+        "txIndex": 80,
+        "financier": "0x4f3F60128e3d3BafccE3A5361091435d1f5b65FE"
+      },
+      {
+        "height": 11620354,
+        "txIndex": 101,
+        "financier": "0x78a5C38cB0194Ca4e7cf5742248a92b7e15Efc1C"
+      }
+    ]
+  },
+  "crossCheck": {
+    "agrees": true,
+    "rows": [
+      {
+        "txHash": "0x9dc03dad9594cc0bc7b08468153d15486d404c64feb618810bf660faf0ecd9c8",
+        "precompileTxIndex": 73,
+        "explorerTxIndex": 73,
+        "agrees": true
+      },
+      {
+        "txHash": "0xe75316e7e71c1a1b751831b7f8e45453867830297598730b1e6e76981e7bd1c2",
+        "precompileTxIndex": 74,
+        "explorerTxIndex": 74,
+        "agrees": true
+      },
+      {
+        "txHash": "0x80aa6761ee99ace69735299ebb905ac1ab27e6430c2a54db9383f38816f37ee0",
+        "precompileTxIndex": 80,
+        "explorerTxIndex": 80,
+        "agrees": true
+      },
+      {
+        "txHash": "0xd2a5ca7ffbdec4f9a6b5ffcd3b67dd8136ff6bbd81288a7812045548ff2438b6",
+        "precompileTxIndex": 101,
+        "explorerTxIndex": 101,
+        "agrees": true
+      }
+    ],
+    "note": "calculateTxIndex derives the position from the Merkle path; the explorer reports it independently. They agree."
+  },
+  "settlement": {
+    "awards": [
+      {
+        "financier": "0x8E83a933390BffD0618E0d0c3Ab2DAdab6683225",
+        "tranche": "SENIOR",
+        "rank": 1,
+        "amount": "$5,100.00",
+        "height": 11620352,
+        "txIndex": 73
+      },
+      {
+        "financier": "0x4f3F60128e3d3BafccE3A5361091435d1f5b65FE",
+        "tranche": "JUNIOR",
+        "rank": 2,
+        "amount": "$2,550.00",
+        "height": 11620353,
+        "txIndex": 80
+      },
+      {
+        "financier": "0x78a5C38cB0194Ca4e7cf5742248a92b7e15Efc1C",
+        "tranche": "SUBORDINATE",
+        "rank": 3,
+        "amount": "$850.00",
+        "height": 11620354,
+        "txIndex": 101
+      }
+    ],
+    "refunds": [
+      {
+        "financier": "0x537fC71385e01619a23e5C60Cf9A729A11dDCaBD",
+        "tranche": "SENIOR",
+        "amount": "$5,100.00"
+      }
+    ]
+  }
+}
