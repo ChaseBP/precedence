@@ -29,7 +29,7 @@ export function setPendingReveal(id: string, payload: unknown): void {
   pendingMap.set(id, payload as PendingProof);
 }
 
-export function takePendingReveal(id: string): any {
+export function takePendingReveal(id: string): PendingProof | undefined {
   const p = pendingMap.get(id);
   pendingMap.delete(id);
   return p;

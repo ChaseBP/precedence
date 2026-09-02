@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { Card, Eyebrow } from "@/components/ui";
@@ -21,8 +21,15 @@ export function StageSection({
   children: ReactNode;
 }) {
   const hero = active || defaultOpen;
+  // `open` mirrors `hero` but must stay independently togglable once the user clicks. Deriving it
+  // from a render-time comparison rather than syncing it in an effect avoids both the cascading
+  // render React 19 flags and the extra paint an effect-sync causes.
   const [open, setOpen] = useState(hero);
-  useEffect(() => setOpen(hero), [hero]);
+  const [syncedTo, setSyncedTo] = useState(hero);
+  if (syncedTo !== hero) {
+    setSyncedTo(hero);
+    setOpen(hero);
+  }
   const expanded = active || open;
 
   return (

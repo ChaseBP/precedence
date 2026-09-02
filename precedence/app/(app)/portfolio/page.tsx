@@ -46,7 +46,7 @@ const ROLE_COPY: Record<Portfolio["role"], { label: string; blurb: string }> = {
 };
 
 export default function PortfolioPage() {
-  const { address, ready, status, connect } = useWallet();
+  const { address, chainKey, status, connect } = useWallet();
   const [data, setData] = useState<Portfolio | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,8 +63,11 @@ export default function PortfolioPage() {
 
   // Fetch inside the effect so every setState lands after an await, and clear nothing on the way
   // out — a stale portfolio is filtered by address below rather than nulled synchronously.
+  // Gated on `address`, not on `ready`. `ready` means "on Sepolia", but a borrower has to be on
+  // Creditcoin CC3 to register collateral at all, so gating on it showed them a blank page with
+  // neither data nor a spinner. Positions come from our API, so either chain is fine here.
   useEffect(() => {
-    if (!ready || !address) return;
+    if (!address) return;
     let cancelled = false;
     (async () => {
       try {
@@ -77,12 +80,12 @@ export default function PortfolioPage() {
     return () => {
       cancelled = true;
     };
-  }, [ready, address]);
+  }, [address]);
 
   // Never show one wallet's book under another's address. Switching accounts in MetaMask fires
   // accountsChanged, and the refetch is async, so the previous result is briefly still in state.
   const shown = data && address && data.address.toLowerCase() === address.toLowerCase() ? data : null;
-  const loading = ready && !shown && !error;
+  const loading = Boolean(address) && !shown && !error;
 
   // ── not connected ──
   if (status !== "connected") {
@@ -132,6 +135,11 @@ export default function PortfolioPage() {
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Badge>{ROLE_COPY[role].label}</Badge>
+            {chainKey === null ? (
+              <Badge color="var(--warn)">
+                Wallet is on another network — positions shown, but signing needs Sepolia or CC3
+              </Badge>
+            ) : null}
             {simulated ? (
               <Badge color="var(--warn)">Simulated — no live registry connected</Badge>
             ) : shown ? (

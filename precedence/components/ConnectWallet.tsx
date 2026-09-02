@@ -7,7 +7,7 @@
  * mainnet is the single most common way a demo dies in front of an audience, and the recovery is
  * one click, so it belongs in the button itself.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, ArrowLeftRight, Check, Copy, LogOut, Wallet } from "lucide-react";
 import { CHAINS, shortAddress, useWallet } from "@/lib/client/wallet";
 
@@ -15,6 +15,16 @@ export function ConnectWallet() {
   const { status, address, chainKey, onWrongChain, error, connect, disconnect, switchChain } = useWallet();
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
+
+  // Click-away alone left keyboard users with no way out of the popover.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   async function copy() {
     if (!address) return;

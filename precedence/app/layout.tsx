@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins, DM_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "@/lib/client/wallet";
+import { Toaster } from "@/components/motion/Toaster";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-poppins" });
 const dmSans = DM_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-dm-sans" });
@@ -17,7 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${dmSans.variable} ${ibmPlexMono.variable}`}>
       <body className="antialiased">
-        <WalletProvider>{children}</WalletProvider>
+        <WalletProvider>
+          <Toaster>{children}</Toaster>
+        </WalletProvider>
       </body>
     </html>
   );

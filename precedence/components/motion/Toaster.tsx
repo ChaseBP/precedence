@@ -17,7 +17,17 @@ export const useToast = () => useContext(Ctx);
 export function Toaster({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // Deferred: setting state straight from an effect body is a cascading render under React 19.
+  // The flag exists only to gate createPortal until after hydration, so a tick's delay is free.
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) setMounted(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const toast = useCallback(({ title, body, level = "info" }: { title: string; body?: string; level?: Level }) => {
     const id = Date.now() + Math.random();
