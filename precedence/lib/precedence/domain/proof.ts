@@ -48,13 +48,13 @@ export const MAX_BATCH_RANGE = 1000;
  * bounds below rather than sitting at an average. And never imply the proof is instant.
  */
 export const MEASURED_ATTESTATION_LAG = {
-  minMinutes: 6.7,
+  minMinutes: 6.5,
   maxMinutes: 9.4,
   p50Minutes: 7.8,
-  p90Minutes: 8.8,
+  p90Minutes: 8.6,
   p99Minutes: 9.4,
-  samples: 86,
-  measuredAt: "2026-09-02T00:20:00Z",
+  samples: 151,
+  measuredAt: "2026-09-02T13:50:00Z",
   /** Pre-stage source transactions at least this far ahead of a demo: p90 + a 3-minute buffer. */
   demoStagingMinutes: 12,
   source: "ops/measure-latency.ts -> evidence/latency.jsonl (run `--summary` for the current figure)",

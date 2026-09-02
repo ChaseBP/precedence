@@ -153,10 +153,10 @@ Attestcoin does **not** document attestation latency anywhere. Our own spec orig
 
 | | |
 | --- | --- |
-| min | **6.7 min** |
+| min | **6.5 min** |
 | p50 | **7.8 min** |
-| p90 | **8.8 min** |
-| max | **9.4 min** (n=86) |
+| p90 | **8.6 min** |
+| max | **9.4 min** (n=151) |
 
 Attestation advances in **batches**, so the lag is a **sawtooth**, not a constant — which is why we
 quote a range and never a single number. Raw samples: `evidence/latency.jsonl`
@@ -167,7 +167,7 @@ quote a range and never a single number. Raw samples: `evidence/latency.jsonl`
 | Stage | Cost |
 | --- | --- |
 | 1. lock lands on Sepolia | instant |
-| 2. attestation reaches that height | **6.7–9.4 minutes** |
+| 2. attestation reaches that height | **6.5–9.4 minutes** |
 | 3. proof generation | seconds |
 | 4. verification at `0x0FD2` + state transition | **one Creditcoin block, ~15s** |
 
@@ -267,3 +267,37 @@ cd worker && bun run src/cli.ts probe \
 # the security controls, one passing rejection per attack
 cd contracts && make test
 ```
+
+### 5.1 Why it is that long, and why we cannot shorten it
+
+The figure was challenged as looking like a guess, which was fair — the original number came from an
+*indirect* proxy (how old is the newest attested block). So we measured the question that actually
+matters instead: **a lock lands now; how long until it is provable?**
+
+`ops/latency-experiment.ts` watches one specific fresh block and times three independent signals:
+
+| Block | `is_height_attested` | `get_attestation_bounds` | frontier reaches height |
+| --- | --- | --- | --- |
+| 11,619,853 | **8.14 min** | 8.14 min | 8.14 min |
+| 11,619,919 | **6.95 min** | 6.95 min | 6.95 min |
+
+All three flip at the same instant in both samples, which also confirms the indirect proxy was
+measuring the right thing after all.
+
+**The mechanism, observed directly.** The attestation frontier runs ~30–40 Sepolia blocks behind
+head and advances in **batches of exactly 10 blocks, roughly every 2 minutes**:
+
+```
+t+0.0min  frontier 11619820   (target 11619853, 33 blocks ahead)
+t+2.2min  frontier 11619830   +10
+t+4.1min  frontier 11619840   +10
+t+6.1min  frontier 11619850   +10
+t+8.1min  attested ✓
+```
+
+Sepolia produces 10 blocks in 2 minutes, so attestation *keeps pace but never closes the gap*. Being
+~33 blocks behind is a **~6.6 minute structural floor** (33 × 12s), plus alignment to the next batch.
+
+This is the Attestcoin network's own cadence, not our implementation. Nothing on our side makes it
+faster — which is exactly why the honest two-stage story matters, and why the demo pre-stages source
+transactions ≥12 minutes ahead rather than pretending the wait away.

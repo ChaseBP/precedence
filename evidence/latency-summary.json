@@ -1,0 +1,40 @@
+{
+  "measuredAtZ": "2026-09-02T13:48:33.162Z",
+  "chainKey": 1,
+  "sourceChain": "Ethereum Sepolia",
+  "continuousSampling": {
+    "method": "age of the newest attested block, sampled every 60s",
+    "samples": 151,
+    "windowZ": [
+      "2026-09-01T16:24:03.661Z",
+      "2026-09-02T13:48:33.162Z"
+    ],
+    "minMinutes": 6.54,
+    "p50Minutes": 7.75,
+    "p90Minutes": 8.59,
+    "p99Minutes": 9.15,
+    "maxMinutes": 9.35,
+    "meanMinutes": 7.74
+  },
+  "directMeasurement": {
+    "method": "watch a specific fresh block until is_height_attested flips true; measured from the BLOCK TIMESTAMP",
+    "samples": [
+      {
+        "blockHeight": 11619853,
+        "isHeightAttestedMinutes": 8.14,
+        "attestationBoundsMinutes": 8.14,
+        "latestReportedHeightMinutes": 8.14
+      },
+      {
+        "blockHeight": 11619919,
+        "isHeightAttestedMinutes": 6.95,
+        "attestationBoundsMinutes": 6.95,
+        "latestReportedHeightMinutes": 6.95
+      }
+    ],
+    "allThreeSignalsAgree": true
+  },
+  "mechanism": "The attestation frontier runs roughly 30-40 Sepolia blocks behind head and advances in batches of exactly 10 blocks, about every 2 minutes. Sepolia produces 10 blocks in 2 minutes, so attestation keeps pace but never closes the gap. ~33 blocks x 12s is a ~6.6 min structural floor, plus alignment to the next batch. This is the Attestcoin network's cadence, not something our implementation can shorten.",
+  "quoteAs": "6.5-9.3 minutes, measured",
+  "demoStagingMinutes": 12
+}

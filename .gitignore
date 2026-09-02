@@ -44,3 +44,7 @@ chat-log.txt
 
 # ── the nested repo we set aside (empty; kept only so the move is reversible) ──
 precedence/.git.disabled-nested-repo/
+
+# ── the latency sampler appends continuously; commit the summary, not the stream ──
+evidence/latency.jsonl
+evidence/latency-exp*.log
