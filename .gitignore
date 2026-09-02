@@ -48,3 +48,5 @@ precedence/.git.disabled-nested-repo/
 # ── the latency sampler appends continuously; commit the summary, not the stream ──
 evidence/latency.jsonl
 evidence/latency-exp*.log
+evidence/.active-collateral-id
+evidence/stage-race.log

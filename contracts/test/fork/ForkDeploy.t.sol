@@ -101,6 +101,8 @@ contract ForkDeployTest is Test {
         registry.registerCollateral(
             cid, CollateralRegistry.AssetType.WAREHOUSE_RECEIPT, 10_000 * D, 1_500, 90, obligor, vault, ""
         );
+        vm.prank(obligor);
+        registry.postFacilityTerms(cid, 5_100 * D, 2_550 * D, 850 * D, 520, 780, 1_150);
 
         T.VerifiedLock[] memory locks = new T.VerifiedLock[](3);
         for (uint64 i = 0; i < 3; ++i) {
@@ -121,7 +123,7 @@ contract ForkDeployTest is Test {
 
         uint256 before = gasleft();
         vm.prank(gate_);
-        engine.settlePriority(cid, locks, demote, 8_500 * D);
+        engine.settlePriority(cid, locks, demote);
         uint256 used = before - gasleft();
 
         console.log("settlePriority gas (3 locks):", used);

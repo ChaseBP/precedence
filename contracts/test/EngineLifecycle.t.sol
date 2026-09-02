@@ -67,6 +67,20 @@ contract EngineLifecycleTest is Test {
             "ipfs://atlas-coffee-8802"
         );
 
+        // The OBLIGOR posts the facility terms: caps and coupons. Lenders read these before
+        // deciding whether to lock, and the rate being fixed by the borrower is what keeps proven
+        // ordering — not price — the thing that decides who gets a tranche.
+        vm.prank(obligor);
+        registry.postFacilityTerms(
+            collateralId,
+            5_100 * D, // SENIOR cap
+            2_550 * D, // JUNIOR cap
+            850 * D, // SUBORDINATE cap
+            520, // 5.2% senior
+            780, // 7.8% junior
+            1_150 // 11.5% subordinate
+        );
+
         // Fund the bounty pool so keepers can be paid. The unwind must work without it too — see
         // test_unwindWorksWithAnEmptyBountyPool.
         vm.deal(owner, 100 ether);
@@ -105,7 +119,7 @@ contract EngineLifecycleTest is Test {
 
         bool[] memory demote = new bool[](3);
         vm.prank(gate);
-        engine.settlePriority(collateralId, locks, demote, 8_500 * D);
+        engine.settlePriority(collateralId, locks, demote);
     }
 
     function _draw() internal {
@@ -170,7 +184,7 @@ contract EngineLifecycleTest is Test {
 
         vm.prank(meridian);
         vm.expectRevert(PriorityEngine.NotGate.selector);
-        engine.settlePriority(collateralId, locks, demote, 8_500 * D);
+        engine.settlePriority(collateralId, locks, demote);
     }
 
     // ═══════════════════════════ performing payoff ═══════════════════════════
@@ -338,7 +352,7 @@ contract EngineLifecycleTest is Test {
         locks[2] = _lock(novum, T.Tranche.SUBORDINATE, 850 * D, 6182101, 41, 3);
         bool[] memory demote = new bool[](3);
         vm.prank(gate);
-        engine.settlePriority(collateralId, locks, demote, 8_500 * D);
+        engine.settlePriority(collateralId, locks, demote);
         _draw();
 
         vm.warp(block.timestamp + 91 days);
@@ -404,7 +418,7 @@ contract EngineLifecycleTest is Test {
         locks[2] = _lock(novum, T.Tranche.SUBORDINATE, 850 * D, 6182101, 41, 3);
         bool[] memory demote = new bool[](3);
         vm.prank(gate);
-        engine.settlePriority(collateralId, locks, demote, 8_500 * D);
+        engine.settlePriority(collateralId, locks, demote);
         _draw();
 
         vm.prank(gate);
@@ -429,7 +443,7 @@ contract EngineLifecycleTest is Test {
         locks[0] = _lock(meridian, T.Tranche.SENIOR, 5_100 * D, 6182101, 17, 1);
         bool[] memory demote = new bool[](1);
         vm.prank(gate);
-        bare.settlePriority(collateralId, locks, demote, 8_500 * D);
+        bare.settlePriority(collateralId, locks, demote);
         vm.prank(gate);
         bare.markDrawn(collateralId, 5_100 * D);
 
@@ -572,13 +586,64 @@ contract EngineLifecycleTest is Test {
         assertEq(registry.vaultOf(collateralId), newVault);
     }
 
-    function test_facilitySizingSplitsSixtyThirtyTen() public view {
-        (T.TrancheSizing memory s, uint256 maxAdvance) = registry.facilitySizing(collateralId, 8_500 * D);
+    /// @dev Sizing now comes from what the OBLIGOR posted, not a hardcoded 60/30/10 split.
+    function test_facilitySizingComesFromPostedTerms() public view {
+        (T.TrancheSizing memory s, uint256 maxAdvance) = registry.facilitySizing(collateralId);
         assertEq(maxAdvance, 8_500 * D, "10,000 face less a 15% haircut");
         assertEq(s.senior, 5_100 * D);
         assertEq(s.junior, 2_550 * D);
         assertEq(s.subordinate, 850 * D);
-        assertEq(s.senior + s.junior + s.subordinate, 8_500 * D, "nothing lost to rounding");
+    }
+
+    /// @dev Senior is protected by everything beneath it, so it must be the cheapest capital.
+    /// A facility where senior out-yields subordinate is incoherent and must be impossible to post.
+    function test_revert_ratesMustBeOrdinal() public {
+        bytes32 other = keccak256("ordinality-check");
+        vm.prank(obligor);
+        registry.registerCollateral(
+            other, CollateralRegistry.AssetType.TRADE_RECEIVABLE, 10_000 * D, 1_500, 90, custodian, vault, ""
+        );
+        vm.prank(obligor);
+        vm.expectRevert(
+            abi.encodeWithSelector(CollateralRegistry.RatesNotOrdinal.selector, uint16(1_800), uint16(1_000), uint16(500))
+        );
+        registry.postFacilityTerms(other, 2_000 * D, 3_000 * D, 3_000 * D, 1_800, 1_000, 500);
+    }
+
+    /// @dev The haircut is the lenders' protection; sizing the facility past it would remove it.
+    function test_revert_capsCannotExceedTheHaircutAdjustedAdvance() public {
+        bytes32 other = keccak256("cap-check");
+        vm.prank(obligor);
+        registry.registerCollateral(
+            other, CollateralRegistry.AssetType.TRADE_RECEIVABLE, 10_000 * D, 1_500, 90, custodian, vault, ""
+        );
+        vm.prank(obligor);
+        vm.expectRevert(
+            abi.encodeWithSelector(CollateralRegistry.CapsExceedAdvance.selector, 9_000 * D, 8_500 * D)
+        );
+        registry.postFacilityTerms(other, 5_000 * D, 3_000 * D, 1_000 * D, 500, 1_000, 1_800);
+    }
+
+    /// @dev Terms are frozen once capital is committed against them.
+    function test_revert_termsCannotChangeWhileEncumbered() public {
+        _settleHeadlineRace();
+        vm.prank(obligor);
+        vm.expectRevert(CollateralRegistry.TermsLockedWhileEncumbered.selector);
+        registry.postFacilityTerms(collateralId, 1 * D, 1 * D, 1 * D, 100, 200, 300);
+    }
+
+    /// @dev The obligor's posted coupons are what the waterfall actually pays.
+    function test_waterfallUsesThePostedCoupons() public {
+        _settleHeadlineRace();
+        _draw();
+        vm.prank(gate);
+        engine.releaseLien(collateralId, 7_790 * D);
+
+        A.WaterfallLine[] memory lines = engine.waterfallOf(collateralId);
+        // 5,100 at 5.2% over 90 days, using the same integer order as the library.
+        assertEq(lines[0].interestDue, (5_100 * D * 520 * 90) / (10_000 * 365));
+        // 2,550 at 7.8% over 90 days.
+        assertEq(lines[1].interestDue, (2_550 * D * 780 * 90) / (10_000 * 365));
     }
 
     function test_claimIdIsDerivableOffChain() public view {

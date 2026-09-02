@@ -45,8 +45,29 @@ contract CollateralRegistry is ERC721, Ownable {
         string metadataURI;
     }
 
+    /**
+     * @notice Facility terms, posted by the OBLIGOR when they open a facility.
+     *
+     * @dev The borrower publishes what they will pay for each tranche and how large each tranche
+     * is; lenders read these before deciding whether to lock. This is what keeps the Attestcoin
+     * ordering load-bearing: because the rate is fixed by the borrower rather than bid by lenders,
+     * price competition cannot decide who gets a tranche — proven `(blockHeight, txIndex)` ordering
+     * does. If lenders bid rates instead, ordering would degrade to a tiebreak for rate ties.
+     */
+    struct FacilityTerms {
+        bool set;
+        uint256 seniorCap;
+        uint256 juniorCap;
+        uint256 subordinateCap;
+        uint16 seniorRateBps;
+        uint16 juniorRateBps;
+        uint16 subordinateRateBps;
+        uint32 termDays;
+    }
+
     /// @notice collateralId == the document hash. One document, one id, one registration.
     mapping(bytes32 => Collateral) private _collateral;
+    mapping(bytes32 => FacilityTerms) private _terms;
     mapping(uint256 => bytes32) public collateralIdOfToken;
 
     /// @notice Contracts allowed to move encumbrance state (PriorityEngine, RefinanceEngine).
@@ -65,6 +86,16 @@ contract CollateralRegistry is ERC721, Ownable {
     event EncumbranceChanged(bytes32 indexed collateralId, T.EncumbranceState from, T.EncumbranceState to);
     event StateWriterSet(address indexed writer, bool allowed);
     event VaultUpdated(bytes32 indexed collateralId, address oldVault, address newVault);
+    event FacilityTermsPosted(
+        bytes32 indexed collateralId,
+        uint256 seniorCap,
+        uint256 juniorCap,
+        uint256 subordinateCap,
+        uint16 seniorRateBps,
+        uint16 juniorRateBps,
+        uint16 subordinateRateBps,
+        uint32 termDays
+    );
 
     error AlreadyRegistered(bytes32 collateralId);
     error UnknownCollateral(bytes32 collateralId);
@@ -73,6 +104,12 @@ contract CollateralRegistry is ERC721, Ownable {
     error ZeroVault();
     error VaultLockedWhileEncumbered();
     error InvalidHaircut();
+    error TermsNotSet(bytes32 collateralId);
+    error TermsLockedWhileEncumbered();
+    error CapsExceedAdvance(uint256 total, uint256 maxAdvance);
+    error RatesNotOrdinal(uint16 senior, uint16 junior, uint16 subordinate);
+    error RateTooHigh(uint16 bps);
+    error ZeroFacility();
 
     constructor(address initialOwner) ERC721("PRECEDENCE Collateral", "PCOL") Ownable(initialOwner) {}
 
@@ -193,23 +230,113 @@ contract CollateralRegistry is ERC721, Ownable {
         return c.exists && c.state == T.EncumbranceState.CLEAR && c.activeLiens == 0;
     }
 
-    /// @notice Facility sizing: max advance after the haircut, split 60/30/10.
+    // ─────────────────────────────── facility terms ───────────────────────────────
+
+    /// @notice Maximum the obligor may borrow: face value less the haircut.
+    function maxAdvanceOf(bytes32 collateralId) public view returns (uint256) {
+        Collateral storage c = _collateral[collateralId];
+        if (!c.exists) revert UnknownCollateral(collateralId);
+        return (c.faceValue * (10_000 - c.haircutBps)) / 10_000;
+    }
+
+    /**
+     * @notice Post the facility terms. Only the obligor, and only while nothing is encumbered.
+     *
+     * @dev Two invariants worth stating, because both encode something real:
+     *
+     *  1. **Rates must be ordinal**: senior <= junior <= subordinate. A senior tranche paying MORE
+     *     than a subordinate one is incoherent — senior is paid first and is protected by the
+     *     tranches beneath it, so it must be the cheapest capital. Enforcing it structurally means
+     *     the risk/return relationship cannot be misconfigured into nonsense.
+     *
+     *  2. **Caps cannot exceed the haircut-adjusted advance.** The haircut is the lenders'
+     *     protection; letting the obligor size the facility past it would quietly remove it.
+     *
+     * Terms are frozen once anything is encumbered: lenders locked capital against these numbers,
+     * and changing the coupon under a live lien would rewrite the deal they agreed to.
+     */
+    function postFacilityTerms(
+        bytes32 collateralId,
+        uint256 seniorCap,
+        uint256 juniorCap,
+        uint256 subordinateCap,
+        uint16 seniorRateBps,
+        uint16 juniorRateBps,
+        uint16 subordinateRateBps
+    ) external {
+        Collateral storage c = _collateral[collateralId];
+        if (!c.exists) revert UnknownCollateral(collateralId);
+        if (c.obligor != msg.sender) revert NotObligor();
+        if (c.state != T.EncumbranceState.CLEAR) revert TermsLockedWhileEncumbered();
+
+        uint256 total = seniorCap + juniorCap + subordinateCap;
+        if (total == 0) revert ZeroFacility();
+
+        uint256 advance = maxAdvanceOf(collateralId);
+        if (total > advance) revert CapsExceedAdvance(total, advance);
+
+        // Senior is protected by everything below it, so it must be the cheapest capital.
+        if (!(seniorRateBps <= juniorRateBps && juniorRateBps <= subordinateRateBps)) {
+            revert RatesNotOrdinal(seniorRateBps, juniorRateBps, subordinateRateBps);
+        }
+        if (subordinateRateBps > 10_000) revert RateTooHigh(subordinateRateBps);
+
+        _terms[collateralId] = FacilityTerms({
+            set: true,
+            seniorCap: seniorCap,
+            juniorCap: juniorCap,
+            subordinateCap: subordinateCap,
+            seniorRateBps: seniorRateBps,
+            juniorRateBps: juniorRateBps,
+            subordinateRateBps: subordinateRateBps,
+            termDays: c.termDays
+        });
+
+        emit FacilityTermsPosted(
+            collateralId,
+            seniorCap,
+            juniorCap,
+            subordinateCap,
+            seniorRateBps,
+            juniorRateBps,
+            subordinateRateBps,
+            c.termDays
+        );
+    }
+
+    function facilityTerms(bytes32 collateralId) external view returns (FacilityTerms memory) {
+        FacilityTerms memory t = _terms[collateralId];
+        if (!t.set) revert TermsNotSet(collateralId);
+        return t;
+    }
+
+    function hasFacilityTerms(bytes32 collateralId) external view returns (bool) {
+        return _terms[collateralId].set;
+    }
+
+    /// @notice Per-tranche capacity, as the obligor posted it.
     /// @dev The Sepolia vault fills the facility in `seq` order against the same total, which is
     /// how both chains agree on the allocated set without any message between them.
-    function facilitySizing(bytes32 collateralId, uint256 requested)
+    function facilitySizing(bytes32 collateralId)
         external
         view
         returns (T.TrancheSizing memory sizing, uint256 maxAdvance)
     {
-        Collateral storage c = _collateral[collateralId];
-        if (!c.exists) revert UnknownCollateral(collateralId);
+        FacilityTerms memory t = _terms[collateralId];
+        if (!t.set) revert TermsNotSet(collateralId);
+        sizing.senior = t.seniorCap;
+        sizing.junior = t.juniorCap;
+        sizing.subordinate = t.subordinateCap;
+        maxAdvance = maxAdvanceOf(collateralId);
+    }
 
-        maxAdvance = (c.faceValue * (10_000 - c.haircutBps)) / 10_000;
-        uint256 funded = requested < maxAdvance ? requested : maxAdvance;
-
-        sizing.senior = (funded * 60) / 100;
-        sizing.junior = (funded * 30) / 100;
-        sizing.subordinate = funded - sizing.senior - sizing.junior;
+    /// @notice The coupons the obligor posted, indexed by rank - 1 (0 = SENIOR).
+    function rateBpsOf(bytes32 collateralId) external view returns (uint256[3] memory rates) {
+        FacilityTerms memory t = _terms[collateralId];
+        if (!t.set) revert TermsNotSet(collateralId);
+        rates[0] = t.seniorRateBps;
+        rates[1] = t.juniorRateBps;
+        rates[2] = t.subordinateRateBps;
     }
 
     function exists(bytes32 collateralId) external view returns (bool) {

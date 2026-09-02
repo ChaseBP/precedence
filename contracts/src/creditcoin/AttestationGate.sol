@@ -123,17 +123,13 @@ contract AttestationGate {
     /// @param proof         heights, encoded transactions, Merkle proofs, and ONE shared
     ///                      continuity proof covering the whole batch
     /// @param allowDemotion per-lock opt-in to a lower tranche instead of a refund
-    /// @param requested     facility size the obligor asked for
     ///
     /// @dev Ordering is VERIFIED here, not trusted from the caller. Each `txIndex` is re-derived
     /// from its Merkle proof and the sequence is required to strictly increase, so a prover cannot
     /// present the race in a self-serving order.
-    function settleRace(
-        bytes32 collateralId,
-        RaceProof calldata proof,
-        bool[] calldata allowDemotion,
-        uint256 requested
-    ) external {
+    function settleRace(bytes32 collateralId, RaceProof calldata proof, bool[] calldata allowDemotion)
+        external
+    {
         uint256 n = proof.encodedTxs.length;
         if (n != proof.heights.length || n != proof.merkleProofs.length || n != allowDemotion.length) {
             revert LengthMismatch();
@@ -152,7 +148,7 @@ contract AttestationGate {
         P.validateSet(locks, registry.vaultOf(collateralId), settlementToken);
         if (!P.fitsOneContinuityProof(locks)) revert ContinuityWindowExceeded();
 
-        engine.settlePriority(collateralId, locks, allowDemotion, requested);
+        engine.settlePriority(collateralId, locks, allowDemotion);
 
         emit RaceSettled(collateralId, n, locks[0].height, locks[n - 1].height);
     }

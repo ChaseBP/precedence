@@ -37,9 +37,20 @@ contract PriorityEngine is Ownable, ReentrancyGuard {
 
     uint256 public protocolFeeBps = 25;
     uint256 public proverFeeBps = 5;
-    /// @dev Coupons by rank: SENIOR 5.2% · JUNIOR 7.8% · SUBORDINATE 11.5%. Senior is cheapest
-    /// precisely because it is paid first.
-    uint256[3] public rateBps = [520, 780, 1150];
+
+    /**
+     * @dev Coupons are NOT set here. The obligor posts them per facility in `CollateralRegistry`,
+     * and the waterfall reads them from there.
+     *
+     * That choice is what keeps the Attestcoin ordering load-bearing. Because the borrower fixes
+     * the rate, lenders compete on nothing but WHEN their lock landed — so proven
+     * `(blockHeight, txIndex)` ordering decides who gets an oversubscribed tranche, and it decides
+     * real money. If lenders bid rates instead, price would decide allocation and the ordering
+     * proof would degrade into a tiebreak for the rare case of equal bids.
+     *
+     * The registry also enforces that rates are ordinal (senior <= junior <= subordinate), so a
+     * senior tranche can never be configured to out-yield the tranche absorbing its losses.
+     */
 
     // ─────────────────────────────── state ───────────────────────────────
 
@@ -171,10 +182,11 @@ contract PriorityEngine is Ownable, ReentrancyGuard {
     function settlePriority(
         bytes32 collateralId,
         T.VerifiedLock[] calldata locks,
-        bool[] calldata allowDemotion,
-        uint256 requested
+        bool[] calldata allowDemotion
     ) external onlyGate {
-        (T.TrancheSizing memory sizing,) = registry.facilitySizing(collateralId, requested);
+        // Caps as the OBLIGOR posted them. The Sepolia vault fills against the same total, which
+        // is how both chains agree on the allocated set with no message between them.
+        (T.TrancheSizing memory sizing,) = registry.facilitySizing(collateralId);
         (A.Award[] memory awards, A.Refund[] memory refunds) = A.allocate(locks, sizing, allowDemotion);
 
         delete _stack[collateralId];
@@ -264,8 +276,10 @@ contract PriorityEngine is Ownable, ReentrancyGuard {
         returns (uint256 distributed)
     {
         A.Award[] memory awards = _stack[collateralId];
+        // The coupons the borrower actually published for THIS facility.
+        uint256[3] memory rates = registry.rateBpsOf(collateralId);
         (A.WaterfallLine[] memory lines,,, ) =
-            A.waterfall(awards, realised, protocolFeeBps, proverFeeBps, termDays, rateBps, liquidation);
+            A.waterfall(awards, realised, protocolFeeBps, proverFeeBps, termDays, rates, liquidation);
 
         // If seniority was violated the protocol's central claim is false for this settlement.
         // Cheap to check, so check it rather than trust the library.
