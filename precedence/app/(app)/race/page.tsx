@@ -18,6 +18,7 @@ import {
   Scale,
   Award,
   Layers,
+  FileText,
 } from "lucide-react";
 import type { Agent, AgentDecision, PriorityRace, LifecyclePhase, ProverCallRecord } from "@/lib/precedence/types";
 import { api, streamRace } from "@/lib/client/api";
@@ -202,8 +203,17 @@ function RaceInner() {
   // No ?id= — send the visitor to the race that is actually running (falling back
   // to the most recent), so "Priority Race" in the nav is never a dead end.
   useEffect(() => {
-    if (id) { setResolving(false); return; }
     let cancelled = false;
+    if (id) {
+      // Deferred rather than set inline: React 19 treats a synchronous setState in an effect body
+      // as a cascading render.
+      void Promise.resolve().then(() => {
+        if (!cancelled) setResolving(false);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
     api.races()
       .then((r) => {
         if (cancelled) return;
@@ -219,10 +229,14 @@ function RaceInner() {
   useEffect(() => {
     if (!id) return;
     lastPhase.current = "";
-    setEvents([]);
-    setLoadError(false);
-    setPlayhead(0);
-    setPaused(false);
+    // Resetting per-race view state. Batched into one deferred call so the reset is a single
+    // update after the effect body, not five synchronous ones inside it.
+    void Promise.resolve().then(() => {
+      setEvents([]);
+      setLoadError(false);
+      setPlayhead(0);
+      setPaused(false);
+    });
 
     api.race(id)
       .then((r) => {
@@ -393,15 +407,22 @@ function RaceInner() {
                   </div>
                 </div>
               </div>
+              {/* Was "Custodian & Title Verification" behind a green shield. We verify neither.
+                  What we actually check is this registry's own lien records, so the heading now
+                  says that and the caveat is stated inline rather than left to be inferred. */}
               <div className="rounded-lg border p-3 text-xs" style={{ borderColor: "var(--border)" }}>
                 <div className="flex items-center gap-2 font-semibold">
-                  <ShieldCheck size={14} style={{ color: "var(--success)" }} />
-                  <span>Custodian &amp; Title Verification</span>
+                  <FileText size={14} style={{ color: "var(--text-muted)" }} />
+                  <span>Custodian As Declared · Registry Lien Check</span>
                 </div>
                 <div className="mt-1.5 flex flex-col gap-1" style={{ color: "var(--text-muted)" }}>
-                  <div>Custodian: {race.collateral.custodian} ({race.collateral.custodianLocation})</div>
-                  <div>Doc Hash: <span className="mono">{race.collateral.docHash}</span></div>
-                  <div>Status: {race.collateral.verifiedClearTitle ? "CLEAR TITLE (0 prior liens)" : "ENCUMBERED"}</div>
+                  <div>Custodian (declared, unverified): {race.collateral.custodian} ({race.collateral.custodianLocation})</div>
+                  <div className="break-all">Doc Hash: <span className="mono">{race.collateral.docHash}</span></div>
+                  <div>Prior liens in THIS registry: {race.collateral.verifiedClearTitle ? "none found" : "ENCUMBERED"}</div>
+                  <div style={{ color: "var(--text-faint)" }}>
+                    Registry-scoped. A custodian issuing two receipts for one physical lot is not
+                    detectable from here.
+                  </div>
                 </div>
               </div>
             </div>
@@ -594,7 +615,7 @@ function RaceInner() {
                     </span>
                     <Badge color="var(--success)">CONFIRMED</Badge>
                   </div>
-                  <div>Proof Hash: <span className="mono">{race.attestation.creditcoinTxHash}</span></div>
+                  <div className="break-all">Proof Hash: <span className="mono">{race.attestation.creditcoinTxHash}</span></div>
                   <div>Claim Token: <span className="mono">{race.attestation.claimTokenId} (ERC-1155)</span></div>
                   <div>Settlement Score: <span className="mono">{race.attestation.score} / 100</span></div>
                 </div>

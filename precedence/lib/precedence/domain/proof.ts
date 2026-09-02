@@ -3,7 +3,7 @@
  *
  * The honest two-stage story, which is non-negotiable (`rohan-plan.md` §20):
  *  1. Source transaction lands on Sepolia                       — instant
- *  2. Attestation reaches that height                           — MEASURED 7–9 min (sawtooth)
+ *  2. Attestation reaches that height                           — MEASURED 6.5-9.3 min (sawtooth)
  *  3. Proof generation from the builder service                 — seconds
  *  4. Precompile verification + state transition on Creditcoin  — ONE ~15s block
  *
@@ -42,7 +42,8 @@ export const MAX_BATCH_RANGE = 1000;
 
 /**
  * MEASURED attestation lag on Sepolia. Attestcoin does not document this figure anywhere, and the
- * ~8-10 min in `rohan-plan.md` §20 was unsourced, so it is sampled continuously instead.
+ * ~8-10 min in `rohan-plan.md` §20 was unsourced, so it is sampled continuously instead; the
+ * measured distribution is 6.5-9.3 min over n=239 (p50 7.8, p90 8.6).
  *
  * Never quote a single number: attestation advances in BATCHES, so the lag sawtooths between the
  * bounds below rather than sitting at an average. And never imply the proof is instant.

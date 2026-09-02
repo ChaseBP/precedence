@@ -444,7 +444,8 @@ export function seedHistory(): { races: PriorityRace[]; attestations: Attestatio
       batchSize: 3,
       preflightVerified: true,
       proofPipelineStatus: "VERIFIED",
-      attestationLagMinutes: 8.0,
+      // p50 of the measured 6.5-9.3 min distribution, not a claim that the lag is constant.
+      attestationLagMinutes: 7.8,
       attestedHeight: 6182101,
       proverAgent: "kestrel",
       precompile: "0x0000000000000000000000000000000000000FD2",

@@ -8,7 +8,7 @@
  * **This adapter is deliberately read-mostly, and that is a design decision rather than a gap.**
  *
  * Settling a race requires an Attestcoin proof, and building one requires `@gluwa/usc-sdk`, which
- * requires ethers, and waiting ~8 minutes for attestation. None of that belongs inside a Next.js
+ * requires ethers, and waiting 6.5-9.3 minutes for attestation. None of that belongs in a Next.js
  * request: a serverless function cannot wait eight minutes, and a proof half-built when a lambda
  * freezes is worse than no proof. So proof submission lives in `worker/`, and this adapter reads
  * back what the worker settled.
@@ -75,7 +75,7 @@ export interface ChainCreditcoinConfig {
 export class RequiresWorkerError extends Error {
   constructor(operation: string, command: string) {
     super(
-      `${operation} requires an Attestcoin proof, which takes ~8 minutes of attestation and the ` +
+      `${operation} requires an Attestcoin proof, which takes 6.5-9.3 min of attestation and the ` +
         `ethers-based SDK — neither belongs in a web request. Run the worker instead:\n\n  ${command}\n\n` +
         `The app will pick up the settlement once it lands on-chain.`,
     );

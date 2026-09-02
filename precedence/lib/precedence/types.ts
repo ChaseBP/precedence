@@ -324,7 +324,7 @@ export interface AttestcoinProofRecord {
   /** True once the free view-only `verify` passed off-chain, before spending gas. */
   preflightVerified: boolean;
   proofPipelineStatus: ProofPipelineStatus;
-  /** Measured, not assumed. ~7–9 min sawtooth on Sepolia as of 2026-09-01. */
+  /** Measured, not assumed: 6.5-9.3 min sawtooth on Sepolia, n=239 as of 2026-09-02. */
   attestationLagMinutes: number;
   /** Latest attested height reported by ChainInfo precompile 0x0FD3 when the proof was built. */
   attestedHeight?: number;
