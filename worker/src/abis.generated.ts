@@ -4,7 +4,7 @@
  * Produced by `bun run ops/sync-abis.ts` from the Foundry build in `contracts/out`.
  * Regenerate after any contract change; a stale ABI fails in ways that look like proof errors.
  *
- * Generated: 2026-09-02T05:44:26.305Z
+ * Generated: 2026-09-02T14:46:49.960Z
  */
 
 export const PUSD_ABI = [
@@ -1338,11 +1338,6 @@ export const CollateralRegistry_ABI = [
         "name": "collateralId",
         "type": "bytes32",
         "internalType": "bytes32"
-      },
-      {
-        "name": "requested",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "outputs": [
@@ -1372,6 +1367,67 @@ export const CollateralRegistry_ABI = [
         "name": "maxAdvance",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "facilityTerms",
+    "inputs": [
+      {
+        "name": "collateralId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct CollateralRegistry.FacilityTerms",
+        "components": [
+          {
+            "name": "set",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "seniorCap",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "juniorCap",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "subordinateCap",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "seniorRateBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "juniorRateBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "subordinateRateBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "termDays",
+            "type": "uint32",
+            "internalType": "uint32"
+          }
+        ]
       }
     ],
     "stateMutability": "view"
@@ -1502,6 +1558,25 @@ export const CollateralRegistry_ABI = [
   },
   {
     "type": "function",
+    "name": "hasFacilityTerms",
+    "inputs": [
+      {
+        "name": "collateralId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "isApprovedForAll",
     "inputs": [
       {
@@ -1564,6 +1639,25 @@ export const CollateralRegistry_ABI = [
   },
   {
     "type": "function",
+    "name": "maxAdvanceOf",
+    "inputs": [
+      {
+        "name": "collateralId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "name",
     "inputs": [],
     "outputs": [
@@ -1603,6 +1697,68 @@ export const CollateralRegistry_ABI = [
         "name": "",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "postFacilityTerms",
+    "inputs": [
+      {
+        "name": "collateralId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "seniorCap",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "juniorCap",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "subordinateCap",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "seniorRateBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "juniorRateBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "subordinateRateBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "rateBpsOf",
+    "inputs": [
+      {
+        "name": "collateralId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "rates",
+        "type": "uint256[3]",
+        "internalType": "uint256[3]"
       }
     ],
     "stateMutability": "view"
@@ -2035,6 +2191,61 @@ export const CollateralRegistry_ABI = [
   },
   {
     "type": "event",
+    "name": "FacilityTermsPosted",
+    "inputs": [
+      {
+        "name": "collateralId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "seniorCap",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "juniorCap",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "subordinateCap",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "seniorRateBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      },
+      {
+        "name": "juniorRateBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      },
+      {
+        "name": "subordinateRateBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      },
+      {
+        "name": "termDays",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "OwnershipTransferred",
     "inputs": [
       {
@@ -2129,6 +2340,22 @@ export const CollateralRegistry_ABI = [
         "name": "collateralId",
         "type": "bytes32",
         "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CapsExceedAdvance",
+    "inputs": [
+      {
+        "name": "total",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxAdvance",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ]
   },
@@ -2274,6 +2501,54 @@ export const CollateralRegistry_ABI = [
   },
   {
     "type": "error",
+    "name": "RateTooHigh",
+    "inputs": [
+      {
+        "name": "bps",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "RatesNotOrdinal",
+    "inputs": [
+      {
+        "name": "senior",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "junior",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "subordinate",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TermsLockedWhileEncumbered",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TermsNotSet",
+    "inputs": [
+      {
+        "name": "collateralId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "UnknownCollateral",
     "inputs": [
       {
@@ -2286,6 +2561,11 @@ export const CollateralRegistry_ABI = [
   {
     "type": "error",
     "name": "VaultLockedWhileEncumbered",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroFacility",
     "inputs": []
   },
   {
@@ -3701,25 +3981,6 @@ export const PriorityEngine_ABI = [
   },
   {
     "type": "function",
-    "name": "rateBps",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "refinanceEngine",
     "inputs": [],
     "outputs": [
@@ -3919,11 +4180,6 @@ export const PriorityEngine_ABI = [
         "name": "allowDemotion",
         "type": "bool[]",
         "internalType": "bool[]"
-      },
-      {
-        "name": "requested",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -4954,11 +5210,6 @@ export const AttestationGate_ABI = [
         "name": "allowDemotion",
         "type": "bool[]",
         "internalType": "bool[]"
-      },
-      {
-        "name": "requested",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "outputs": [],

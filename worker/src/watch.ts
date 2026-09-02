@@ -105,7 +105,6 @@ export interface WatchOptions {
   /** Collateral ids to watch. */
   collateralIds: string[];
   pollMs?: number;
-  requestedUsd6: bigint;
   /** Settle automatically when a race closes, rather than only reporting. */
   autoSettle?: boolean;
   onEvent?: (msg: string) => void;
@@ -169,7 +168,6 @@ export async function runWatchLoop(opts: WatchOptions): Promise<void> {
           const result = await settleRace({
             collateralId: id,
             txHashes: locks.map((l) => l.txHash),
-            requestedUsd6: opts.requestedUsd6,
             evidenceName: `race-${id.slice(2, 10)}-${nonce}`,
             onStage: (s, d) => say(`    [${s}] ${d}`),
           });

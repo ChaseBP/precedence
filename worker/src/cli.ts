@@ -2,6 +2,7 @@
  * PRECEDENCE worker CLI.
  *
  *   bun run src/cli.ts status                      # chain + attestation + deployment health
+ *   bun run src/cli.ts stage <collateralId>        # stage a race on Sepolia (register/open/lock/close)
  *   bun run src/cli.ts locks <collateralId>        # read a race's locks from the vault
  *   bun run src/cli.ts prove <collateralId> <tx…>  # prove and settle a race
  *   bun run src/cli.ts repay <collateralId> <tx>   # prove a repayment, release the lien
@@ -18,6 +19,7 @@ import {
 } from "./proof";
 import {
   CREDITCOIN_CHAIN_ID,
+  MAX_BATCH_SIZE,
   SEPOLIA_CHAIN_KEY,
   creditcoinProvider,
   deploymentsExist,
@@ -33,6 +35,7 @@ import { collectRaceLocks, runWatchLoop, validateLockSet } from "./watch";
 import { driveUnwind, facilityStatus, pokeNext, runKeeperLoop } from "./keeper";
 import { ethers } from "ethers";
 import { probeProof } from "./probe-proof";
+import { stageRace, type Bid, type TrancheName } from "./stage-race";
 
 const [cmd, ...args] = process.argv.slice(2);
 const usd = (v: bigint) => `$${(Number(v) / 1e6).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -156,8 +159,7 @@ async function main() {
         hashes = found.map((l) => l.txHash);
         console.log(`read ${hashes.length} lock(s) from the vault`);
       }
-      const requested = BigInt(process.env.REQUESTED_USD6 ?? 8_500_000_000);
-      const r = await settleRace({ collateralId, txHashes: hashes, requestedUsd6: requested });
+      const r = await settleRace({ collateralId, txHashes: hashes });
       console.log(`\nsettled: ${r.explorerUrl}`);
       console.log(`gas: ${r.gasUsed} · evidence: ${r.evidencePath}`);
       console.log(`\n${r.markdown}\n`);
@@ -177,9 +179,50 @@ async function main() {
       if (args.length === 0) throw new Error("usage: watch <collateralId…>");
       await runWatchLoop({
         collateralIds: args,
-        requestedUsd6: BigInt(process.env.REQUESTED_USD6 ?? 8_500_000_000),
         autoSettle: process.env.AUTO_SETTLE !== "0",
       });
+      break;
+    }
+
+    case "stage": {
+      if (!args[0]) {
+        throw new Error(
+          'usage: stage <collateralId> [--facility <usd>] [--window <sec>] [--contend] ' +
+            '[--bid <LABEL>:<TRANCHE>:<usd> …]',
+        );
+      }
+      const flag = (name: string) => {
+        const i = args.indexOf(`--${name}`);
+        return i >= 0 ? args[i + 1] : undefined;
+      };
+      const bids: Bid[] = [];
+      args.forEach((a, i) => {
+        if (a !== "--bid") return;
+        const [label, tranche, amt] = (args[i + 1] ?? "").split(":");
+        if (!label || !tranche || !amt) throw new Error(`bad --bid "${args[i + 1]}" (LABEL:TRANCHE:USD)`);
+        bids.push({ label, tranche: tranche.toUpperCase() as TrancheName, amountUsd: Number(amt) });
+      });
+      if (bids.length === 0) {
+        // The seeded coffee-receipt facility: two rivals for SENIOR, so contention is real.
+        bids.push(
+          { label: "MERIDIAN", tranche: "SENIOR", amountUsd: 5_100 },
+          { label: "VECTOR", tranche: "SENIOR", amountUsd: 5_100 },
+          { label: "NOVUM", tranche: "JUNIOR", amountUsd: 2_550 },
+          { label: "REFINANCER", tranche: "SUBORDINATE", amountUsd: 850 },
+        );
+      }
+      if (bids.length > MAX_BATCH_SIZE) {
+        throw new Error(`${bids.length} bids exceeds MAX_BATCH_SIZE ${MAX_BATCH_SIZE} — one proof cannot cover them`);
+      }
+      console.log("");
+      await stageRace({
+        collateralId: args[0],
+        facilityUsd: Number(flag("facility") ?? 8_500),
+        windowSec: Number(flag("window") ?? 150),
+        contend: args.includes("--contend"),
+        bids,
+      });
+      console.log("");
       break;
     }
 
@@ -241,6 +284,7 @@ function readFileHeader(): string {
 
   status                        chain + attestation + deployment health
   probe <txHash…>               prove real Sepolia txs end-to-end (no deployment needed)
+  stage <collateralId>          stage a race on Sepolia: register, open, lock, close
   locks <collateralId>          read a race's locks from the vault, in proven order
   prove <collateralId> <tx…>    prove and settle a race (or --from-vault to read them)
   repay <collateralId> <tx>     prove a repayment and release the lien

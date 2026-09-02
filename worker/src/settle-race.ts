@@ -24,8 +24,13 @@ export interface SettleOptions {
   collateralId: string;
   /** Source transaction hashes for this race's locks. */
   txHashes: string[];
-  requestedUsd6: bigint;
-  /** Per-lock opt-in to a lower tranche instead of a refund; index-aligned with proven order. */
+  /**
+   * Per-lock opt-in to a lower tranche instead of a refund; index-aligned with proven order.
+   *
+   * @remarks Tranche caps and coupons are deliberately NOT parameters. They live in
+   * `CollateralRegistry`, posted by the borrower, and the engine reads them from there — passing
+   * them from off-chain would let a prover influence allocation.
+   */
   allowDemotion?: boolean[];
   skipWait?: boolean;
   evidenceName?: string;
@@ -92,7 +97,7 @@ export async function settleRace(opts: SettleOptions): Promise<SettleResult> {
     throw new Error(`allowDemotion has ${demote.length} entries but the batch has ${built.ordered.length}`);
   }
 
-  const tx = await gateC.settleRace(opts.collateralId, built.proof, demote, opts.requestedUsd6);
+  const tx = await gateC.settleRace(opts.collateralId, built.proof, demote);
   say("submit", `settleRace → ${tx.hash}`);
   const receipt = await tx.wait();
   if (!receipt || receipt.status !== 1) throw new Error(`settleRace reverted: ${tx.hash}`);
