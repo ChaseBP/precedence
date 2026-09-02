@@ -1,0 +1,9 @@
+{
+  "name": "precedence-ops",
+  "private": true,
+  "type": "module",
+  "description": "Operational scripts: key generation, gas funding, attestation-latency measurement.",
+  "dependencies": {
+    "ethers": "^6.15.0"
+  }
+}
