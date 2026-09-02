@@ -146,6 +146,11 @@ export interface CollateralAsset {
   title: string;
   symbol: string;
   obligor: string;
+  /**
+   * The obligor's wallet. This is what a connected wallet is matched against to derive whether
+   * someone is a borrower here — `obligor` above is a display name and cannot identify anyone.
+   */
+  obligorAddress: Hex;
   custodian: string;
   custodianLocation: string;
   faceValueUsd: number;
