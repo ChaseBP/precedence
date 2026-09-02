@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 32 32" fill="none" role="img" aria-label="PRECEDENCE">
+  <title>PRECEDENCE</title>
+  <path d="M6 6 L18 16 L6 26"  stroke="#171C2A" stroke-width="4"   stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M14 6 L24 16 L14 26" stroke="#8896AD" stroke-width="3"   stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 7 L29 16 L21 25" stroke="#8896AD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
