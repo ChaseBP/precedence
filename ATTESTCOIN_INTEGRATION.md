@@ -156,7 +156,7 @@ Attestcoin does **not** document attestation latency anywhere. Our own spec orig
 | min | **6.5 min** |
 | p50 | **7.8 min** |
 | p90 | **8.6 min** |
-| max | **9.4 min** (n=151) |
+| max | **9.3 min** (n=239) |
 
 Attestation advances in **batches**, so the lag is a **sawtooth**, not a constant — which is why we
 quote a range and never a single number. Raw samples: `evidence/latency.jsonl`
@@ -167,7 +167,7 @@ quote a range and never a single number. Raw samples: `evidence/latency.jsonl`
 | Stage | Cost |
 | --- | --- |
 | 1. lock lands on Sepolia | instant |
-| 2. attestation reaches that height | **6.5–9.4 minutes** |
+| 2. attestation reaches that height | **6.5–9.3 minutes** |
 | 3. proof generation | seconds |
 | 4. verification at `0x0FD2` + state transition | **one Creditcoin block, ~15s** |
 

@@ -141,7 +141,7 @@ with IBM Plex Mono for hashes.
 | `PROOF_AVAILABLE` | the builder service produced a proof |
 | `VERIFIED` | `0x0FD2` returned true on Creditcoin |
 
-Attestation takes **6.5–9.4 minutes, measured** (p50 7.8 · p90 8.6 over 151 samples — a sawtooth,
+Attestation takes **6.5–9.3 minutes, measured** (p50 7.8 · p90 8.6 over 239 samples — a sawtooth,
 because attestation advances in batches). Verification then completes in one Creditcoin block.
 Never let UI copy imply the proof is instant.
 

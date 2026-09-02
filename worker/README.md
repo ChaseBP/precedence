@@ -23,7 +23,7 @@ the proof-to-vault binding and the failure looks like a verification error.
 | Stage | Cost | What it does |
 | --- | --- | --- |
 | 1. receipts | instant | fetch source receipts; **reject `status != 1`** — the precompile does not check this |
-| 2. `waitUntilHeightAttested` | **6.5–9.4 min, measured** | the honest wait. `PENDING_EVIDENCE`, not an error |
+| 2. `waitUntilHeightAttested` | **6.5–9.3 min, measured** | the honest wait. `PENDING_EVIDENCE`, not an error |
 | 3. `getBatchProof(txHashes)` | seconds | ≤10 txs, **one shared continuity proof**, 1000-block window |
 | 4. `verify(...)` view-only | **free** | preflight, so a malformed batch costs no gas |
 | 5. `settleRace(...)` | one ~15s block | **one batch `verifyAndEmit`** settles the whole race |

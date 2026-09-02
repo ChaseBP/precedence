@@ -81,7 +81,7 @@ anything.
 1. An obligor registers collateral as a **hash-unique** NFT on Creditcoin.
 2. Financiers **lock pUSD** on Sepolia against it. Each lock is a real transaction at a real
    position in a real block.
-3. The worker waits for attestation (**6.5–9.4 min, measured**), builds **one shared continuity proof**
+3. The worker waits for attestation (**6.5–9.3 min, measured**), builds **one shared continuity proof**
    for the whole race, and preflights it for free.
 4. `AttestationGate` settles the race in **one Creditcoin transaction**: a single batch
    `verifyAndEmit`, then the checks the precompile does not do.
@@ -117,7 +117,7 @@ the chain independently reports. Reproduce it in one command — see below.
 | Stage | Cost |
 | --- | --- |
 | lock lands on Sepolia | instant |
-| attestation reaches that height | **6.5–9.4 min** (p50 7.8 · p90 8.6, n=151 continuous + 2 direct) |
+| attestation reaches that height | **6.5–9.3 min** (p50 7.8 · p90 8.6, n=239 continuous + 3 direct) |
 | proof generation | seconds |
 | verification at `0x0FD2` + state transition | **one Creditcoin block, ~15s** |
 
