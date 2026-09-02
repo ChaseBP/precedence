@@ -1,0 +1,59 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib", "node_modules"]
+test = "test"
+script = "script"
+
+# ^0.8.28 to match @gluwa/usc-contracts@0.2.0 (INativeQueryVerifier.sol, EvmV1Decoder.sol).
+# NOT ^0.8.23 — that will not compile against the published package.
+solc_version = "0.8.28"
+optimizer = true
+optimizer_runs = 200
+# Required, not optional. AttestationGate's calldata shape is dictated by the precompile
+# (uint64[] + bytes[] + MerkleProof[] + ContinuityProof), and the legacy pipeline exhausts the
+# EVM stack generating the ABI decoder for it. via_ir compiles slower but is the only way to
+# accept the interface Attestcoin actually exposes.
+via_ir = true
+
+remappings = [
+    "@gluwa/usc-contracts/=node_modules/@gluwa/usc-contracts/",
+    "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
+    "forge-std/=lib/forge-std/src/",
+]
+
+fs_permissions = [{ access = "read-write", path = "./deployments" }]
+
+[profile.default.fuzz]
+runs = 256
+
+[rpc_endpoints]
+sepolia = "${SEPOLIA_RPC}"
+creditcoin = "${CREDITCOIN_RPC}"
+
+[etherscan]
+sepolia = { key = "${ETHERSCAN_API_KEY}", chain = 11155111 }
+
+# ── fork profile ───────────────────────────────────────────────────────────
+# Creditcoin CC3 is a Substrate chain whose EVM blocks omit `mixHash`, so Foundry's post-merge
+# header validation rejects a fork of it ("prevrandao not set"). Pinning the fork profile to a
+# pre-Paris EVM makes the block env use `difficulty` instead, which CC3 does provide.
+#
+# This affects TEST bytecode only. The chain itself supports Shanghai — verified read-only via
+# eth_estimateGas on PUSH0 init code (0x5f5ff3), which succeeded — so deployments use the default
+# profile and its Cancun-era output.
+[profile.fork]
+src = "src"
+out = "out-fork"
+libs = ["lib", "node_modules"]
+test = "test"
+solc_version = "0.8.28"
+evm_version = "london"
+optimizer = true
+optimizer_runs = 200
+via_ir = true
+remappings = [
+    "@gluwa/usc-contracts/=node_modules/@gluwa/usc-contracts/",
+    "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
+    "forge-std/=lib/forge-std/src/",
+]
