@@ -9,9 +9,15 @@
  * Uses `queryFilter` polling rather than a WebSocket subscription: the Alchemy HTTPS endpoint is
  * what we have, and a poll that misses a block can be re-run over the same range idempotently,
  * whereas a dropped subscription silently loses events.
+ *
+ * @dev Lock POSITIONS come from vault state, not from a log scan. The provider caps `eth_getLogs`
+ * at a 10-block span, so scanning back over a wide range fails outright; and the vault already
+ * knows which block each lock landed in. State answers "where", logs then answer "which
+ * transaction" across only the blocks that provably contain locks. See `logs.ts`.
  */
 import { ethers } from "ethers";
 import { gate, sepoliaProvider, vault } from "./config";
+import { coalesceRanges, queryLogsChunked } from "./logs";
 import { settleRace } from "./settle-race";
 
 export interface WatchedLock {
@@ -35,25 +41,39 @@ export async function collectRaceLocks(
   const vaultC = vault();
   const sepolia = sepoliaProvider();
 
-  const head = await sepolia.getBlockNumber();
-  // A race window is minutes; 2000 blocks is ~7 hours of Sepolia, comfortably more than enough
-  // while staying inside typical provider log-range limits.
-  const from = fromBlock ?? Math.max(0, head - 2000);
-
+  const nonce = raceNonce ?? Number((await vaultC.getCollateral(collateralId)).raceNonce);
   const filter = vaultC.filters.Lock_(collateralId);
-  const logs = await vaultC.queryFilter(filter, from, head);
+
+  // Ask the vault where its locks are, rather than hunting for them.
+  const count = Number(await vaultC.lockCountOf(collateralId));
+  const positions: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const l = await vaultC.lockAtRace(collateralId, nonce, i);
+    positions.push(Number(l.blockNumber));
+  }
+
+  let logs: Awaited<ReturnType<typeof queryLogsChunked>> = [];
+  if (positions.length > 0) {
+    for (const [lo, hi] of coalesceRanges(positions)) {
+      logs.push(...(await queryLogsChunked(vaultC, filter, lo, hi)));
+    }
+  } else if (fromBlock !== undefined) {
+    // No state to guide us: an explicit range was asked for, so honour it in provider-sized chunks.
+    const head = await sepolia.getBlockNumber();
+    logs = await queryLogsChunked(vaultC, filter, fromBlock, head);
+  }
 
   const locks: WatchedLock[] = [];
   for (const log of logs) {
     const ev = log as ethers.EventLog;
-    const nonce = Number(ev.args.raceNonce);
-    if (raceNonce !== undefined && nonce !== raceNonce) continue;
+    const evNonce = Number(ev.args.raceNonce);
+    if (evNonce !== nonce) continue;
     locks.push({
       collateralId,
       financier: ev.args.financier as string,
       tranche: Number(ev.args.tranche),
       amount: ev.args.amount as bigint,
-      raceNonce: nonce,
+      raceNonce: evNonce,
       seq: Number(ev.args.seq),
       txHash: ev.transactionHash,
       blockNumber: ev.blockNumber,

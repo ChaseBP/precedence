@@ -50,3 +50,4 @@ evidence/latency.jsonl
 evidence/latency-exp*.log
 evidence/.active-collateral-id
 evidence/stage-race.log
+evidence/prove-race-*.log

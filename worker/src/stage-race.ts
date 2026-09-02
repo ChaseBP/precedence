@@ -12,6 +12,7 @@
  */
 import { ethers } from "ethers";
 import { env, explorers, loadDeployments, pusd, sepoliaSigner, vault } from "./config";
+import { coalesceRanges, queryLogsChunked } from "./logs";
 
 export type TrancheName = "SENIOR" | "JUNIOR" | "SUBORDINATE";
 const TRANCHE_ORDINAL: Record<TrancheName, number> = { SENIOR: 0, JUNIOR: 1, SUBORDINATE: 2 };
@@ -171,13 +172,19 @@ export async function stageRace(opts: StageOptions): Promise<StagedLock[]> {
   }
 
   // ── read the locks back out of the vault's own logs, never from what we just sent ──
+  //
+  // The provider caps eth_getLogs at a 10-block span, so ask the vault which blocks its locks are
+  // in and query only those. Positions come from state; the logs supply the transaction hashes.
   const vaultRo = vault();
-  const head = await obligor.provider!.getBlockNumber();
-  const logs = await vaultRo.queryFilter(
-    vaultRo.filters.Lock_(opts.collateralId),
-    Math.max(0, head - 500),
-    head,
-  );
+  const count = Number(await vaultRo.lockCountOf(opts.collateralId));
+  const positions: number[] = [];
+  for (let i = 0; i < count; i++) {
+    positions.push(Number((await vaultRo.lockAtRace(opts.collateralId, raceNonce, i)).blockNumber));
+  }
+  const logs: Awaited<ReturnType<typeof queryLogsChunked>> = [];
+  for (const [lo, hi] of coalesceRanges(positions)) {
+    logs.push(...(await queryLogsChunked(vaultRo, vaultRo.filters.Lock_(opts.collateralId), lo, hi)));
+  }
   const byAddr = new Map<string, string>();
   for (const [label, s] of signers) byAddr.set(s.address.toLowerCase(), label);
 
