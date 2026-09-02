@@ -33,7 +33,10 @@ import { ratifyExtraction, sanitizeNarration, type RatificationResult } from "..
 
 export const GEMINI_MODEL = "gemini-3.5-flash-lite";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta";
-const TIMEOUT_MS = 20_000;
+// Generous but bounded. This call is never on the demo critical path — extraction happens during
+// registration, and a timeout degrades to "extraction skipped" rather than breaking anything. At
+// 20s, legitimate flag-path calls on this model were aborting mid-response.
+const TIMEOUT_MS = 35_000;
 
 /**
  * The classic `:generateContent` endpoint.
@@ -120,7 +123,11 @@ export class LlmRuntime implements AgentRuntime {
       `Extract the following fields from this trade-finance document. Return ONLY minified JSON ` +
       `with keys: faceValueUsd (number), obligor (string), custodian (string), expiry ` +
       `(ISO-8601 date string), assetDescription (string), confidence (number 0-1 reflecting how ` +
-      `certain you are). Omit any key you cannot read with confidence. Do not guess.\n\n` +
+      `certain you are). Omit any key you cannot read with confidence. Do not guess.\n` +
+      // Ask for the custodian's NAME only. Left unsaid, the model helpfully appends the location,
+      // which the registration keeps in a separate field, and the corroboration check then reads
+      // a correct document as a mismatch.
+      `For "custodian" give the institution NAME ONLY — no city, state or country.\n\n` +
       `DOCUMENT:\n${documentText.slice(0, 8000)}`;
 
     let raw: string | null = null;

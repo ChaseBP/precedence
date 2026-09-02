@@ -39,6 +39,34 @@ export interface RatificationResult {
 }
 
 /**
+ * Does an extracted free-text field corroborate the registered one?
+ *
+ * @remarks Exact string equality was too strict to be useful. A warehouse receipt naming
+ * "Santos Port Terminal #4 Vaults, Santos, Brazil" genuinely corroborates a registration whose
+ * custodian is "Santos Port Terminal #4 Vaults" and whose location is a separate field — reporting
+ * that as a DISCREPANCY made a clean document fail ratification, and a flag that fires on correct
+ * documents trains everyone to ignore flags.
+ *
+ * So: normalise punctuation and case, then accept containment in either direction. This is
+ * deliberately about corroboration and nothing more — neither value is ever written back over the
+ * registration, so a generous match cannot alter the authoritative record.
+ */
+function freeTextCorroborates(extracted: string, registered: string): boolean {
+  const norm = (x: string) =>
+    x
+      .toLowerCase()
+      .replace(/[.,;:'"()\[\]]/g, " ")
+      .replace(/\b(ltd|llc|inc|s\.?a\.?|gmbh|plc|co|corp|company|limited)\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const a = norm(extracted);
+  const b = norm(registered);
+  if (!a || !b) return false;
+  return a === b || a.includes(b) || b.includes(a);
+}
+
+/**
  * Ratify a model's document extraction against the registered collateral.
  *
  * @param proposal what the model claims it read
@@ -116,7 +144,7 @@ export function ratifyExtraction(
       rejected.push({ field, reason: "empty or implausibly short" });
       continue;
     }
-    const same = v.trim().toLowerCase() === registered[field].trim().toLowerCase();
+    const same = freeTextCorroborates(v, registered[field]);
     if (same) {
       accepted[field] = v.trim();
       notes.push(`${field} matches the registration.`);

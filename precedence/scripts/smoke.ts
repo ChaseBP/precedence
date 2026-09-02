@@ -11,6 +11,7 @@ import { runRace } from "../lib/precedence/orchestrator/engine";
 import { getRace, getEventsSince, resetStore, listCollateral } from "../lib/precedence/store/repositories";
 import { isTerminal, PHASE_LABELS } from "../lib/precedence/orchestrator/lifecycle";
 import { assertSeniorityRespected } from "../lib/precedence/domain/waterfall";
+import { ratifyExtraction } from "../lib/precedence/domain/ratify";
 import { checkSeqContiguity, checkStrictOrdering, sortByProvenOrder } from "../lib/precedence/domain/lock";
 import type { PriorityRace, RaceScenario } from "../lib/precedence/types";
 
@@ -193,6 +194,72 @@ if (!br) {
     "copy does not overclaim authenticity",
     events.some((e) => e.message.includes("cannot prove AUTHENTICITY")),
     "the ordering-is-not-authenticity caveat was not surfaced",
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Document ratification — the LLM containment boundary
+//
+// Nothing a model reads may alter the registered record; it may only corroborate or flag. These
+// checks exist because a flag that fires on CORRECT documents is as broken as one that misses a
+// forgery: if everything flags, nobody reads flags. Exact string equality used to report a clean
+// receipt as a discrepancy purely because it named the custodian's city.
+// ══════════════════════════════════════════════════════════════════════
+{
+  console.log("\n── document ratification ──\n");
+  const registered = (await listCollateral())[0];
+
+  const base = {
+    collateralId: registered.id,
+    confidence: 0.95,
+    source: "llm" as const,
+    model: "test",
+    ratified: false,
+    ratificationNotes: [],
+    extractedAt: new Date().toISOString(),
+  };
+
+  const clean = ratifyExtraction(
+    {
+      ...base,
+      faceValueUsd: registered.faceValueUsd,
+      obligor: registered.obligor,
+      // The custodian's name WITH its location appended, exactly as a real receipt prints it.
+      custodian: `${registered.custodian}, ${registered.custodianLocation}`,
+    },
+    registered,
+  );
+  check("a clean document ratifies", clean.extraction.ratified, JSON.stringify(clean.rejected));
+  check(
+    "the custodian's location does not read as a discrepancy",
+    !clean.extraction.ratificationNotes.some((n) => n.includes("DISCREPANCY")),
+    clean.extraction.ratificationNotes.join(" | "),
+  );
+
+  const inflated = ratifyExtraction(
+    { ...base, faceValueUsd: registered.faceValueUsd * 4, obligor: registered.obligor },
+    registered,
+  );
+  check("an inflated face value is flagged", !inflated.extraction.ratified);
+  check(
+    "an inflated face value is NEVER accepted",
+    inflated.accepted.faceValueUsd === undefined,
+    `accepted ${inflated.accepted.faceValueUsd}`,
+  );
+
+  const wrongCustodian = ratifyExtraction(
+    {
+      ...base,
+      faceValueUsd: registered.faceValueUsd,
+      obligor: registered.obligor,
+      custodian: "Rotterdam Silo Terminals",
+    },
+    registered,
+  );
+  check("a genuinely different custodian is still flagged", !wrongCustodian.extraction.ratified);
+  check(
+    "a corroborated field is still accepted alongside a flagged one",
+    wrongCustodian.accepted.faceValueUsd === registered.faceValueUsd,
   );
 }
 
