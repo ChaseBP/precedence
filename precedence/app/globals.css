@@ -21,6 +21,7 @@
   --accent: #536DFE;
   --accent-dim: #3B4CD6;
   --accent-glow: rgba(83, 109, 254, 0.35);
+  --on-accent: #FFFFFF;      /* readable foreground on --accent, in both themes */
   --silver: #8896AD;
   --success: #10B981;
   --warn: #FB923C;
@@ -79,6 +80,7 @@ html.light {
   --accent: #2535F5;
   --accent-dim: #1623D4;
   --accent-glow: rgba(37, 53, 245, 0.22);
+  --on-accent: #FFFFFF;
   /* status colours darkened — pastel-on-paper washes out under projector light */
   --silver: #565C70;
   --success: #047857;

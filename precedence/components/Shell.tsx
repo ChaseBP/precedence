@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import { api } from "@/lib/client/api";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ConnectWallet } from "@/components/ConnectWallet";
 
 const NAV = [
   { href: "/collateral", label: "Collateral" },
@@ -158,6 +159,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="hidden min-w-0 lg:flex lg:items-center">
             <StatusCluster agents={agents} />
           </div>
+          <ConnectWallet />
           <ThemeToggle />
           {adminUnlocked ? (
             <button onClick={reset} className="btn-ghost rounded-lg px-3 py-1.5 text-xs">
