@@ -17,6 +17,7 @@ const NAV = [
   { href: "/financiers", label: "Financiers" },
   { href: "/dashboard", label: "Telemetry" },
   { href: "/registry", label: "Registry" },
+  { href: "/portfolio", label: "My Book" },
 ];
 
 function Wordmark({ size = "text-lg" }: { size?: string }) {

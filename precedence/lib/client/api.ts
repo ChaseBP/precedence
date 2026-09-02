@@ -46,6 +46,56 @@ const TERMINAL_PHASES: LifecyclePhase[] = [
   "ABORTED",
 ];
 
+
+export interface PortfolioLending {
+  collateralId: string;
+  title: string;
+  tranche: "SENIOR" | "JUNIOR" | "SUBORDINATE";
+  priorityRank: 1 | 2 | 3;
+  principalUsd: number;
+  ratePct: number;
+  tokenId: string;
+  provenAt: { blockNumber: number; txIndex: number; seq: number };
+  state: string;
+  raceId: string;
+  raceStatus: string;
+}
+
+export interface PortfolioRefund {
+  collateralId: string;
+  title: string;
+  tranche: "SENIOR" | "JUNIOR" | "SUBORDINATE";
+  amountUsd: number;
+  reason: string;
+}
+
+export interface PortfolioBorrowing {
+  collateralId: string;
+  title: string;
+  assetType: string;
+  faceValueUsd: number;
+  maxAdvanceUsd: number;
+  status: string;
+  termsPosted: boolean;
+  drawnUsd: number;
+  repaidUsd: number;
+  activeClaims: number;
+  raceId?: string;
+  raceStatus?: string;
+}
+
+export interface Portfolio {
+  ok: boolean;
+  address: string;
+  role: "new" | "lender" | "borrower" | "both";
+  live: { sepolia: boolean; creditcoin: boolean };
+  lending: PortfolioLending[];
+  refunded: PortfolioRefund[];
+  borrowing: PortfolioBorrowing[];
+  totals: { lentUsd: number; refundedUsd: number; borrowedUsd: number; blendedRatePct: number };
+  counts: { lending: number; borrowing: number; refunded: number };
+}
+
 export const api = {
   // Financier agents
   agents: () =>
@@ -82,6 +132,9 @@ export const api = {
 
   // Attestations & proofs
   attestations: () => jget<{ ok: boolean; attestations: Attestation[] }>("/api/attestations"),
+
+  /** One wallet's book, on both sides. Role is derived from position, never declared. */
+  portfolio: (address: string) => jget<Portfolio>(`/api/portfolio?address=${address}`),
 
   // Refinance & top opportunities
   refinance: (collateralId: string) =>

@@ -8,11 +8,11 @@
  * one click, so it belongs in the button itself.
  */
 import { useState } from "react";
-import { AlertTriangle, Check, Copy, LogOut, Wallet } from "lucide-react";
-import { REQUIRED_CHAIN_ID, shortAddress, useWallet } from "@/lib/client/wallet";
+import { AlertTriangle, ArrowLeftRight, Check, Copy, LogOut, Wallet } from "lucide-react";
+import { CHAINS, shortAddress, useWallet } from "@/lib/client/wallet";
 
 export function ConnectWallet() {
-  const { status, address, ready, onWrongChain, error, connect, disconnect, switchChain } = useWallet();
+  const { status, address, chainKey, onWrongChain, error, connect, disconnect, switchChain } = useWallet();
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -42,14 +42,14 @@ export function ConnectWallet() {
   if (onWrongChain) {
     return (
       <button
-        onClick={switchChain}
+        onClick={() => switchChain("sepolia")}
         className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-colors"
         style={{
           border: "1px solid var(--warn)",
           color: "var(--warn)",
           background: "color-mix(in srgb, var(--warn) 10%, transparent)",
         }}
-        title={`Locks settle on Sepolia (chain ${REQUIRED_CHAIN_ID}). Switch to continue.`}
+        title={`This wallet is on neither of our chains. Capital locks on ${CHAINS.sepolia.name}; collateral registers on ${CHAINS.creditcoin.name}.`}
       >
         <AlertTriangle size={13} />
         Switch to Sepolia
@@ -57,7 +57,7 @@ export function ConnectWallet() {
     );
   }
 
-  if (ready && address) {
+  if (chainKey && address) {
     return (
       <div className="relative">
         <button
@@ -67,7 +67,10 @@ export function ConnectWallet() {
         >
           <span
             className="size-1.5 shrink-0 rounded-full"
-            style={{ background: "var(--proof-verified)" }}
+            style={{
+              background: chainKey === "sepolia" ? "var(--proof-verified)" : "var(--accent)",
+            }}
+            title={CHAINS[chainKey].name}
             aria-hidden
           />
           {shortAddress(address)}
@@ -86,12 +89,24 @@ export function ConnectWallet() {
             >
               <div className="px-2.5 py-2">
                 <div className="text-[10.5px]" style={{ color: "var(--text-faint)" }}>
-                  Connected to Sepolia
+                  Connected to {CHAINS[chainKey].name}
+                </div>
+                <div className="mt-0.5 text-[10px] leading-snug" style={{ color: "var(--text-faint)" }}>
+                  {CHAINS[chainKey].purpose}
                 </div>
                 <div className="mt-0.5 break-all font-mono text-[10.5px]" style={{ color: "var(--text-muted)" }}>
                   {address}
                 </div>
               </div>
+              <button
+                onClick={() => switchChain(chainKey === "sepolia" ? "creditcoin" : "sepolia")}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11px] transition-colors hover:bg-white/5"
+                style={{ color: "var(--text-muted)" }}
+                title="Borrowers sign on Creditcoin CC3; lenders sign on Sepolia."
+              >
+                <ArrowLeftRight size={13} />
+                Switch to {chainKey === "sepolia" ? "Creditcoin CC3" : "Sepolia"}
+              </button>
               <button
                 onClick={copy}
                 className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11px] transition-colors hover:bg-white/5"

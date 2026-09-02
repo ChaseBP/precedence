@@ -27,9 +27,40 @@ import {
 import { createWalletClient, custom, type Address, type WalletClient } from "viem";
 import { sepolia } from "viem/chains";
 
-/** Sepolia. Locks happen here, so this is the chain a connected wallet must be on. */
-export const REQUIRED_CHAIN_ID = 11155111;
-const REQUIRED_CHAIN_HEX = "0xaa36a7";
+/**
+ * The two chains this protocol spans, and what each is for.
+ *
+ * @remarks PRECEDENCE is genuinely two-chain, so a single "required chain" was the wrong model.
+ * Capital locks on Sepolia because that is the source chain being proven; collateral registers on
+ * Creditcoin CC3 because that is where the precompile and the lien registry live. A borrower
+ * therefore signs on CC3 and a lender signs on Sepolia, and the UI has to say which and why
+ * rather than silently failing a transaction on the wrong network.
+ */
+export const CHAINS = {
+  sepolia: {
+    id: 11155111,
+    hex: "0xaa36a7",
+    name: "Ethereum Sepolia",
+    purpose: "where capital locks, and the source chain every proof attests to",
+    currency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: ["https://rpc.sepolia.org"],
+    explorer: "https://sepolia.etherscan.io",
+  },
+  creditcoin: {
+    id: 102031,
+    hex: "0x18e2f",
+    name: "Creditcoin CC3 Testnet",
+    purpose: "where collateral registers and priority settles against the Attestcoin precompile",
+    currency: { name: "Creditcoin", symbol: "CTC", decimals: 18 },
+    rpcUrls: ["https://rpc.cc3-testnet.creditcoin.network"],
+    explorer: "https://creditcoin-testnet.blockscout.com",
+  },
+} as const;
+
+export type ChainKey = keyof typeof CHAINS;
+
+/** Sepolia. Kept as the default so lender flows read unchanged. */
+export const REQUIRED_CHAIN_ID = CHAINS.sepolia.id;
 
 interface Eip1193Provider {
   request(args: { method: string; params?: unknown[] | object }): Promise<unknown>;
@@ -49,13 +80,18 @@ export interface WalletState {
   status: WalletStatus;
   address: Address | null;
   chainId: number | null;
-  /** True once connected AND on Sepolia — the only state in which writes are safe. */
+  /** True once connected AND on Sepolia — kept for the lender flows, which all live there. */
   ready: boolean;
   onWrongChain: boolean;
+  /** Which of our two chains the wallet is currently on, if either. */
+  chainKey: ChainKey | null;
   error: string | null;
   connect: () => Promise<void>;
   disconnect: () => void;
-  switchChain: () => Promise<void>;
+  /** Switch to one of our chains, adding it to the wallet if it is unknown. Defaults to Sepolia. */
+  switchChain: (to?: ChainKey) => Promise<void>;
+  /** Connected and on the chain this action needs. */
+  isOn: (to: ChainKey) => boolean;
   walletClient: WalletClient | null;
 }
 
@@ -82,13 +118,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // makes a reload feel like a session instead of a fresh login.
   useEffect(() => {
     const eth = window.ethereum;
-    if (!eth) {
-      setStatus("unsupported");
-      return;
-    }
     let cancelled = false;
 
     (async () => {
+      // Yield before the first setState. React 19 flags a synchronous setState in an effect body
+      // as a cascading render, and provider detection needs the DOM so it cannot move to the
+      // initial state without risking a hydration mismatch (the server never sees window.ethereum).
+      await Promise.resolve();
+      if (cancelled) return;
+
+      if (!eth) {
+        setStatus("unsupported");
+        return;
+      }
       try {
         const accounts = (await eth.request({ method: "eth_accounts" })) as string[];
         const cid = (await eth.request({ method: "eth_chainId" })) as string;
@@ -115,12 +157,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
     const onChain = (...a: never[]) => setChainId(Number.parseInt(a[0] as unknown as string, 16));
 
-    eth.on?.("accountsChanged", onAccounts);
-    eth.on?.("chainChanged", onChain);
+    eth?.on?.("accountsChanged", onAccounts);
+    eth?.on?.("chainChanged", onChain);
     return () => {
       cancelled = true;
-      eth.removeListener?.("accountsChanged", onAccounts);
-      eth.removeListener?.("chainChanged", onChain);
+      eth?.removeListener?.("accountsChanged", onAccounts);
+      eth?.removeListener?.("chainChanged", onChain);
     };
   }, []);
 
@@ -158,28 +200,30 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setError(null);
   }, []);
 
-  const switchChain = useCallback(async () => {
+  const switchChain = useCallback(async (to: ChainKey = "sepolia") => {
     const eth = window.ethereum;
     if (!eth) return;
+    const target = CHAINS[to];
     setError(null);
     try {
       await eth.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: REQUIRED_CHAIN_HEX }],
+        params: [{ chainId: target.hex }],
       });
     } catch (e) {
-      // 4902 = chain unknown to the wallet. Offer to add it rather than dead-ending.
+      // 4902 = chain unknown to the wallet. Offer to add it rather than dead-ending. CC3 is not in
+      // any wallet by default, so for borrower flows this is the normal path, not the error path.
       if ((e as { code?: number }).code === 4902) {
         try {
           await eth.request({
             method: "wallet_addEthereumChain",
             params: [
               {
-                chainId: REQUIRED_CHAIN_HEX,
-                chainName: "Ethereum Sepolia",
-                nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
-                rpcUrls: ["https://rpc.sepolia.org"],
-                blockExplorerUrls: ["https://sepolia.etherscan.io"],
+                chainId: target.hex,
+                chainName: target.name,
+                nativeCurrency: target.currency,
+                rpcUrls: [...target.rpcUrls],
+                blockExplorerUrls: [target.explorer],
               },
             ],
           });
@@ -197,20 +241,26 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return createWalletClient({ account: address, chain: sepolia, transport: custom(window.ethereum) });
   }, [address]);
 
+  const chainKey: ChainKey | null =
+    chainId === CHAINS.sepolia.id ? "sepolia" : chainId === CHAINS.creditcoin.id ? "creditcoin" : null;
+
   const value: WalletState = useMemo(
     () => ({
       status,
       address,
       chainId,
-      ready: status === "connected" && chainId === REQUIRED_CHAIN_ID,
-      onWrongChain: status === "connected" && chainId !== null && chainId !== REQUIRED_CHAIN_ID,
+      chainKey,
+      ready: status === "connected" && chainId === CHAINS.sepolia.id,
+      // "Wrong chain" means neither of ours — being on CC3 is correct for a borrower.
+      onWrongChain: status === "connected" && chainId !== null && chainKey === null,
+      isOn: (to: ChainKey) => status === "connected" && chainId === CHAINS[to].id,
       error,
       connect,
       disconnect,
       switchChain,
       walletClient,
     }),
-    [status, address, chainId, error, connect, disconnect, switchChain, walletClient],
+    [status, address, chainId, chainKey, error, connect, disconnect, switchChain, walletClient],
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
