@@ -117,6 +117,29 @@ export interface Agent {
 
 export type CollateralAssetType = "warehouse-receipt" | "trade-receivable" | "commodity-pledge";
 
+/**
+ * Facility terms, posted by the BORROWER when opening a facility.
+ *
+ * @remarks The borrower fixes the coupon per tranche; lenders accept those terms or do not bid.
+ * That is what keeps proven ordering load-bearing — lenders compete on WHEN their lock landed, not
+ * on price, so `(blockHeight, txIndex)` decides who gets an oversubscribed tranche and therefore
+ * decides real money. If lenders bid rates, price would decide allocation and the ordering proof
+ * would degrade into a tiebreak for the rare case of equal bids.
+ *
+ * Rates must be ordinal — senior <= junior <= subordinate — because senior is protected by
+ * everything beneath it and so must be the cheapest capital. The contract enforces it.
+ */
+export interface FacilityTerms {
+  seniorCapUsd: number;
+  juniorCapUsd: number;
+  subordinateCapUsd: number;
+  seniorRatePct: number;
+  juniorRatePct: number;
+  subordinateRatePct: number;
+  termDays: number;
+  postedAt?: ISO;
+}
+
 export interface CollateralAsset {
   id: string;
   assetType: CollateralAssetType;
@@ -137,6 +160,8 @@ export interface CollateralAsset {
   registryAddress: Hex;
   /** The Sepolia PriorityVault every proof for this collateral MUST be bound to. */
   vaultAddress: Hex;
+  /** Posted by the obligor. Absent until they open a facility. */
+  terms?: FacilityTerms;
   status: CollateralState;
   riskLabel: "Low" | "Medium" | "High";
   riskScore: number;
@@ -153,10 +178,19 @@ export interface CollateralAnalysis {
   haircutUsd: number;
   maxDrawUsd: number;
   notes: string[];
-  recommendedTranches: {
+  /**
+   * A SUGGESTION for the borrower's form, not the facility.
+   * @remarks Once the borrower posts terms, `CollateralAsset.terms` is authoritative and this is
+   * only a starting point for the pre-fill. Confusing the two would let the UI show a rate the
+   * lender is not actually being offered.
+   */
+  suggestedTranches: {
     seniorUsd: number;
     juniorUsd: number;
     subordinateUsd: number;
+    seniorRatePct: number;
+    juniorRatePct: number;
+    subordinateRatePct: number;
   };
 }
 

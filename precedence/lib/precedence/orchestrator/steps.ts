@@ -18,8 +18,8 @@ import type {
   SourceLockRecord,
 } from "../types";
 import type { PrecedenceDeps } from "../config";
-import { analyzeCollateral } from "../domain/collateral";
-import { settlePriorityLocks, sortByProvenOrder, TRANCHE_RATE_PCT } from "../domain/lock";
+import { analyzeCollateral, rateFor, trancheSizing } from "../domain/collateral";
+import { settlePriorityLocks, sortByProvenOrder } from "../domain/lock";
 import { assertSeniorityRespected, computeWaterfall } from "../domain/waterfall";
 import { findRefinanceArbitrage } from "../domain/refinance";
 import { enforceDappSideChecks, HONEST_LATENCY_COPY } from "../domain/proof";
@@ -83,6 +83,15 @@ function analysisOf(race: PriorityRace) {
   return race.analysis ?? analyzeCollateral(race.collateral, race.requestedTotalUsd);
 }
 
+/**
+ * Per-tranche capacity for this facility.
+ * @remarks Posted terms win over the suggestion. A lender must never be shown a cap or a coupon
+ * the borrower did not actually publish.
+ */
+function sizingOf(race: PriorityRace) {
+  return trancheSizing(race.collateral, analysisOf(race));
+}
+
 /** Outstanding principal across all active claims. */
 function outstandingPrincipal(race: PriorityRace): number {
   return (race.claims ?? [])
@@ -98,6 +107,7 @@ export async function runCollateralRegistered(ctx: PhaseCtx): Promise<StepOutcom
 
   const analysis = analyzeCollateral(col, race.requestedTotalUsd);
   race.analysis = analysis;
+  const sizing = trancheSizing(col, analysis);
 
   await ctx.emit(
     "info",
@@ -121,9 +131,9 @@ export async function runCollateralRegistered(ctx: PhaseCtx): Promise<StepOutcom
     `Haircut ${usd(analysis.haircutUsd)} (${col.haircutPct}%) · max draw ${usd(analysis.maxDrawUsd)} · ` +
       `advance rate ${analysis.advanceRatePct}%`,
     {
-      seniorTranche: usd(analysis.recommendedTranches.seniorUsd),
-      juniorTranche: usd(analysis.recommendedTranches.juniorUsd),
-      subordinateTranche: usd(analysis.recommendedTranches.subordinateUsd),
+      seniorTranche: usd(sizing.seniorUsd),
+      juniorTranche: usd(sizing.juniorUsd),
+      subordinateTranche: usd(sizing.subordinateUsd),
       vault: col.vaultAddress,
     },
   );
@@ -132,8 +142,8 @@ export async function runCollateralRegistered(ctx: PhaseCtx): Promise<StepOutcom
     await ctx.emit(
       "success",
       `Encumbrance registry: CLEAR title verified — zero prior liens. Tranches sized ` +
-        `Senior ${usd(analysis.recommendedTranches.seniorUsd)} / Junior ${usd(analysis.recommendedTranches.juniorUsd)} / ` +
-        `Subordinate ${usd(analysis.recommendedTranches.subordinateUsd)}.`,
+        `Senior ${usd(sizing.seniorUsd)} / Junior ${usd(sizing.juniorUsd)} / ` +
+        `Subordinate ${usd(sizing.subordinateUsd)}.`,
       { analysis, proverCall: rec },
     );
   } else {
@@ -152,6 +162,7 @@ export async function runCollateralRegistered(ctx: PhaseCtx): Promise<StepOutcom
 export async function runRaceOpen(ctx: PhaseCtx): Promise<StepOutcome> {
   const { race, deps } = ctx;
   const analysis = analysisOf(race);
+  const sizing = sizingOf(race);
   const financiers = ctx.agents.filter((a) => a.role !== "prover");
 
   // Opening the race resets the vault's per-collateral lock counter, so this race's locks run
@@ -171,10 +182,10 @@ export async function runRaceOpen(ctx: PhaseCtx): Promise<StepOutcome> {
   for (const agent of financiers) {
     const targetAsk =
       agent.policy.preferredTranche === "SENIOR"
-        ? analysis.recommendedTranches.seniorUsd
+        ? sizing.seniorUsd
         : agent.policy.preferredTranche === "JUNIOR"
-          ? analysis.recommendedTranches.juniorUsd
-          : analysis.recommendedTranches.subordinateUsd;
+          ? sizing.juniorUsd
+          : sizing.subordinateUsd;
 
     const decision = await deps.runtime.decide({
       agent,
@@ -285,7 +296,7 @@ export async function runRaceOpen(ctx: PhaseCtx): Promise<StepOutcome> {
 
 export async function runPrioritySettled(ctx: PhaseCtx): Promise<StepOutcome> {
   const { race, deps } = ctx;
-  const analysis = analysisOf(race);
+  const sizing = sizingOf(race);
   const locks = race.locks;
 
   if (locks.length === 0) return fail("No source locks to prove.");
@@ -344,11 +355,17 @@ export async function runPrioritySettled(ctx: PhaseCtx): Promise<StepOutcome> {
   const { settlement, claims, refunds } = settlePriorityLocks(
     race.collateral.id,
     locks,
-    analysis.recommendedTranches,
+    sizing,
     {
       settlementBlock: settleTx.blockNumber,
       creditcoinTxHash: settleTx.tx,
       allowDemotion: Object.fromEntries(race.bids.map((b) => [b.agentId, b.allowDemotion])),
+      // The coupons the borrower actually published for this facility.
+      rates: {
+        SENIOR: rateFor(race.collateral, "SENIOR"),
+        JUNIOR: rateFor(race.collateral, "JUNIOR"),
+        SUBORDINATE: rateFor(race.collateral, "SUBORDINATE"),
+      },
     },
   );
   race.settlement = settlement;

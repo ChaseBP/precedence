@@ -27,11 +27,16 @@ import { hashString } from "../crypto/hash";
 const TRANCHE_ORDER: Tranche[] = ["SENIOR", "JUNIOR", "SUBORDINATE"];
 const RANK_OF: Record<Tranche, 1 | 2 | 3> = { SENIOR: 1, JUNIOR: 2, SUBORDINATE: 3 };
 
-/** Indicative coupon per tranche — senior is cheapest because it is paid first. */
-export const TRANCHE_RATE_PCT: Record<Tranche, number> = {
-  SENIOR: 5.2,
-  JUNIOR: 7.8,
-  SUBORDINATE: 11.5,
+/**
+ * Fallback coupons, used only when a facility has no posted terms.
+ *
+ * @remarks The real rates come from `CollateralAsset.terms`, published by the borrower. These exist
+ * so a fixture without terms still renders something coherent — never to override a posted rate.
+ */
+export const FALLBACK_RATE_PCT: Record<Tranche, number> = {
+  SENIOR: 5,
+  JUNIOR: 10,
+  SUBORDINATE: 18,
 };
 
 /** Derive a deterministic EVM account for demo financier signing. */
@@ -87,11 +92,18 @@ export function settlePriorityLocks(
   collateralId: string,
   locks: SourceLockRecord[],
   sizing: TrancheSizing,
-  opts: { settlementBlock?: number; creditcoinTxHash?: Hex; allowDemotion?: Record<AgentId, boolean> } = {},
+  opts: {
+    settlementBlock?: number;
+    creditcoinTxHash?: Hex;
+    allowDemotion?: Record<AgentId, boolean>;
+    /** Coupons the BORROWER posted for this facility. Falls back only if absent. */
+    rates?: Record<Tranche, number>;
+  } = {},
 ): SettlementResult {
   const now = new Date().toISOString();
   const ordered = sortByProvenOrder(locks);
   const allowDemotion = opts.allowDemotion ?? {};
+  const rates = opts.rates ?? FALLBACK_RATE_PCT;
 
   const claims: PriorityClaim[] = [];
   const refunds: RefundRecord[] = [];
@@ -119,7 +131,7 @@ export function settlePriorityLocks(
       holder: lock.financier,
       holderAddress: lock.financierAddress,
       principalUsd: amount,
-      ratePct: TRANCHE_RATE_PCT[tranche],
+      ratePct: rates[tranche],
       tokenId: `1155-${RANK_OF[tranche]}`,
       priorityRank: RANK_OF[tranche],
       provenAt: {
