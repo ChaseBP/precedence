@@ -161,14 +161,19 @@ export default function CollateralPage() {
           {/* Protagonist Hero Card: Atlas Coffee Receipt #8802 */}
           <Item className="h-full sm:col-span-2">
             <Card glow className="flex h-full flex-col gap-4 p-6">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="font-[family-name:var(--font-display)] text-2xl font-bold">{hero.title}</div>
+              {/* Wraps as a whole at narrow widths: two nowrap badges plus a long title cannot
+                  share a 360px row, and `shrink-0` on the badge group only guaranteed the overflow
+                  by preventing the wrap from ever triggering. */}
+              <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                <div className="min-w-0 flex-1">
+                  <div className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight">
+                    {hero.title}
+                  </div>
                   <div className="eyebrow mt-0.5">
                     Obligor: {hero.obligor} · Custodian: {hero.custodian} ({hero.custodianLocation})
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <Badge color={hero.verifiedClearTitle ? "var(--state-clear)" : "var(--state-encumbered)"}>
                     {hero.verifiedClearTitle ? "CLEAR TITLE" : hero.status}
                   </Badge>
