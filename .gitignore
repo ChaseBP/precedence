@@ -1,0 +1,46 @@
+# ── secrets: never commit ───────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+keystore/
+# Foundry writes broadcast/cache artifacts that can contain sensitive values.
+contracts/cache/
+contracts/broadcast/
+
+# ── the team's OTHER private project ───────────────────────────────────────
+# the in-house starter is a separate, never-published project. The PRECEDENCE UI is adapted from it and that
+# reuse is disclosed in the README, but the in-house starter's own source must NOT be published here.
+reference/
+
+# ── ideation history for rejected/alternative concepts, not part of this submission ──
+ideation/
+palette/
+velofactor-3d/
+alt-plan.md
+initial-plan.md
+BUIDL_CTC_2026_*.md
+OBLIGA_*.docx
+OBLIGA_*.docx:Zone.Identifier
+VELOFACTOR.html
+*-prompt.md
+*.log
+
+# ── deps / build ───────────────────────────────────────────────────────────
+node_modules/
+out/
+out-fork/
+cache/
+.next/
+*.tsbuildinfo
+contracts/lib/forge-std/
+
+# ── scratch ────────────────────────────────────────────────────────────────
+*.tmp
+
+# ── session transcripts: internal, and can contain credentials pasted in chat ──
+chat-log.txt
+*-log.txt
+
+# ── the nested repo we set aside (empty; kept only so the move is reversible) ──
+precedence/.git.disabled-nested-repo/
