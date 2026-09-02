@@ -199,7 +199,11 @@ export async function stageRace(opts: StageOptions): Promise<StagedLock[]> {
       amountUsd: Number(ev.args.amount) / 1e6,
       txHash: ev.transactionHash,
       blockNumber: ev.blockNumber,
-      txIndex: ev.index,
+      // `ev.index` is the LOG index within the block, NOT the transaction index. Using it here
+      // reported 167/169 for transactions the precompile and the explorer both place at 73/74.
+      // Ordering happened to survive — log and transaction indices rise together — but the
+      // numbers on screen contradicted the chain, which is worse than a crash.
+      txIndex: ev.transactionIndex,
       seq: Number(ev.args.seq),
     });
   }
