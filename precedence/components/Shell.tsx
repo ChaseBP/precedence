@@ -28,33 +28,112 @@ function Wordmark({ size = "text-lg" }: { size?: string }) {
   );
 }
 
-function useAdapterTruth() {
-  const [chip, setChip] = useState<string | null>(null);
-  useEffect(() => {
-    fetch("/api/config", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((c) =>
-        setChip(
-          [
-            c.sepolia === "viem" ? "Sepolia live" : "Sepolia locks",
-            c.creditcoin === "viem" ? "Creditcoin CC3 live" : "Attestcoin 0x0FD2",
-            c.runtime === "agent" ? "Financier AI" : "Policy Engine",
-          ].join(" · "),
-        ),
-      )
-      .catch(() => setChip(null));
-  }, []);
-  return chip;
+interface AdapterTruth {
+  sepoliaLive: boolean;
+  creditcoinLive: boolean;
+  agentRuntime: boolean;
+  chip: string;
 }
 
-function StatusCluster({ agents }: { agents: number | null }) {
+/**
+ * Read each adapter's own `isLive()` and report it verbatim.
+ *
+ * @remarks This previously compared `c.sepolia === "viem"`, but `/api/config` returns an OBJECT
+ * (`{requested, live, note}`), so both comparisons were permanently false and the chip was a
+ * constant that could never report live mode. Two failures in one: the mode disclosure the project
+ * relies on did not function, and it would not have started working when the chain went live.
+ *
+ * Returning `null` while loading matters — rendering a default would mean guessing, and the one
+ * thing this hook must never do is guess in the reassuring direction.
+ */
+function useAdapterTruth(): AdapterTruth | null {
+  const [truth, setTruth] = useState<AdapterTruth | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/config", { cache: "no-store" });
+        const c = await res.json();
+        const sepoliaLive = Boolean(c?.sepolia?.live);
+        const creditcoinLive = Boolean(c?.creditcoin?.live);
+        const agentRuntime = c?.runtime === "agent";
+        if (cancelled) return;
+        setTruth({
+          sepoliaLive,
+          creditcoinLive,
+          agentRuntime,
+          chip: [
+            sepoliaLive ? "Sepolia live" : "Sepolia simulated",
+            creditcoinLive ? "Creditcoin CC3 live" : "Creditcoin CC3 simulated",
+            agentRuntime ? "Financier AI" : "Policy Engine",
+          ].join(" · "),
+        });
+      } catch {
+        if (!cancelled) setTruth(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return truth;
+}
+
+/**
+ * The header's chain status.
+ *
+ * @remarks This hard-coded a pulsing green "Creditcoin CC3 · live" regardless of mode, so in mock
+ * mode — the default — the most prominent status text on the page asserted something the app
+ * itself knew to be false. Colour, pulse and wording now all follow `isLive()`: green and pulsing
+ * only when the adapter really is on-chain, amber and still when it is simulated.
+ */
+function StatusCluster({
+  agents,
+  truth,
+  compact = false,
+}: {
+  agents: number | null;
+  truth: AdapterTruth | null;
+  /**
+   * Drop the chain name and financier count, keeping only the dot and live/simulated.
+   *
+   * @remarks For the mobile header, where the full cluster plus a hamburger, logo and wordmark
+   * does not fit 360px. What survives the trim is deliberately the honesty signal: a viewer must
+   * still be able to tell simulated from live, even when there is no room for anything else.
+   */
+  compact?: boolean;
+}) {
+  if (!truth) return null;
+  const live = truth.creditcoinLive;
+  const color = live ? "var(--success)" : "var(--warn)";
   return (
-    <span className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+    <span
+      className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-xs"
+      style={{ color: "var(--text-muted)" }}
+      title={
+        live
+          ? "Reading the deployed contracts on Creditcoin CC3."
+          : "Simulated data. No live registry is connected — see /api/config for why."
+      }
+    >
       <span
-        className="pulse-dot inline-block h-2 w-2 rounded-full"
-        style={{ background: "var(--success)", boxShadow: "0 0 8px var(--success)" }}
+        className={`inline-block h-2 w-2 shrink-0 rounded-full ${live ? "pulse-dot" : ""}`}
+        style={{ background: color, boxShadow: `0 0 8px ${color}` }}
       />
-      Creditcoin CC3 · live{agents !== null ? <span className="mono" style={{ color: "var(--text-faint)" }}>· {agents} financiers</span> : null}
+      {compact ? (
+        <span style={{ color: live ? "var(--success)" : "var(--warn)" }}>
+          {live ? "live" : "simulated"}
+        </span>
+      ) : (
+        <>
+          Creditcoin CC3 · {live ? "live" : "simulated"}
+          {agents !== null ? (
+            <span className="mono" style={{ color: "var(--text-faint)" }}>
+              · {agents} financiers
+            </span>
+          ) : null}
+        </>
+      )}
     </span>
   );
 }
@@ -65,34 +144,71 @@ export function Shell({ children }: { children: ReactNode }) {
   const [agents, setAgents] = useState<number | null>(null);
   const [strip, setStrip] = useState(false);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
-  const chip = useAdapterTruth();
+  const truth = useAdapterTruth();
 
   useEffect(() => {
     api.agents().then((r) => setAgents(r.agents.length)).catch(() => {});
   }, []);
 
-  // Magic link: ?admin=<token> unlocks the reset control
+  // Magic link: ?admin=<token> unlocks the reset control.
+  //
+  // Each setState below yields first. React 19 flags a synchronous setState in an effect body as a
+  // cascading render, and none of this can move to initial state: it all reads `window` or
+  // `localStorage`, which the server render does not have, so seeding from it would risk a
+  // hydration mismatch instead.
   useEffect(() => {
-    try {
-      const url = new URL(window.location.href);
-      const t = url.searchParams.get("admin");
-      if (t) {
-        localStorage.setItem("precedence-admin", t);
-        url.searchParams.delete("admin");
-        window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+    let cancelled = false;
+    (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      try {
+        const url = new URL(window.location.href);
+        const t = url.searchParams.get("admin");
+        if (t) {
+          localStorage.setItem("precedence-admin", t);
+          url.searchParams.delete("admin");
+          window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+        }
+        setAdminUnlocked(!!localStorage.getItem("precedence-admin"));
+      } catch {
+        // A browser refusing localStorage simply leaves the control locked, which is the safe default.
       }
-      setAdminUnlocked(!!localStorage.getItem("precedence-admin"));
-    } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // One-time judge strip on the first /collateral visit
   useEffect(() => {
-    if (pathname === "/collateral" && !localStorage.getItem("precedence-strip-seen")) {
-      setStrip(true);
-    }
+    let cancelled = false;
+    (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      try {
+        if (pathname === "/collateral" && !localStorage.getItem("precedence-strip-seen")) {
+          setStrip(true);
+        }
+      } catch {
+        // no localStorage: skip the strip rather than show it on every visit
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [pathname]);
 
-  useEffect(() => setOpen(false), [pathname]);
+  // Close the mobile drawer on navigation. Deferred for the same reason as above.
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) setOpen(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
@@ -112,10 +228,10 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       {/* ── Desktop: persistent top navbar ── */}
       <header
-        className="glass-heavy sticky top-0 z-30 hidden h-16 items-center gap-6 border-b px-6 md:flex"
+        className="glass-heavy sticky top-0 z-30 hidden h-16 items-center gap-4 overflow-hidden border-b px-5 md:flex"
         style={{ borderColor: "var(--border)" }}
       >
-        <Link href="/collateral" className="flex shrink-0 items-center gap-2.5">
+        <Link href="/collateral" className="flex min-w-0 shrink items-center gap-2.5">
           <Logo size={28} />
           <div className="leading-tight">
             <Wordmark />
@@ -125,14 +241,14 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </Link>
 
-        <nav className="mx-auto flex items-center gap-1">
+        <nav className="no-scrollbar mx-auto flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
           {NAV.map(({ href, label }) => {
             const active = pathname === href || (href !== "/collateral" && pathname.startsWith(href));
             return (
               <Link
                 key={href}
                 href={href}
-                className="relative px-3 py-2 text-sm transition-colors"
+                className="relative shrink-0 whitespace-nowrap px-3 py-2 text-sm transition-colors"
                 style={{ color: active ? "var(--text)" : "var(--text-muted)" }}
               >
                 {label}
@@ -148,17 +264,18 @@ export function Shell({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-4">
-          {chip ? (
+        <div className="flex min-w-0 shrink-0 items-center gap-3">
+          {truth ? (
             <span
-              className="mono hidden rounded-full border px-2.5 py-1 text-[0.66rem] uppercase tracking-wider 2xl:inline"
+              className="mono hidden truncate rounded-full border px-2.5 py-1 text-[0.66rem] uppercase tracking-wider [@media(min-width:1750px)]:inline"
               style={{ borderColor: "var(--border)", color: "var(--text-faint)" }}
+              title={truth.chip}
             >
-              {chip}
+              {truth.chip}
             </span>
           ) : null}
-          <div className="hidden min-w-0 lg:flex lg:items-center">
-            <StatusCluster agents={agents} />
+          <div className="hidden min-w-0 [@media(min-width:1180px)]:flex [@media(min-width:1180px)]:items-center">
+            <StatusCluster agents={agents} truth={truth} />
           </div>
           <ConnectWallet />
           <ThemeToggle />
@@ -172,7 +289,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
       {/* ── Mobile: top bar with hamburger ── */}
       <header
-        className="glass-heavy sticky top-0 z-30 flex items-center gap-3 border-b px-4 py-3 md:hidden"
+        className="glass-heavy sticky top-0 z-30 flex items-center gap-2.5 overflow-hidden border-b px-3 py-3 md:hidden"
         style={{ borderColor: "var(--border)" }}
       >
         <button
@@ -182,12 +299,12 @@ export function Shell({ children }: { children: ReactNode }) {
         >
           <Menu size={18} />
         </button>
-        <Link href="/collateral" className="flex items-center gap-2.5">
+        <Link href="/collateral" className="flex min-w-0 shrink items-center gap-2.5">
           <Logo size={26} />
           <Wordmark />
         </Link>
-        <div className="ml-auto">
-          <StatusCluster agents={agents} />
+        <div className="ml-auto shrink-0">
+          <StatusCluster agents={agents} truth={truth} compact />
         </div>
       </header>
 
@@ -249,7 +366,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </div>
 
               <div className="flex flex-col gap-3">
-                <StatusCluster agents={agents} />
+                <StatusCluster agents={agents} truth={truth} />
                 <div className="flex items-center gap-2">
                   <ThemeToggle />
                   {adminUnlocked ? (
