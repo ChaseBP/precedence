@@ -144,6 +144,16 @@ export const api = {
       { documentText },
     ),
 
+  facility: (id: string) =>
+    jget<{
+      ok: boolean;
+      collateral: CollateralAsset;
+      analysis: CollateralAnalysis;
+      raceId: string | null;
+      raceOutcome: string | null;
+      live: { sepolia: boolean; creditcoin: boolean };
+    }>(`/api/collateral/${id}`),
+
   registerCollateral: (body: unknown) =>
     jpost<{ ok: boolean; problems?: string[]; error?: string; collateral?: CollateralAsset; chain?: boolean; txHash?: string | null; note?: string }>(
       "/api/collateral/register",

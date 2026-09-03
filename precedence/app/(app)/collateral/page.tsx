@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Radar, TrendingUp, Clock, Loader2, ShieldCheck, Warehouse, FileText, Landmark, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { Clock, FileText, Landmark, Layers, Loader2, Radar, ShieldCheck, Sparkles, TrendingUp, Warehouse } from "lucide-react";
 import type { Agent, CollateralAsset, RefinanceOpportunity } from "@/lib/precedence/types";
 import { api } from "@/lib/client/api";
 import { usd, pct, riskColor, timeOf } from "@/lib/client/format";
@@ -213,14 +214,24 @@ export default function CollateralPage() {
                   <ShieldCheck size={14} style={{ color: "var(--success)" }} />
                   Doc hash: <span className="mono">{hero.docHash.slice(0, 14)}…</span> · Hash-unique on Creditcoin CC3
                 </span>
-                <button
-                  onClick={() => openRace(hero)}
-                  disabled={launching !== null}
-                  className="btn-accent flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold disabled:opacity-50"
-                >
-                  {launching === hero.id ? <Loader2 className="animate-spin" size={15} /> : <TrendingUp size={15} />}
-                  Open Priority Race
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* The facility page is where a lender actually bids; the scripted race is the
+                      guided walkthrough. Both are reachable so neither is the only way in. */}
+                  <Link
+                    href={`/collateral/${hero.id}`}
+                    className="btn-ghost flex items-center gap-1.5 rounded-lg px-3.5 py-2.5 text-sm font-semibold"
+                  >
+                    <Layers size={14} /> View facility &amp; bid
+                  </Link>
+                  <button
+                    onClick={() => openRace(hero)}
+                    disabled={launching !== null}
+                    className="btn-accent flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold disabled:opacity-50"
+                  >
+                    {launching === hero.id ? <Loader2 className="animate-spin" size={15} /> : <TrendingUp size={15} />}
+                    Open Priority Race
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between gap-3 text-[0.68rem]" style={{ color: "var(--text-faint)" }}>
@@ -256,14 +267,21 @@ export default function CollateralPage() {
                   </div>
                 </div>
 
-                <div className="border-t pt-3" style={{ borderColor: "var(--border)" }}>
+                <div className="flex flex-col gap-2 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+                  <Link
+                    href={`/collateral/${c.id}`}
+                    className="btn-ghost flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold"
+                  >
+                    <Layers size={13} /> View facility &amp; bid
+                  </Link>
                   <button
                     onClick={() => openRace(c)}
                     disabled={launching !== null}
-                    className="btn-ghost flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold disabled:opacity-50"
+                    style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
                   >
                     {launching === c.id ? <Loader2 className="animate-spin" size={13} /> : <TrendingUp size={13} />}
-                    Enter Priority Race
+                    Scripted race
                   </button>
                 </div>
               </Card>
