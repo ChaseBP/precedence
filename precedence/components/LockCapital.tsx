@@ -185,6 +185,30 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
     }
   }
 
+  // ── the facility is not open for new capital ──
+  //
+  // A facility page could show a settled or REPAID status in its header and still render an
+  // active, pre-filled bid form below it. A judge cannot tell whether the thing is finished or
+  // taking money, and either reading makes the app look wrong. Only a CLEAR facility can take a
+  // bid; everything else says what state it is in instead.
+  if (collateral.status !== "CLEAR") {
+    return (
+      <Card>
+        <div className="flex items-start gap-2.5">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" style={{ color: "var(--text-faint)" }} />
+          <div>
+            <h3 className="text-sm font-semibold">This facility is not taking new capital</h3>
+            <p className="mt-1 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
+              Its state is <span className="mono">{collateral.status}</span>. Bids are only accepted
+              while a facility is CLEAR and a race is open — once capital is committed the tranche
+              caps are spoken for, and a later lock would have nothing to be seated in.
+            </p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   // ── no terms posted: there is nothing to bid into ──
   if (!terms) {
     return (

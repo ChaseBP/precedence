@@ -30,10 +30,16 @@ export function WaveAlert({ show, label, variant = "detected" }: WaveAlertProps)
           animate={{ opacity: 1, y: 0, x: 0 }}
           exit={{ opacity: 0, y: -16, x: 16 }}
           transition={{ duration: 0.35 }}
-          // top-20 (80px) sat directly on the comprehension strip below the 64px header and made both
-        // unreadable. Bottom-left keeps it clear of the strip AND of the Toaster stack at bottom-right.
-        className="glass-heavy fixed bottom-5 left-5 z-[9998] flex max-w-[min(360px,calc(100vw-2.5rem))] items-center gap-2.5 rounded-xl px-4 py-2.5"
-          style={{ border: `1px solid color-mix(in srgb, ${cfg.color} 40%, transparent)` }}
+          // Bottom-centre and OPAQUE. It has been in two wrong places: at `top-20` it landed on
+          // the comprehension strip beneath the header, and at bottom-left it sat over card
+          // content while the Toaster stack held bottom-right. Being translucent glass made
+          // either position worse, because it blended into whatever was underneath and left both
+          // unreadable. A transient overlay has to read as sitting above the page.
+          className="fixed bottom-4 left-1/2 z-[9998] flex max-w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 items-center gap-2.5 rounded-xl px-4 py-2.5 shadow-2xl"
+          style={{
+            background: "var(--bg-2)",
+            border: `1px solid color-mix(in srgb, ${cfg.color} 45%, var(--border-strong))`,
+          }}
         >
           <span className="relative flex h-6 w-6 items-center justify-center">
             {[0, 1, 2].map((i) => (
