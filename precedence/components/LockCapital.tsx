@@ -24,6 +24,7 @@ import {
   ExternalLink,
   Loader2,
   Lock,
+  Undo2,
   Wallet,
 } from "lucide-react";
 import type { Address, Hex } from "viem";
@@ -74,6 +75,9 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
   const explorer = cfg?.explorers?.sepolia ?? "https://sepolia.etherscan.io";
   const terms = collateral.terms;
   const onSepolia = chainKey === "sepolia";
+  // No race open, or the vault has never seen this document: a bid cannot be submitted, so the
+  // controls should not behave as though it can.
+  const biddingClosed = !race?.raceOpen;
 
   useEffect(() => {
     let cancelled = false;
@@ -287,6 +291,8 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
       </Why>
 
       {/* ── tranche choice ── */}
+      {/* Inputs used to stay fully interactive under a "no race open" badge, inviting someone to
+          fill in an amount that could not be submitted. Disabled where bidding is not possible. */}
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         {TRANCHES.map(({ name }) => {
           const active = tranche === name;
@@ -294,7 +300,8 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
             <button
               key={name}
               onClick={() => setTranche(name)}
-              className="rounded-lg p-2.5 text-left transition-colors"
+              disabled={biddingClosed}
+              className="rounded-lg p-2.5 text-left transition-colors disabled:opacity-60"
               style={{
                 border: `1px solid ${active ? trancheColor(name) : "var(--border)"}`,
                 background: active ? `color-mix(in srgb, ${trancheColor(name)} 10%, transparent)` : "transparent",
@@ -318,6 +325,7 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
         <div className="flex flex-wrap items-center gap-2">
           <input
             data-field="lockAmount"
+            disabled={biddingClosed}
             value={amount}
             onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
             placeholder={String(capFor(tranche) || 0)}
@@ -325,7 +333,11 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
             className="mono w-40 rounded-lg px-2.5 py-1.5 text-[12px] outline-none"
             style={{ background: "var(--bg-2)", border: "1px solid var(--border)", color: "var(--text)" }}
           />
-          <button onClick={() => setAmount(String(capFor(tranche)))} className="btn-ghost rounded-lg px-2.5 py-1 text-[11px]">
+          <button
+            onClick={() => setAmount(String(capFor(tranche)))}
+            disabled={biddingClosed}
+            className="btn-ghost rounded-lg px-2.5 py-1 text-[11px] disabled:opacity-50"
+          >
             Fill the cap
           </button>
           {pos ? (
@@ -337,23 +349,36 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
       </label>
 
       {/* ── the consent that used to be given by a stranger ── */}
-      <label className="mt-3 flex cursor-pointer items-start gap-2">
-        <input
-          data-field="allowDemotion"
-          type="checkbox"
-          checked={allowDemotion}
-          onChange={(e) => setAllowDemotion(e.target.checked)}
-          className="mt-0.5 shrink-0"
-        />
-        <span className="text-[11.5px]" style={{ color: "var(--text-muted)" }}>
-          If {tranche} is already full, seat me lower rather than refunding me.
-          <span className="block" style={{ color: "var(--text-faint)" }}>
-            Off by default. Left off, anything that does not fit comes back in full — bidding for a
-            rank is not consent to hold a riskier one. This choice is recorded in your own lock
-            transaction, so nobody else can make it for you.
+      {/* SUBORDINATE is the lowest tranche, so "seat me lower" is meaningless there — the checkbox
+          asked a question with no answer. Excess subordinate capital can only ever be refunded, so
+          say that instead of offering a choice that does nothing.
+          The label is the tap target: a bare 16px checkbox is well under the 44px minimum, and
+          wrapping the text in the same label makes the whole block tappable. */}
+      {tranche === "SUBORDINATE" ? (
+        <p className="mt-3 flex items-start gap-2 py-1.5 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
+          <Undo2 size={13} className="mt-0.5 shrink-0" style={{ color: "var(--text-faint)" }} />
+          SUBORDINATE is the lowest tranche, so there is nowhere lower to be seated. Anything beyond
+          its cap is refunded in full.
+        </p>
+      ) : (
+        <label className="mt-3 flex min-h-[44px] cursor-pointer items-start gap-2.5 py-1.5">
+          <input
+            data-field="allowDemotion"
+            type="checkbox"
+            checked={allowDemotion}
+            onChange={(e) => setAllowDemotion(e.target.checked)}
+            className="mt-0.5 size-4 shrink-0 cursor-pointer"
+          />
+          <span className="text-[11.5px]" style={{ color: "var(--text-muted)" }}>
+            If {tranche} is already full, seat me lower rather than refunding me.
+            <span className="block" style={{ color: "var(--text-faint)" }}>
+              Off by default. Left off, anything that does not fit comes back in full — bidding for a
+              rank is not consent to hold a riskier one. This choice is recorded in your own lock
+              transaction, so nobody else can make it for you.
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+      )}
 
       {problems.length > 0 ? (
         <ul className="mt-2.5 flex flex-col gap-1">

@@ -247,9 +247,11 @@ export default function RegisterCollateralPage() {
     <div className="mx-auto max-w-3xl">
       <FadeUp>
         <header className="mb-6">
-          <Link href="/portfolio" className="mb-3 inline-flex items-center gap-1.5 text-[11px]"
+          {/* Pointed at /portfolio, which is not where anyone arrives from — the entry points are
+              the nav's Borrow item and the registry's own action. */}
+          <Link href="/registry" className="mb-3 inline-flex items-center gap-1.5 text-[11px]"
             style={{ color: "var(--text-muted)" }}>
-            <ArrowLeft size={12} /> Back to my book
+            <ArrowLeft size={12} /> Back to the registry
           </Link>
           <Eyebrow>Borrower · Creditcoin CC3 registry</Eyebrow>
           <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight">
@@ -400,7 +402,9 @@ export default function RegisterCollateralPage() {
       {/* ── the terms ── */}
       <section className="mt-5">
         <Card>
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* gap-y so the preset button does not sit flush against the heading when it wraps
+              below it at 360px. */}
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2.5">
             <h2 className="text-sm font-semibold">Facility terms you are posting</h2>
             <button onClick={suggestCaps} disabled={!Number.isFinite(money.advance) || money.advance <= 0}
               className="btn-ghost rounded-lg px-2.5 py-1 text-[11px] disabled:opacity-50">
@@ -482,8 +486,17 @@ export default function RegisterCollateralPage() {
           Cancel
         </button>
         {disconnected ? (
-          <span className="text-[11px]" style={{ color: "var(--text-faint)" }}>
-            Connect a wallet to register.
+          // Was faint 11px text beside a disabled button, which reads as decoration rather than as
+          // the reason the button will not work.
+          <span
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium"
+            style={{
+              color: "var(--warn)",
+              background: "color-mix(in srgb, var(--warn) 12%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--warn) 35%, transparent)",
+            }}
+          >
+            <AlertTriangle size={12} /> Connect a wallet to register
           </span>
         ) : null}
       </div>
@@ -515,7 +528,9 @@ function Input({ value, onChange, placeholder, numeric, field }: {
       onChange={(e) => onChange(numeric ? e.target.value.replace(/[^0-9.]/g, "") : e.target.value)}
       placeholder={placeholder}
       inputMode={numeric ? "decimal" : undefined}
-      className={`w-full rounded-lg px-2.5 py-1.5 text-[12px] outline-none ${numeric ? "mono" : ""}`}
+      // Placeholders were rendering at full body contrast, so an empty field looked filled in —
+      // a borrower could submit believing the example values were theirs.
+      className={`w-full rounded-lg px-2.5 py-1.5 text-[12px] outline-none placeholder:italic placeholder:opacity-55 ${numeric ? "mono" : ""}`}
       style={{ background: "var(--bg-2)", border: "1px solid var(--border)", color: "var(--text)" }}
     />
   );
