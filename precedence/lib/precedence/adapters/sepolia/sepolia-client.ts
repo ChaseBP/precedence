@@ -53,7 +53,18 @@ export interface SepoliaClient {
    * omitting the FIRST lock would still submit a consecutive run. A collateral is either CLEAR or
    * ENCUMBERED, so it can only ever have one open race.
    */
-  openRace(collateralId: string): Promise<TxRef>;
+  /**
+   * Open a race, sized by the borrower's posted terms.
+   *
+   * @remarks `caps` is required because the vault allocates per-tranche against exactly these
+   * numbers, mirroring the Creditcoin engine. Passing only a total would let the two chains reach
+   * different answers about who is owed what — which they did, before this was threaded through.
+   */
+  openRace(
+    collateralId: string,
+    facilityUsd: number,
+    caps: [number, number, number],
+  ): Promise<TxRef>;
 
   lock(params: LockParams): Promise<TxRef & { lock: SourceLockRecord }>;
   draw(collateralId: string, obligor: string, amountUsd: number): Promise<TxRef>;

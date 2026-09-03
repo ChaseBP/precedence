@@ -167,7 +167,14 @@ export async function runRaceOpen(ctx: PhaseCtx): Promise<StepOutcome> {
 
   // Opening the race resets the vault's per-collateral lock counter, so this race's locks run
   // seq 1..N and the gate's contiguity-from-1 completeness check is enforceable.
-  const opened = await deps.sepolia.openRace(race.collateral.id);
+  // Sized by the borrower's posted terms, which is also what the vault allocates against and what
+  // the Creditcoin engine reads back. One source for the split, so the two chains cannot diverge.
+  const caps: [number, number, number] = [sizing.seniorUsd, sizing.juniorUsd, sizing.subordinateUsd];
+  const opened = await deps.sepolia.openRace(
+    race.collateral.id,
+    caps[0] + caps[1] + caps[2],
+    caps,
+  );
 
   await ctx.emit(
     "success",

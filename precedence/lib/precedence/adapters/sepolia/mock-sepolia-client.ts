@@ -39,7 +39,7 @@ export class MockSepoliaClient implements SepoliaClient {
     return this.baseBlock + 64;
   }
 
-  async openRace(collateralId: string): Promise<TxRef> {
+  async openRace(collateralId: string, _facilityUsd?: number, _caps?: [number, number, number]): Promise<TxRef> {
     // Reset the per-collateral lock counter so this race's locks run seq 1..N.
     this.seqByCollateral.set(collateralId, 0);
     this.locksByCollateral.set(collateralId, []);

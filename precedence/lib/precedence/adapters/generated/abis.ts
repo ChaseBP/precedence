@@ -4,7 +4,7 @@
  * Produced by `bun run ops/sync-abis.ts` from the Foundry build in `contracts/out`.
  * Regenerate after any contract change; a stale ABI fails in ways that look like proof errors.
  *
- * Generated: 2026-09-02T14:46:49.960Z
+ * Generated: 2026-09-03T12:32:54.236Z
  */
 
 export const PUSD_ABI = [
@@ -455,6 +455,25 @@ export const PriorityVault_ABI = [
   },
   {
     "type": "function",
+    "name": "capsOf",
+    "inputs": [
+      {
+        "name": "collateralId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256[3]",
+        "internalType": "uint256[3]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "closeRace",
     "inputs": [
       {
@@ -598,6 +617,11 @@ export const PriorityVault_ABI = [
             "name": "facilitySize",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "caps",
+            "type": "uint256[3]",
+            "internalType": "uint256[3]"
           },
           {
             "name": "raceDeadline",
@@ -843,6 +867,11 @@ export const PriorityVault_ABI = [
         "name": "facilitySize",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "caps",
+        "type": "uint256[3]",
+        "internalType": "uint256[3]"
       },
       {
         "name": "window",
@@ -1173,6 +1202,11 @@ export const PriorityVault_ABI = [
   {
     "type": "error",
     "name": "AlreadyRegistered",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CapsMustSumToFacility",
     "inputs": []
   },
   {

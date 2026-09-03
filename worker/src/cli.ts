@@ -187,7 +187,7 @@ async function main() {
     case "stage": {
       if (!args[0]) {
         throw new Error(
-          'usage: stage <collateralId> [--facility <usd>] [--window <sec>] [--contend] ' +
+          'usage: stage <collateralId> [--facility <usd>] [--caps <s>/<j>/<sub>] [--window <sec>] [--contend] ' +
             '[--bid <LABEL>:<TRANCHE>:<usd> …]',
         );
       }
@@ -215,9 +215,13 @@ async function main() {
         throw new Error(`${bids.length} bids exceeds MAX_BATCH_SIZE ${MAX_BATCH_SIZE} — one proof cannot cover them`);
       }
       console.log("");
+      const capsFlag = flag("caps");
       await stageRace({
         collateralId: args[0],
         facilityUsd: Number(flag("facility") ?? 8_500),
+        caps: capsFlag
+          ? (capsFlag.split("/").map(Number) as [number, number, number])
+          : undefined,
         windowSec: Number(flag("window") ?? 150),
         contend: args.includes("--contend"),
         bids,
@@ -285,6 +289,7 @@ function readFileHeader(): string {
   status                        chain + attestation + deployment health
   probe <txHash…>               prove real Sepolia txs end-to-end (no deployment needed)
   stage <collateralId>          stage a race on Sepolia: register, open, lock, close
+                                --caps <s>/<j>/<sub> must sum to --facility
   locks <collateralId>          read a race's locks from the vault, in proven order
   prove <collateralId> <tx…>    prove and settle a race (or --from-vault to read them)
   repay <collateralId> <tx>     prove a repayment and release the lien

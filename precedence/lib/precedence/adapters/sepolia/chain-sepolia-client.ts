@@ -116,14 +116,29 @@ export class ChainSepoliaClient implements SepoliaClient {
    * @remarks Only the registered obligor may do this, and the counter reset is what makes the
    * gate's "seq contiguous from 1" completeness check enforceable across repeat financings.
    */
-  async openRace(collateralId: string): Promise<TxRef> {
+  async openRace(
+    collateralId: string,
+    facilityUsd: number,
+    caps: [number, number, number],
+  ): Promise<TxRef> {
     const { client, account } = this.wallet("obligor");
-    const facility = toUnits(8_500);
+    const sum = caps[0] + caps[1] + caps[2];
+    if (sum !== facilityUsd) {
+      throw new Error(
+        `tranche caps sum to ${sum} but the facility is ${facilityUsd}; the vault requires them to ` +
+          `match so its allocation is unambiguous`,
+      );
+    }
     const hash = await client.writeContract({
       address: this.cfg.vaultAddress,
       abi: PriorityVault_ABI,
       functionName: "openRace",
-      args: [collateralId as ViemHex, facility, 600n], // 10-minute window
+      args: [
+        collateralId as ViemHex,
+        toUnits(facilityUsd),
+        caps.map(toUnits) as unknown as readonly [bigint, bigint, bigint],
+        600n, // 10-minute window
+      ],
       account,
       chain: sepolia,
     });

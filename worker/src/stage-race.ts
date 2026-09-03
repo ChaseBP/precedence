@@ -29,6 +29,16 @@ export interface StageOptions {
   collateralId: string;
   /** Whole dollars the obligor is asking for. */
   facilityUsd: number;
+  /**
+   * Per-tranche caps in whole dollars, indexed SENIOR/JUNIOR/SUBORDINATE. Must sum to
+   * `facilityUsd`.
+   *
+   * @remarks Required by the vault, not optional. The Creditcoin engine allocates tranche-aware
+   * against these caps; a vault that knew only the total could only fill by arrival order, and the
+   * two disagreed about who was owed what on the same locks. Defaults to the seeded
+   * 5,100 / 2,550 / 850 split when the facility is the seeded 8,500.
+   */
+  caps?: [number, number, number];
   bids: Bid[];
   /** Race window in seconds. The vault enforces a 2-minute minimum. */
   windowSec?: number;
@@ -56,6 +66,14 @@ export interface StagedLock {
 const D = 1_000_000n;
 const usd = (n: number) => BigInt(Math.round(n)) * D;
 const fmt = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+/** The seeded 60/30/10 split, which is also what the seeded facility posts. */
+function defaultCaps(facilityUsd: number): [number, number, number] {
+  if (facilityUsd === 8_500) return [5_100, 2_550, 850];
+  const senior = Math.round(facilityUsd * 0.6);
+  const junior = Math.round(facilityUsd * 0.3);
+  return [senior, junior, facilityUsd - senior - junior];
+}
 
 function signerFor(label: string): ethers.Wallet {
   const key = `FIN_${label.toUpperCase()}_PK`;
@@ -103,7 +121,22 @@ export async function stageRace(opts: StageOptions): Promise<StagedLock[]> {
       );
     }
   }
-  const openTx = await vaultAsObligor.openRace(opts.collateralId, usd(opts.facilityUsd), window);
+  const caps = opts.caps ?? defaultCaps(opts.facilityUsd);
+  const capsSum = caps[0] + caps[1] + caps[2];
+  if (capsSum !== opts.facilityUsd) {
+    throw new Error(
+      `caps ${caps.join("/")} sum to ${capsSum} but the facility is ${opts.facilityUsd} — the vault ` +
+        `requires them to match, so that the tranche split it allocates against is unambiguous`,
+    );
+  }
+  say("caps", `SENIOR ${fmt(caps[0])} · JUNIOR ${fmt(caps[1])} · SUBORDINATE ${fmt(caps[2])}`);
+
+  const openTx = await vaultAsObligor.openRace(
+    opts.collateralId,
+    usd(opts.facilityUsd),
+    caps.map(usd),
+    window,
+  );
   const openRc = await openTx.wait();
   const c0 = await vaultAsObligor.getCollateral(opts.collateralId);
   const raceNonce = Number(c0.raceNonce);
