@@ -166,7 +166,12 @@ export class ChainSepoliaClient implements SepoliaClient {
       address: this.cfg.vaultAddress,
       abi: PriorityVault_ABI,
       functionName: "lock",
-      args: [params.collateralId as ViemHex, TRANCHE_INDEX[params.tranche], amount],
+      args: [
+        params.collateralId as ViemHex,
+        TRANCHE_INDEX[params.tranche],
+        amount,
+        params.allowDemotion ?? false,
+      ],
       account,
       chain: sepolia,
     });

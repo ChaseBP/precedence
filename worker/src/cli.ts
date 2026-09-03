@@ -188,7 +188,7 @@ async function main() {
       if (!args[0]) {
         throw new Error(
           'usage: stage <collateralId> [--facility <usd>] [--caps <s>/<j>/<sub>] [--window <sec>] [--contend] ' +
-            '[--bid <LABEL>:<TRANCHE>:<usd> …]',
+            '[--bid <LABEL>:<TRANCHE>:<usd>[:demote] …]',
         );
       }
       const flag = (name: string) => {
@@ -198,9 +198,16 @@ async function main() {
       const bids: Bid[] = [];
       args.forEach((a, i) => {
         if (a !== "--bid") return;
-        const [label, tranche, amt] = (args[i + 1] ?? "").split(":");
-        if (!label || !tranche || !amt) throw new Error(`bad --bid "${args[i + 1]}" (LABEL:TRANCHE:USD)`);
-        bids.push({ label, tranche: tranche.toUpperCase() as TrancheName, amountUsd: Number(amt) });
+        const [label, tranche, amt, demote] = (args[i + 1] ?? "").split(":");
+        if (!label || !tranche || !amt) {
+          throw new Error(`bad --bid "${args[i + 1]}" (LABEL:TRANCHE:USD[:demote])`);
+        }
+        bids.push({
+          label,
+          tranche: tranche.toUpperCase() as TrancheName,
+          amountUsd: Number(amt),
+          allowDemotion: demote === "demote",
+        });
       });
       if (bids.length === 0) {
         // The seeded coffee-receipt facility: two rivals for SENIOR, so contention is real.

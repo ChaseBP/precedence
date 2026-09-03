@@ -323,6 +323,13 @@ export async function approveAndLock(
   collateralId: Hex,
   trancheOrdinal: 0 | 1 | 2,
   amountUsd: number,
+  /**
+   * Consent to being seated in a LOWER tranche if the declared one is already full.
+   *
+   * @remarks Sent in the lock transaction because it is the financier's to give, and the wallet
+   * signing this transaction is theirs. It used to be supplied by whoever proved the race.
+   */
+  allowDemotion: boolean,
   onStage: (s: LockStage, detail?: string) => void,
 ): Promise<{ lockTxHash: Hex; blockNumber: number; txIndex: number }> {
   const account = wallet.account;
@@ -359,7 +366,7 @@ export async function approveAndLock(
     address: addrs.PriorityVault,
     abi: PriorityVault_ABI,
     functionName: "lock",
-    args: [collateralId, trancheOrdinal, amount],
+    args: [collateralId, trancheOrdinal, amount, allowDemotion],
     account,
     chain: sepolia,
   });

@@ -23,6 +23,13 @@ export interface Bid {
   tranche: TrancheName;
   /** Whole dollars; converted to the token's 6 decimals. */
   amountUsd: number;
+  /**
+   * Consent to a lower tranche instead of a refund, declared in this financier's own lock.
+   *
+   * @remarks Defaults to false. The prover can no longer supply this at settle time, which is the
+   * point — consent belongs to whoever's capital it is.
+   */
+  allowDemotion?: boolean;
 }
 
 export interface StageOptions {
@@ -174,7 +181,12 @@ export async function stageRace(opts: StageOptions): Promise<StagedLock[]> {
 
   async function submit(b: Bid): Promise<ethers.TransactionResponse> {
     const s = signers.get(b.label)!;
-    return vault(s).lock(opts.collateralId, TRANCHE_ORDINAL[b.tranche], usd(b.amountUsd));
+    return vault(s).lock(
+      opts.collateralId,
+      TRANCHE_ORDINAL[b.tranche],
+      usd(b.amountUsd),
+      b.allowDemotion ?? false,
+    );
   }
 
   if (opts.contend) {

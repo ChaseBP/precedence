@@ -25,13 +25,13 @@ export interface SettleOptions {
   /** Source transaction hashes for this race's locks. */
   txHashes: string[];
   /**
-   * Per-lock opt-in to a lower tranche instead of a refund; index-aligned with proven order.
-   *
-   * @remarks Tranche caps and coupons are deliberately NOT parameters. They live in
-   * `CollateralRegistry`, posted by the borrower, and the engine reads them from there — passing
-   * them from off-chain would let a prover influence allocation.
+   * @remarks There is deliberately NO `allowDemotion` here any more. It used to be a `boolean[]`
+   * this prover supplied, which meant whoever chose to prove a race also chose whether each
+   * financier had consented to holding riskier paper. Consent now rides on the Lock event each
+   * financier's own transaction emitted, so a prover cannot grant it on their behalf. Tranche caps
+   * and coupons were already off-limits for the same reason: they live in `CollateralRegistry`,
+   * posted by the borrower.
    */
-  allowDemotion?: boolean[];
   skipWait?: boolean;
   evidenceName?: string;
   onStage?: (stage: string, detail: string) => void;
@@ -92,12 +92,7 @@ export async function settleRace(opts: SettleOptions): Promise<SettleResult> {
   say("preflight", `view-only verify() returned true for ZERO gas — safe to submit`);
 
   // ── 5. one transaction settles the whole race ──
-  const demote = opts.allowDemotion ?? new Array(built.ordered.length).fill(false);
-  if (demote.length !== built.ordered.length) {
-    throw new Error(`allowDemotion has ${demote.length} entries but the batch has ${built.ordered.length}`);
-  }
-
-  const tx = await gateC.settleRace(opts.collateralId, built.proof, demote);
+  const tx = await gateC.settleRace(opts.collateralId, built.proof);
   say("submit", `settleRace → ${tx.hash}`);
   const receipt = await tx.wait();
   if (!receipt || receipt.status !== 1) throw new Error(`settleRace reverted: ${tx.hash}`);

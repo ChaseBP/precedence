@@ -244,6 +244,9 @@ export async function runRaceOpen(ctx: PhaseCtx): Promise<StepOutcome> {
       financier: bid.agentId,
       tranche: bid.tranche,
       amountUsd: bid.committedUsd,
+      // From the agent's own policy, carried into the lock transaction. The prover no longer
+      // supplies this at settle time, so this is the only place it can be declared.
+      allowDemotion: bid.allowDemotion,
     });
     bid.lockBlockNumber = blockNumber;
     bid.lockTxIndex = txIndex;

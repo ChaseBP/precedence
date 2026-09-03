@@ -4,7 +4,7 @@
  * Produced by `bun run ops/sync-abis.ts` from the Foundry build in `contracts/out`.
  * Regenerate after any contract change; a stale ABI fails in ways that look like proof errors.
  *
- * Generated: 2026-09-03T12:32:54.236Z
+ * Generated: 2026-09-03T12:45:09.173Z
  */
 
 export const PUSD_ABI = [
@@ -690,6 +690,11 @@ export const PriorityVault_ABI = [
         "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "allowDemotion",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "outputs": [],
@@ -720,6 +725,11 @@ export const PriorityVault_ABI = [
             "name": "financier",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "allowDemotion",
+            "type": "bool",
+            "internalType": "bool"
           },
           {
             "name": "tranche",
@@ -786,6 +796,11 @@ export const PriorityVault_ABI = [
             "name": "financier",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "allowDemotion",
+            "type": "bool",
+            "internalType": "bool"
           },
           {
             "name": "tranche",
@@ -1071,6 +1086,12 @@ export const PriorityVault_ABI = [
         "type": "uint64",
         "indexed": false,
         "internalType": "uint64"
+      },
+      {
+        "name": "allowDemotion",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
       }
     ],
     "anonymous": false
@@ -4207,13 +4228,13 @@ export const PriorityEngine_ABI = [
             "name": "receiptStatus",
             "type": "uint8",
             "internalType": "uint8"
+          },
+          {
+            "name": "allowDemotion",
+            "type": "bool",
+            "internalType": "bool"
           }
         ]
-      },
-      {
-        "name": "allowDemotion",
-        "type": "bool[]",
-        "internalType": "bool[]"
       }
     ],
     "outputs": [],
@@ -5239,11 +5260,6 @@ export const AttestationGate_ABI = [
             ]
           }
         ]
-      },
-      {
-        "name": "allowDemotion",
-        "type": "bool[]",
-        "internalType": "bool[]"
       }
     ],
     "outputs": [],

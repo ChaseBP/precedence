@@ -15,6 +15,14 @@ export interface LockParams {
   financier: string;
   tranche: Tranche;
   amountUsd: number;
+  /**
+   * The financier's consent to a lower tranche if their declared one is already full.
+   *
+   * @remarks Recorded in the lock transaction itself, because it is theirs to give. It used to be
+   * supplied by whoever proved the race, which let a third party consent on their behalf.
+   * Defaults to false: bidding for a rank is not consent to hold a riskier one.
+   */
+  allowDemotion?: boolean;
 }
 
 export interface RepayParams {

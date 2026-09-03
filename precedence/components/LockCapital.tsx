@@ -60,6 +60,7 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
   const [pos, setPos] = useState<LenderPosition | null>(null);
   const [tranche, setTranche] = useState<Tranche>("SENIOR");
   const [amount, setAmount] = useState("");
+  const [allowDemotion, setAllowDemotion] = useState(false);
   const [stage, setStage] = useState<LockStage | null>(null);
   const [stageNote, setStageNote] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -170,6 +171,7 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
         collateral.docHash as Hex,
         t.ordinal,
         amt,
+        allowDemotion,
         (s, detail) => {
           setStage(s);
           setStageNote(detail ?? "");
@@ -308,6 +310,25 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
             </span>
           ) : null}
         </div>
+      </label>
+
+      {/* ── the consent that used to be given by a stranger ── */}
+      <label className="mt-3 flex cursor-pointer items-start gap-2">
+        <input
+          data-field="allowDemotion"
+          type="checkbox"
+          checked={allowDemotion}
+          onChange={(e) => setAllowDemotion(e.target.checked)}
+          className="mt-0.5 shrink-0"
+        />
+        <span className="text-[11.5px]" style={{ color: "var(--text-muted)" }}>
+          If {tranche} is already full, seat me lower rather than refunding me.
+          <span className="block" style={{ color: "var(--text-faint)" }}>
+            Off by default. Left off, anything that does not fit comes back in full — bidding for a
+            rank is not consent to hold a riskier one. This choice is recorded in your own lock
+            transaction, so nobody else can make it for you.
+          </span>
+        </span>
       </label>
 
       {problems.length > 0 ? (
