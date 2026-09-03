@@ -116,14 +116,15 @@ contract ForkDeployTest is Test {
                 txIndex: 17 + i * 5,
                 seq: i + 1,
                 raceNonce: 1,
-                receiptStatus: 1
+                receiptStatus: 1,
+                allowDemotion: false
             });
         }
         bool[] memory demote = new bool[](3);
 
         uint256 before = gasleft();
         vm.prank(gate_);
-        engine.settlePriority(cid, locks, demote);
+        engine.settlePriority(cid, locks);
         uint256 used = before - gasleft();
 
         console.log("settlePriority gas (3 locks):", used);

@@ -34,6 +34,20 @@ contract AllocationLibTest is Test {
         pure
         returns (T.VerifiedLock memory)
     {
+        return _lock(who, t, amt, h, idx, seq, false);
+    }
+
+    /// @dev Consent now rides on the lock itself, so it is set where the lock is built rather than
+    /// passed alongside it at settle time.
+    function _lock(
+        address who,
+        T.Tranche t,
+        uint256 amt,
+        uint64 h,
+        uint64 idx,
+        uint64 seq,
+        bool allowDemotion
+    ) internal pure returns (T.VerifiedLock memory) {
         return T.VerifiedLock({
             financier: who,
             tranche: t,
@@ -44,13 +58,11 @@ contract AllocationLibTest is Test {
             txIndex: idx,
             seq: seq,
             raceNonce: 1,
-            receiptStatus: 1
+            receiptStatus: 1,
+            allowDemotion: allowDemotion
         });
     }
 
-    function _noDemotion(uint256 n) internal pure returns (bool[] memory f) {
-        f = new bool[](n);
-    }
 
     // ══════════════════════ allocation: proven order wins the tranche ══════════════════════
 
@@ -65,7 +77,7 @@ contract AllocationLibTest is Test {
         locks[2] = _lock(NOVUM, T.Tranche.SENIOR, 5_100 * D, 6182101, 41, 3);
 
         (A.Award[] memory awards, A.Refund[] memory refunds) =
-            A.allocate(locks, _sizing(), _noDemotion(3));
+            A.allocate(locks, _sizing());
 
         assertEq(awards.length, 2, "senior + junior seated");
         assertEq(awards[0].financier, MERIDIAN);
@@ -91,7 +103,7 @@ contract AllocationLibTest is Test {
         locks[1] = _lock(NOVUM, T.Tranche.SENIOR, 5_000 * D, 6182101, 41, 2);
 
         (A.Award[] memory awards, A.Refund[] memory refunds) =
-            A.allocate(locks, _sizing(), _noDemotion(2));
+            A.allocate(locks, _sizing());
 
         assertEq(awards.length, 2);
         assertEq(awards[1].financier, NOVUM);
@@ -108,7 +120,7 @@ contract AllocationLibTest is Test {
         locks[1] = _lock(MERIDIAN, T.Tranche.SENIOR, 5_000 * D, 6182101, 41, 2);
 
         (A.Award[] memory awards, A.Refund[] memory refunds) =
-            A.allocate(locks, _sizing(), _noDemotion(2));
+            A.allocate(locks, _sizing());
 
         assertEq(awards[0].financier, NOVUM, "now Novum is senior, purely because it was earlier");
         assertEq(refunds[0].financier, MERIDIAN);
@@ -118,12 +130,10 @@ contract AllocationLibTest is Test {
     function test_demotionOnlyHappensWithExplicitConsent() public pure {
         T.VerifiedLock[] memory locks = new T.VerifiedLock[](2);
         locks[0] = _lock(MERIDIAN, T.Tranche.SENIOR, 5_100 * D, 6182101, 17, 1); // fills senior
-        locks[1] = _lock(VECTOR, T.Tranche.SENIOR, 4_000 * D, 6182101, 22, 2); // overflow
+        // Vector opted in, in its OWN lock transaction. Nobody else can grant this on its behalf.
+        locks[1] = _lock(VECTOR, T.Tranche.SENIOR, 4_000 * D, 6182101, 22, 2, true);
 
-        bool[] memory consent = new bool[](2);
-        consent[1] = true; // Vector opted in
-
-        (A.Award[] memory awards, A.Refund[] memory refunds) = A.allocate(locks, _sizing(), consent);
+        (A.Award[] memory awards, A.Refund[] memory refunds) = A.allocate(locks, _sizing());
 
         assertEq(awards.length, 3, "senior + demoted junior + demoted subordinate");
         assertEq(awards[1].financier, VECTOR);
@@ -142,7 +152,7 @@ contract AllocationLibTest is Test {
         locks[1] = _lock(VECTOR, T.Tranche.SENIOR, 3_000 * D, 6182101, 22, 2); // 2,100 fits
 
         (A.Award[] memory awards, A.Refund[] memory refunds) =
-            A.allocate(locks, _sizing(), _noDemotion(2));
+            A.allocate(locks, _sizing());
 
         assertEq(awards[0].amount, 3_000 * D);
         assertEq(awards[1].amount, 2_100 * D, "partial seat up to the tranche cap");
@@ -287,7 +297,7 @@ contract AllocationLibTest is Test {
         locks[0] = _lock(MERIDIAN, T.Tranche.SENIOR, a1, 6182101, 17, 1);
         locks[1] = _lock(VECTOR, T.Tranche.SENIOR, a2, 6182101, 22, 2);
 
-        (A.Award[] memory awards, A.Refund[] memory refunds) = A.allocate(locks, s, _noDemotion(2));
+        (A.Award[] memory awards, A.Refund[] memory refunds) = A.allocate(locks, s);
 
         uint256 seated;
         for (uint256 i = 0; i < awards.length; ++i) {

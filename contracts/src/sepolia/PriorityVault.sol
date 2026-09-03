@@ -43,6 +43,11 @@ contract PriorityVault is ReentrancyGuard {
 
     struct Lock {
         address financier;
+        /// @dev The financier's OWN consent to being seated in a lower tranche if their declared
+        /// one is already full. Recorded here because it is theirs to give: it used to be a
+        /// parameter the prover supplied at settle time, which let a third party decide whether
+        /// someone had agreed to hold riskier paper.
+        bool allowDemotion;
         Tranche tranche;
         uint256 amount;
         uint256 refunded;
@@ -108,7 +113,8 @@ contract PriorityVault is ReentrancyGuard {
         address token,
         uint64 raceNonce,
         uint64 seq,
-        uint64 blockNumber
+        uint64 blockNumber,
+        bool allowDemotion
     );
 
     event Draw(bytes32 indexed collateralId, address indexed obligor, uint256 amount);
@@ -195,7 +201,15 @@ contract PriorityVault is ReentrancyGuard {
     /// @notice Escrow capital against collateral, declaring a tranche preference.
     /// @dev The tranche is a PREFERENCE. Proven `(blockHeight, txIndex)` ordering decides who
     /// actually gets it, and a bid that loses its declared tranche is refunded rather than demoted.
-    function lock(bytes32 collateralId, Tranche tranche, uint256 amount) external nonReentrant {
+    /// @notice Lock capital into a tranche.
+    ///
+    /// @param allowDemotion consent to being seated in a LOWER tranche if the declared one is
+    /// already full. False means "refund me instead", which is the safe default: bidding for a
+    /// rank is not consent to hold a riskier one.
+    function lock(bytes32 collateralId, Tranche tranche, uint256 amount, bool allowDemotion)
+        external
+        nonReentrant
+    {
         Collateral storage c = collateral[collateralId];
         if (!c.registered) revert NotRegistered();
         if (!c.raceOpen || block.timestamp > c.raceDeadline) revert RaceNotOpen();
@@ -210,6 +224,7 @@ contract PriorityVault is ReentrancyGuard {
         _locks[collateralId][c.raceNonce].push(
             Lock({
                 financier: msg.sender,
+                allowDemotion: allowDemotion,
                 tranche: tranche,
                 amount: amount,
                 refunded: 0,
@@ -227,7 +242,8 @@ contract PriorityVault is ReentrancyGuard {
             address(settlementToken),
             c.raceNonce,
             seq,
-            uint64(block.number)
+            uint64(block.number),
+            allowDemotion
         );
     }
 
@@ -259,9 +275,8 @@ contract PriorityVault is ReentrancyGuard {
     /// appended in execution order, which is exactly `(block, txIndex)` order — so both chains
     /// consume identical inputs and reach identical allocations.
     ///
-    /// No demotion is assumed here. A financier who bid SENIOR did not consent to subordinate
-    /// risk, so the conservative reading is the correct default, and it matches what the prover
-    /// submits unless a financier opted in.
+    /// Demotion is honoured from each lock's OWN recorded consent, so a financier who opted in is
+    /// seated lower rather than refunded — and one who did not is never moved.
     function allocatedAmount(bytes32 collateralId, uint256 index) public view returns (uint256) {
         Collateral storage c = collateral[collateralId];
         Lock[] storage ls = _locks[collateralId][c.raceNonce];
@@ -270,10 +285,25 @@ contract PriorityVault is ReentrancyGuard {
         uint256[3] memory remaining = c.caps;
 
         for (uint256 i = 0; i <= index; ++i) {
-            uint8 t = uint8(ls[i].tranche);
-            uint256 take = ls[i].amount <= remaining[t] ? ls[i].amount : remaining[t];
-            if (i == index) return take;
-            remaining[t] -= take;
+            uint8 declared = uint8(ls[i].tranche);
+            uint256 unseated = ls[i].amount;
+            uint256 seated;
+
+            uint256 take = unseated <= remaining[declared] ? unseated : remaining[declared];
+            remaining[declared] -= take;
+            seated += take;
+            unseated -= take;
+
+            if (unseated > 0 && ls[i].allowDemotion) {
+                for (uint8 t = declared + 1; t < 3 && unseated > 0; ++t) {
+                    uint256 more = unseated <= remaining[t] ? unseated : remaining[t];
+                    remaining[t] -= more;
+                    seated += more;
+                    unseated -= more;
+                }
+            }
+
+            if (i == index) return seated;
         }
         return 0;
     }
@@ -375,7 +405,7 @@ contract PriorityVault is ReentrancyGuard {
     /// @notice The event signature `AttestationGate` filters on. Exposed so deployment scripts and
     /// tests cannot drift from the actual event.
     function lockEventSignature() external pure returns (bytes32) {
-        return keccak256("Lock_(bytes32,address,uint8,uint256,address,uint64,uint64,uint64)");
+        return keccak256("Lock_(bytes32,address,uint8,uint256,address,uint64,uint64,uint64,bool)");
     }
 
     function repaymentEventSignature() external pure returns (bytes32) {

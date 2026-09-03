@@ -179,15 +179,12 @@ contract PriorityEngine is Ownable, ReentrancyGuard {
     /// @notice Settle priority from a validated, proven-ordered lock set.
     /// @dev Only `AttestationGate` may call this: the locks must have come from verified proofs
     /// bound to the registered vault, in proven order, with completeness checked.
-    function settlePriority(
-        bytes32 collateralId,
-        T.VerifiedLock[] calldata locks,
-        bool[] calldata allowDemotion
-    ) external onlyGate {
-        // Caps as the OBLIGOR posted them. The Sepolia vault fills against the same total, which
-        // is how both chains agree on the allocated set with no message between them.
+    function settlePriority(bytes32 collateralId, T.VerifiedLock[] calldata locks) external onlyGate {
+        // Caps as the OBLIGOR posted them. The Sepolia vault allocates against the SAME caps with
+        // the same algorithm, which is how both chains agree on who is owed what with no message
+        // between them. Demotion consent rides on each lock, from the event the financier emitted.
         (T.TrancheSizing memory sizing,) = registry.facilitySizing(collateralId);
-        (A.Award[] memory awards, A.Refund[] memory refunds) = A.allocate(locks, sizing, allowDemotion);
+        (A.Award[] memory awards, A.Refund[] memory refunds) = A.allocate(locks, sizing);
 
         delete _stack[collateralId];
         delete _refunds[collateralId];

@@ -48,12 +48,17 @@ library AllocationLib {
     /// @notice Allocate locks to tranches by proven order.
     /// @dev `locks` MUST already be validated and in proven order — `PriorityProofLib.validateSet`
     /// guarantees both. Walking them in that order is what makes the earliest proven lock win.
-    /// @param allowDemotion per-lock opt-in to taking a lower tranche rather than a refund.
-    function allocate(
-        T.VerifiedLock[] memory locks,
-        T.TrancheSizing memory sizing,
-        bool[] memory allowDemotion
-    ) internal pure returns (Award[] memory awards, Refund[] memory refunds) {
+    /// @param locks proven locks in proven order; each carries its own `allowDemotion` consent
+    /// @param sizing the per-tranche caps the obligor posted
+    ///
+    /// @dev Consent is read from the lock rather than passed alongside it. As a parallel array it
+    /// was supplied by whoever proved the race, which let a third party consent on a financier's
+    /// behalf to holding riskier paper.
+    function allocate(T.VerifiedLock[] memory locks, T.TrancheSizing memory sizing)
+        internal
+        pure
+        returns (Award[] memory awards, Refund[] memory refunds)
+    {
         uint256 n = locks.length;
         Award[] memory aBuf = new Award[](n * 3); // a demoted lock can span at most 3 tranches
         Refund[] memory rBuf = new Refund[](n);
@@ -75,7 +80,7 @@ library AllocationLib {
             }
 
             // Lower tranches only if this financier explicitly consented.
-            if (unseated > 0 && allowDemotion[i]) {
+            if (unseated > 0 && l.allowDemotion) {
                 for (uint8 t = startIdx + 1; t < 3 && unseated > 0; ++t) {
                     uint256 more = _seat(aBuf, aCount, remaining, l, t, unseated);
                     if (more > 0) {

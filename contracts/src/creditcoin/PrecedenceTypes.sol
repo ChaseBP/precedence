@@ -49,6 +49,10 @@ library PrecedenceTypes {
         uint64 raceNonce;
         /// @dev The precompile does NOT check this. The dApp must.
         uint8 receiptStatus;
+        /// @dev The financier's own consent, read out of the Lock event they signed. It used to be
+        /// a settle-time parameter, which meant whoever chose to prove a race also chose whether
+        /// each financier had agreed to hold riskier paper. Consent is not a prover's to give.
+        bool allowDemotion;
     }
 
     /// @notice Per-tranche capacity of a facility.

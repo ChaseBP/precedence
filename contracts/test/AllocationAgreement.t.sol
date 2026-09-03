@@ -46,8 +46,12 @@ contract AllocationAgreementTest is Test {
     }
 
     function _lock(address who, PriorityVault.Tranche t, uint256 dollars) internal {
+        _lock(who, t, dollars, false);
+    }
+
+    function _lock(address who, PriorityVault.Tranche t, uint256 dollars, bool allowDemotion) internal {
         vm.prank(who);
-        vault.lock(COL, t, dollars * D);
+        vault.lock(COL, t, dollars * D, allowDemotion);
     }
 
     /// @dev The exact shape of the live race that exposed the divergence: two rivals for SENIOR,
@@ -77,14 +81,12 @@ contract AllocationAgreementTest is Test {
                 txIndex: i,
                 seq: i + 1,
                 raceNonce: 1,
-                receiptStatus: 1
+                receiptStatus: 1,
+                allowDemotion: false
             });
         }
-        (AllocationLib.Award[] memory awards,) = AllocationLib.allocate(
-            locks,
-            T.TrancheSizing({senior: caps[0], junior: caps[1], subordinate: caps[2]}),
-            new bool[](4)
-        );
+        (AllocationLib.Award[] memory awards,) = AllocationLib.allocate(locks,
+            T.TrancheSizing({senior: caps[0], junior: caps[1], subordinate: caps[2]}));
 
         // ── compare, lock by lock ──
         for (uint256 i = 0; i < 4; ++i) {
@@ -130,14 +132,12 @@ contract AllocationAgreementTest is Test {
                 txIndex: i,
                 seq: i + 1,
                 raceNonce: 1,
-                receiptStatus: 1
+                receiptStatus: 1,
+                allowDemotion: false
             });
         }
-        (AllocationLib.Award[] memory awards,) = AllocationLib.allocate(
-            locks,
-            T.TrancheSizing({senior: caps[0], junior: caps[1], subordinate: caps[2]}),
-            new bool[](3)
-        );
+        (AllocationLib.Award[] memory awards,) = AllocationLib.allocate(locks,
+            T.TrancheSizing({senior: caps[0], junior: caps[1], subordinate: caps[2]}));
 
         for (uint256 i = 0; i < 3; ++i) {
             uint256 fromEngine;
@@ -174,5 +174,71 @@ contract AllocationAgreementTest is Test {
         vm.prank(obligor);
         vault.draw(COL, 5_550 * D); // exactly the allocation is fine
         assertEq(pusd.balanceOf(obligor), 5_550 * D);
+    }
+
+    /// @dev Consent travels with the lock, so the vault and the engine honour the SAME opt-in.
+    /// Before consent moved onto the lock, the vault could not honour it at all — it had no idea
+    /// who had agreed to what — so a demoted financier's refundable balance was wrong by
+    /// construction.
+    function test_vaultAndEngineAgreeWhenAFinancierOptedIntoDemotion() public {
+        uint256[3] memory caps = [5_100 * D, 2_550 * D, 850 * D];
+        vm.prank(obligor);
+        vault.openRace(COL, 8_500 * D, caps, 10 minutes);
+
+        _lock(financiers[0], PriorityVault.Tranche.SENIOR, 5_100); // fills SENIOR
+        _lock(financiers[1], PriorityVault.Tranche.SENIOR, 4_000, true); // opted in: cascades down
+
+        T.VerifiedLock[] memory locks = new T.VerifiedLock[](2);
+        uint256[2] memory amounts = [5_100 * D, 4_000 * D];
+        bool[2] memory consent = [false, true];
+        for (uint64 i = 0; i < 2; ++i) {
+            locks[i] = T.VerifiedLock({
+                financier: financiers[i],
+                tranche: T.Tranche.SENIOR,
+                amount: amounts[i],
+                token: address(pusd),
+                emittedBy: address(vault),
+                height: 300 + i,
+                txIndex: i,
+                seq: i + 1,
+                raceNonce: 1,
+                receiptStatus: 1,
+                allowDemotion: consent[i]
+            });
+        }
+        (AllocationLib.Award[] memory awards,) = AllocationLib.allocate(
+            locks, T.TrancheSizing({senior: caps[0], junior: caps[1], subordinate: caps[2]})
+        );
+
+        for (uint256 i = 0; i < 2; ++i) {
+            uint256 fromEngine;
+            for (uint256 a = 0; a < awards.length; ++a) {
+                if (awards[a].financier == financiers[i]) fromEngine += awards[a].amount;
+            }
+            assertEq(vault.allocatedAmount(COL, i), fromEngine, "demotion must be honoured identically");
+        }
+        // 2,550 junior + 850 subordinate = 3,400 seated; 600 of the 4,000 comes back.
+        assertEq(vault.allocatedAmount(COL, 1), 3_400 * D, "cascaded into both lower tranches");
+    }
+
+    /// @dev The point of moving consent onto the lock: a financier who did NOT opt in is refunded
+    /// rather than demoted, and no third party can change that after the fact.
+    function test_withoutConsentTheOverflowIsRefundedNotDemoted() public {
+        uint256[3] memory caps = [5_100 * D, 2_550 * D, 850 * D];
+        vm.prank(obligor);
+        vault.openRace(COL, 8_500 * D, caps, 10 minutes);
+
+        _lock(financiers[0], PriorityVault.Tranche.SENIOR, 5_100);
+        _lock(financiers[1], PriorityVault.Tranche.SENIOR, 4_000); // no consent
+
+        assertEq(vault.allocatedAmount(COL, 1), 0, "not seated anywhere it did not agree to");
+
+        vm.prank(obligor);
+        vault.closeRace(COL);
+
+        uint256 before = pusd.balanceOf(financiers[1]);
+        vm.prank(financiers[1]);
+        vault.refund(COL, 1);
+        assertEq(pusd.balanceOf(financiers[1]) - before, 4_000 * D, "the whole bid comes back");
     }
 }

@@ -105,7 +105,8 @@ contract EngineLifecycleTest is Test {
             txIndex: idx,
             seq: seq,
             raceNonce: 1,
-            receiptStatus: 1
+            receiptStatus: 1,
+            allowDemotion: false
         });
     }
 
@@ -119,7 +120,7 @@ contract EngineLifecycleTest is Test {
 
         bool[] memory demote = new bool[](3);
         vm.prank(gate);
-        engine.settlePriority(collateralId, locks, demote);
+        engine.settlePriority(collateralId, locks);
     }
 
     function _draw() internal {
@@ -184,7 +185,7 @@ contract EngineLifecycleTest is Test {
 
         vm.prank(meridian);
         vm.expectRevert(PriorityEngine.NotGate.selector);
-        engine.settlePriority(collateralId, locks, demote);
+        engine.settlePriority(collateralId, locks);
     }
 
     // ═══════════════════════════ performing payoff ═══════════════════════════
@@ -352,7 +353,7 @@ contract EngineLifecycleTest is Test {
         locks[2] = _lock(novum, T.Tranche.SUBORDINATE, 850 * D, 6182101, 41, 3);
         bool[] memory demote = new bool[](3);
         vm.prank(gate);
-        engine.settlePriority(collateralId, locks, demote);
+        engine.settlePriority(collateralId, locks);
         _draw();
 
         vm.warp(block.timestamp + 91 days);
@@ -418,7 +419,7 @@ contract EngineLifecycleTest is Test {
         locks[2] = _lock(novum, T.Tranche.SUBORDINATE, 850 * D, 6182101, 41, 3);
         bool[] memory demote = new bool[](3);
         vm.prank(gate);
-        engine.settlePriority(collateralId, locks, demote);
+        engine.settlePriority(collateralId, locks);
         _draw();
 
         vm.prank(gate);
@@ -443,7 +444,7 @@ contract EngineLifecycleTest is Test {
         locks[0] = _lock(meridian, T.Tranche.SENIOR, 5_100 * D, 6182101, 17, 1);
         bool[] memory demote = new bool[](1);
         vm.prank(gate);
-        bare.settlePriority(collateralId, locks, demote);
+        bare.settlePriority(collateralId, locks);
         vm.prank(gate);
         bare.markDrawn(collateralId, 5_100 * D);
 

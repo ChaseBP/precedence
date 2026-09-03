@@ -50,8 +50,13 @@ contract PriorityVaultTest is Test {
     }
 
     function _lock(address who, PriorityVault.Tranche t, uint256 dollars) internal {
+        _lock(who, t, dollars, false);
+    }
+
+    /// @dev Consent to demotion is given by the financier in their own lock transaction.
+    function _lock(address who, PriorityVault.Tranche t, uint256 dollars, bool allowDemotion) internal {
         vm.prank(who);
-        vault.lock(COL, t, dollars * D);
+        vault.lock(COL, t, dollars * D, allowDemotion);
     }
 
     // ═══════════════════════════ decimals ═══════════════════════════
@@ -211,7 +216,7 @@ contract PriorityVaultTest is Test {
 
         vm.prank(meridian);
         vm.expectRevert(PriorityVault.RaceNotOpen.selector);
-        vault.lock(COL, PriorityVault.Tranche.SENIOR, 5_000 * D);
+        vault.lock(COL, PriorityVault.Tranche.SENIOR, 5_000 * D, false);
     }
 
     function test_revert_lockAfterDeadline() public {
@@ -220,7 +225,7 @@ contract PriorityVaultTest is Test {
 
         vm.prank(meridian);
         vm.expectRevert(PriorityVault.RaceNotOpen.selector);
-        vault.lock(COL, PriorityVault.Tranche.SENIOR, 5_000 * D);
+        vault.lock(COL, PriorityVault.Tranche.SENIOR, 5_000 * D, false);
     }
 
     function test_revert_strangerCannotOpenRace() public {
@@ -398,10 +403,13 @@ contract PriorityVaultTest is Test {
 
     /// @dev These constants are compiled into AttestationGate. If the event changes and this test
     /// is not updated, the gate silently stops finding Lock events — so pin them here.
+    /// @dev The gate matches logs on this exact hash, so a field added to the event silently
+    /// breaks every proof unless both sides move together. This test caught precisely that when
+    /// `allowDemotion` was added, which is what it is for.
     function test_eventSignaturesArePinned() public view {
         assertEq(
             vault.lockEventSignature(),
-            keccak256("Lock_(bytes32,address,uint8,uint256,address,uint64,uint64,uint64)")
+            keccak256("Lock_(bytes32,address,uint8,uint256,address,uint64,uint64,uint64,bool)")
         );
         assertEq(vault.repaymentEventSignature(), keccak256("Repayment(bytes32,address,uint256,address)"));
     }

@@ -51,7 +51,8 @@ contract PriorityProofLibTest is Test {
             txIndex: txIndex,
             seq: seq,
             raceNonce: 1,
-            receiptStatus: 1
+            receiptStatus: 1,
+            allowDemotion: false
         });
     }
 

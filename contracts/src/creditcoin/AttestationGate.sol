@@ -46,7 +46,7 @@ contract AttestationGate {
 
     /// @dev Must match `PriorityVault.lockEventSignature()`. Pinned by a test on both sides.
     bytes32 public constant LOCK_EVENT_SIG =
-        keccak256("Lock_(bytes32,address,uint8,uint256,address,uint64,uint64,uint64)");
+        keccak256("Lock_(bytes32,address,uint8,uint256,address,uint64,uint64,uint64,bool)");
     bytes32 public constant REPAYMENT_EVENT_SIG = keccak256("Repayment(bytes32,address,uint256,address)");
     bytes32 public constant DRAW_EVENT_SIG = keccak256("Draw(bytes32,address,uint256)");
 
@@ -122,16 +122,19 @@ contract AttestationGate {
     /// @param collateralId  the collateral being financed
     /// @param proof         heights, encoded transactions, Merkle proofs, and ONE shared
     ///                      continuity proof covering the whole batch
-    /// @param allowDemotion per-lock opt-in to a lower tranche instead of a refund
     ///
     /// @dev Ordering is VERIFIED here, not trusted from the caller. Each `txIndex` is re-derived
     /// from its Merkle proof and the sequence is required to strictly increase, so a prover cannot
     /// present the race in a self-serving order.
-    function settleRace(bytes32 collateralId, RaceProof calldata proof, bool[] calldata allowDemotion)
-        external
-    {
+    ///
+    /// @dev Demotion consent is NOT a parameter. It used to be a `bool[]` the prover supplied,
+    /// which meant whoever chose to prove a race also chose whether each financier had agreed to
+    /// hold riskier paper than they bid for. It now comes out of the Lock event each financier's
+    /// own transaction emitted, so the only person who can give that consent is the one whose
+    /// capital it is.
+    function settleRace(bytes32 collateralId, RaceProof calldata proof) external {
         uint256 n = proof.encodedTxs.length;
-        if (n != proof.heights.length || n != proof.merkleProofs.length || n != allowDemotion.length) {
+        if (n != proof.heights.length || n != proof.merkleProofs.length) {
             revert LengthMismatch();
         }
 
@@ -148,7 +151,7 @@ contract AttestationGate {
         P.validateSet(locks, registry.vaultOf(collateralId), settlementToken);
         if (!P.fitsOneContinuityProof(locks)) revert ContinuityWindowExceeded();
 
-        engine.settlePriority(collateralId, locks, allowDemotion);
+        engine.settlePriority(collateralId, locks);
 
         emit RaceSettled(collateralId, n, locks[0].height, locks[n - 1].height);
     }
@@ -205,9 +208,10 @@ contract AttestationGate {
         if (bytes32(lg.topics[1]) != collateralId) revert CollateralMismatch(index);
         address financier = address(uint160(uint256(lg.topics[2])));
 
-        // data: (uint8 tranche, uint256 amount, address token, uint64 raceNonce, uint64 seq, uint64 blockNumber)
-        (uint8 tranche, uint256 amount, address token, uint64 raceNonce, uint64 seq,) =
-            abi.decode(lg.data, (uint8, uint256, address, uint64, uint64, uint64));
+        // data: (uint8 tranche, uint256 amount, address token, uint64 raceNonce, uint64 seq,
+        //        uint64 blockNumber, bool allowDemotion)
+        (uint8 tranche, uint256 amount, address token, uint64 raceNonce, uint64 seq,, bool allowDemotion) =
+            abi.decode(lg.data, (uint8, uint256, address, uint64, uint64, uint64, bool));
 
         lock = T.VerifiedLock({
             financier: financier,
@@ -220,7 +224,9 @@ contract AttestationGate {
             txIndex: txIndex,
             seq: seq,
             raceNonce: raceNonce,
-            receiptStatus: receipt.receiptStatus
+            receiptStatus: receipt.receiptStatus,
+            // Straight from the event the financier's own transaction emitted.
+            allowDemotion: allowDemotion
         });
     }
 
