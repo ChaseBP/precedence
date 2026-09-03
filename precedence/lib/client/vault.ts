@@ -21,7 +21,7 @@ export interface VaultAddresses {
   PriorityVault: Address;
 }
 
-/** Race state as the vault itself reports it. */
+/** Race and servicing state as the vault itself reports it. */
 export interface VaultRaceState {
   registered: boolean;
   raceOpen: boolean;
@@ -31,6 +31,12 @@ export interface VaultRaceState {
   totalLockedUsd: number;
   raceDeadline: number;
   secondsLeft: number;
+  /** The obligor of record on the VAULT. Role is derived from this, never from a stored profile. */
+  obligor: Address;
+  totalDrawnUsd: number;
+  totalRepaidUsd: number;
+  /** Draw deadline. Zero until the race closes. */
+  drawDeadline: number;
 }
 
 export interface LenderPosition {
@@ -65,13 +71,17 @@ export async function readRaceState(vault: Address, collateralId: Hex): Promise<
     functionName: "getCollateral",
     args: [collateralId],
   })) as {
+    obligor: Address;
     registered: boolean;
     raceOpen: boolean;
     raceNonce: bigint;
     lockCount: bigint;
     facilitySize: bigint;
     raceDeadline: bigint;
+    drawDeadline: bigint;
     totalLocked: bigint;
+    totalDrawn: bigint;
+    totalRepaid: bigint;
   };
 
   const deadline = Number(c.raceDeadline);
@@ -84,7 +94,199 @@ export async function readRaceState(vault: Address, collateralId: Hex): Promise<
     totalLockedUsd: toUsd(c.totalLocked),
     raceDeadline: deadline,
     secondsLeft: Math.max(0, deadline - Math.floor(Date.now() / 1000)),
+    obligor: c.obligor,
+    totalDrawnUsd: toUsd(c.totalDrawn),
+    totalRepaidUsd: toUsd(c.totalRepaid),
+    drawDeadline: Number(c.drawDeadline),
   };
+}
+
+/** One of the connected wallet's own locks, and what it can still reclaim. */
+export interface MyLock {
+  index: number;
+  tranche: 0 | 1 | 2;
+  amountUsd: number;
+  allocatedUsd: number;
+  refundedUsd: number;
+  /** What `refund(collateralId, index)` would return right now. */
+  refundableUsd: number;
+  seq: number;
+}
+
+/**
+ * Servicing totals plus the connected wallet's own locks.
+ *
+ * @remarks `allocatedAmount` is the VAULT's view: it fills locks first-come by index up to
+ * `facilitySize`, with no notion of tranches. The tranche-aware waterfall runs on Creditcoin from
+ * the proven ordering. Both matter — the vault decides what is drawable and refundable in pUSD,
+ * Creditcoin decides who holds which rank — and conflating them would misreport one or the other.
+ */
+export async function readMyLocks(
+  vault: Address,
+  collateralId: Hex,
+  raceNonce: number,
+  lockCount: number,
+  who: Address,
+  abandoned: boolean,
+): Promise<MyLock[]> {
+  const pc = publicClient();
+  const out: MyLock[] = [];
+
+  for (let i = 0; i < lockCount; i++) {
+    const l = (await pc.readContract({
+      address: vault,
+      abi: PriorityVault_ABI,
+      functionName: "lockAtRace",
+      args: [collateralId, BigInt(raceNonce), BigInt(i)],
+    })) as { financier: Address; tranche: number; amount: bigint; refunded: bigint; seq: bigint };
+
+    if (l.financier.toLowerCase() !== who.toLowerCase()) continue;
+
+    const allocated = abandoned
+      ? 0n
+      : ((await pc.readContract({
+          address: vault,
+          abi: PriorityVault_ABI,
+          functionName: "allocatedAmount",
+          args: [collateralId, BigInt(i)],
+        })) as bigint);
+
+    out.push({
+      index: i,
+      tranche: l.tranche as 0 | 1 | 2,
+      amountUsd: toUsd(l.amount),
+      allocatedUsd: toUsd(allocated),
+      refundedUsd: toUsd(l.refunded),
+      refundableUsd: toUsd(l.amount - allocated - l.refunded),
+      seq: Number(l.seq),
+    });
+  }
+  return out;
+}
+
+/**
+ * What the vault has actually allocated, which is what caps a draw.
+ *
+ * @remarks NOT the facility size. If lenders locked less than the borrower asked for, allocation
+ * stops at what arrived — so showing `facilitySize - drawn` as "drawable" would offer a number the
+ * contract rejects, and the borrower would meet a revert instead of a limit.
+ */
+export async function readTotalAllocated(vault: Address, collateralId: Hex): Promise<number> {
+  return toUsd(
+    (await publicClient().readContract({
+      address: vault,
+      abi: PriorityVault_ABI,
+      functionName: "totalAllocated",
+      args: [collateralId],
+    })) as bigint,
+  );
+}
+
+export async function readIsAbandoned(vault: Address, collateralId: Hex): Promise<boolean> {
+  return (await publicClient().readContract({
+    address: vault,
+    abi: PriorityVault_ABI,
+    functionName: "isAbandoned",
+    args: [collateralId],
+  })) as boolean;
+}
+
+/** Draw allocated capital. Obligor only, and only once the race has closed. */
+export async function drawCapital(
+  wallet: WalletClient,
+  vault: Address,
+  collateralId: Hex,
+  amountUsd: number,
+): Promise<Hex> {
+  const account = wallet.account;
+  if (!account) throw new Error("wallet has no account");
+  const hash = await wallet.writeContract({
+    address: vault,
+    abi: PriorityVault_ABI,
+    functionName: "draw",
+    args: [collateralId, toUnits(amountUsd)],
+    account,
+    chain: sepolia,
+  });
+  const r = await publicClient().waitForTransactionReceipt({ hash });
+  if (r.status !== "success") throw new Error(`draw reverted: ${hash}`);
+  return hash;
+}
+
+/**
+ * Repay into the vault.
+ *
+ * @remarks The figure the WATERFALL uses is decoded from this transaction on Creditcoin, not from
+ * anything asserted off-chain — which is why the obligor cannot overstate a repayment and there is
+ * no adjuster to trust. This call only moves the tokens and emits the event a proof will read.
+ */
+export async function repayFacility(
+  wallet: WalletClient,
+  addrs: VaultAddresses,
+  collateralId: Hex,
+  amountUsd: number,
+  onStage: (s: "approving" | "repaying") => void,
+): Promise<Hex> {
+  const account = wallet.account;
+  if (!account) throw new Error("wallet has no account");
+  const pc = publicClient();
+  const amount = toUnits(amountUsd);
+
+  const allowance = (await pc.readContract({
+    address: addrs.PUSD,
+    abi: PUSD_ABI,
+    functionName: "allowance",
+    args: [account.address, addrs.PriorityVault],
+  })) as bigint;
+
+  if (allowance < amount) {
+    onStage("approving");
+    const a = await wallet.writeContract({
+      address: addrs.PUSD,
+      abi: PUSD_ABI,
+      functionName: "approve",
+      args: [addrs.PriorityVault, amount],
+      account,
+      chain: sepolia,
+    });
+    const ar = await pc.waitForTransactionReceipt({ hash: a });
+    if (ar.status !== "success") throw new Error(`approval reverted: ${a}`);
+  }
+
+  onStage("repaying");
+  const hash = await wallet.writeContract({
+    address: addrs.PriorityVault,
+    abi: PriorityVault_ABI,
+    functionName: "repay",
+    args: [collateralId, amount],
+    account,
+    chain: sepolia,
+  });
+  const r = await pc.waitForTransactionReceipt({ hash });
+  if (r.status !== "success") throw new Error(`repay reverted: ${hash}`);
+  return hash;
+}
+
+/** Reclaim capital that was never allocated — or all of it, if the facility was abandoned. */
+export async function refundLock(
+  wallet: WalletClient,
+  vault: Address,
+  collateralId: Hex,
+  index: number,
+): Promise<Hex> {
+  const account = wallet.account;
+  if (!account) throw new Error("wallet has no account");
+  const hash = await wallet.writeContract({
+    address: vault,
+    abi: PriorityVault_ABI,
+    functionName: "refund",
+    args: [collateralId, BigInt(index)],
+    account,
+    chain: sepolia,
+  });
+  const r = await publicClient().waitForTransactionReceipt({ hash });
+  if (r.status !== "success") throw new Error(`refund reverted: ${hash}`);
+  return hash;
 }
 
 export async function readLenderPosition(

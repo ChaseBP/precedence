@@ -17,6 +17,7 @@ import { Badge, Card, Eyebrow, Stat, Why } from "@/components/ui";
 import { FadeUp } from "@/components/motion/Reveal";
 import { LoadError } from "@/components/LoadError";
 import { LockCapital } from "@/components/LockCapital";
+import { ServiceFacility } from "@/components/ServiceFacility";
 import type { CollateralAsset, Tranche } from "@/lib/precedence/types";
 
 export default function FacilityPage() {
@@ -173,9 +174,15 @@ export default function FacilityPage() {
         </Card>
       </section>
 
-      {/* ── the lender's action ── */}
-      <section className="mt-5 mb-10">
+      {/* ── actions, whichever side of the book you are on ── */}
+      <section className="mt-5">
         <LockCapital collateral={c as CollateralAsset} />
+      </section>
+
+      {/* Renders nothing unless the connected wallet is the vault's obligor or holds a
+          reclaimable lock — role comes from chain state, not from a profile. */}
+      <section className="mt-5 mb-10">
+        <ServiceFacility collateral={c as CollateralAsset} />
       </section>
     </div>
   );
