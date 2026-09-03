@@ -6,7 +6,8 @@ const OUT = "/home/raven_bp/projects/ctc/analysis/ui/shots";
 mkdirSync(OUT, { recursive: true });
 
 // /agents, /deals and /history were orphan re-exports of other pages and are deleted.
-const ROUTES = ["/", "/collateral", "/race", "/financiers", "/dashboard", "/registry", "/portfolio"];
+const ROUTES = ["/", "/collateral", "/race", "/financiers", "/dashboard", "/registry",
+                "/registry/new", "/portfolio"];
 // Breakpoint boundaries on purpose: Tailwind sm/md/lg/xl/2xl are 640/768/1024/1280/1536.
 const WIDTHS = [360, 414, 639, 640, 767, 768, 1023, 1024, 1279, 1280, 1535, 1536, 1920];
 
@@ -45,7 +46,18 @@ for (const width of WIDTHS) {
           });
         }
       }
+      const text = document.body.innerText || "";
+      const broke = [
+        "This page couldn't load",
+        "This page couldn\u2019t load",
+        "Application error",
+        "Unhandled Runtime Error",
+        "ChunkLoadError",
+        "500",
+      ].find((needle) => text.includes(needle) && text.length < 400);
+
       return {
+        errorPage: broke ?? null,
         scrollWidth: de.scrollWidth,
         clientWidth: de.clientWidth,
         bodyText: (document.body.innerText || "").trim().length,
@@ -60,6 +72,12 @@ for (const width of WIDTHS) {
         detail: `scrollWidth ${m.scrollWidth} > clientWidth ${m.clientWidth} (+${m.scrollWidth - m.clientWidth}px); ${m.overflowCount} el(s); first: ${JSON.stringify(m.overflowing.slice(0,3))}` });
     }
     if (m.bodyText < 40) findings.push({ route, width, kind: "BLANK", detail: `only ${m.bodyText} chars of text` });
+    // Next's own error page renders ~60 characters of text, so it sails past the blank check. A
+    // broken chunk once produced a page reading "This page couldn't load" that this crawl scored
+    // as healthy — check for the error boundary explicitly, not just for emptiness.
+    if (m.errorPage) {
+      findings.push({ route, width, kind: "ERROR_PAGE", detail: `Next error boundary rendered: ${m.errorPage}` });
+    }
     for (const e of errors) findings.push({ route, width, kind: "CONSOLE", detail: e });
 
     // Screenshot a representative set of widths only, to keep the output reviewable.

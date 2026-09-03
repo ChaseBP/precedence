@@ -12,6 +12,7 @@ import { getRace, getEventsSince, resetStore, listCollateral } from "../lib/prec
 import { isTerminal, PHASE_LABELS } from "../lib/precedence/orchestrator/lifecycle";
 import { assertSeniorityRespected } from "../lib/precedence/domain/waterfall";
 import { ratifyExtraction } from "../lib/precedence/domain/ratify";
+import { validateTerms } from "../lib/precedence/domain/collateral";
 import { checkSeqContiguity, checkStrictOrdering, sortByProvenOrder } from "../lib/precedence/domain/lock";
 import type { PriorityRace, RaceScenario } from "../lib/precedence/types";
 
@@ -261,6 +262,39 @@ if (!br) {
     "a corroborated field is still accepted alongside a flagged one",
     wrongCustodian.accepted.faceValueUsd === registered.faceValueUsd,
   );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Facility terms — the two rules CollateralRegistry.postFacilityTerms enforces
+//
+// A borrower posts these and the settlement engine reads them back, so a facility the contract
+// would reject must never be accepted anywhere upstream. These assert the off-chain validator
+// agrees with the on-chain one; if they drift, a borrower fills in a form and then eats a revert.
+// ══════════════════════════════════════════════════════════════════════
+{
+  console.log("\n── facility terms ──\n");
+  const col = (await listCollateral()).find((c) => c.faceValueUsd === 10_000)!;
+  const advance = Math.round(col.faceValueUsd * (1 - col.haircutPct / 100));
+  const rates = { seniorRatePct: 5, juniorRatePct: 10, subordinateRatePct: 18 };
+
+  check("caps summing exactly to the advance are valid", validateTerms(col,
+    { seniorCapUsd: 5_100, juniorCapUsd: 2_550, subordinateCapUsd: 850, ...rates }).ok,
+    `advance is ${advance}`);
+
+  const over = validateTerms(col,
+    { seniorCapUsd: advance, juniorCapUsd: 1, subordinateCapUsd: 0, ...rates });
+  check("caps one dollar over the advance are rejected", !over.ok);
+  check("the rejection names the haircut as the reason",
+    over.problems.some((p) => p.includes("haircut")), over.problems.join(" | "));
+
+  check("senior priced above junior is rejected", !validateTerms(col,
+    { seniorCapUsd: 5_100, juniorCapUsd: 2_550, subordinateCapUsd: 850,
+      seniorRatePct: 12, juniorRatePct: 10, subordinateRatePct: 18 }).ok);
+  check("equal rates across tranches are allowed", validateTerms(col,
+    { seniorCapUsd: 5_100, juniorCapUsd: 2_550, subordinateCapUsd: 850,
+      seniorRatePct: 9, juniorRatePct: 9, subordinateRatePct: 9 }).ok);
+  check("a zero-sized facility is rejected", !validateTerms(col,
+    { seniorCapUsd: 0, juniorCapUsd: 0, subordinateCapUsd: 0, ...rates }).ok);
 }
 
 // ══════════════════════════════════════════════════════════════════════
