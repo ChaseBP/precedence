@@ -455,6 +455,29 @@ a:focus:not(:focus-visible) {
   outline: none;
 }
 
+/* .btn-accent and .btn-ghost are clip-path'd, and clip-path clips an `outline` away entirely —
+   so the ring above was invisible on exactly the primary buttons a keyboard user reaches first.
+   A drop-shadow follows the clipped silhouette instead, which is the same reason the hover glow
+   already uses one rather than a box-shadow. Doubled for a ring that reads on both themes. */
+.btn-accent:focus-visible,
+.btn-ghost:focus-visible {
+  outline: none;
+  filter: drop-shadow(0 0 0.5px var(--accent)) drop-shadow(0 0 3px var(--accent))
+    drop-shadow(0 0 7px var(--accent-glow));
+}
+
+/* Same problem, same fix, for the inline-styled accent buttons that are not .btn-* at all: give
+   them a real offset ring since nothing clips them. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
