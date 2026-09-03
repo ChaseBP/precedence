@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Clock, FileText, Landmark, Layers, Loader2, Radar, ShieldCheck, Sparkles, TrendingUp, Warehouse } from "lucide-react";
 import type { Agent, CollateralAsset, RefinanceOpportunity } from "@/lib/precedence/types";
 import { api } from "@/lib/client/api";
-import { usd, pct, riskColor, timeOf } from "@/lib/client/format";
+import { usd, pct, riskColor, timeOf, encumbranceColor } from "@/lib/client/format";
 import { Badge, Card, Dot, Eyebrow } from "@/components/ui";
 import { Redacted } from "@/components/Redacted";
 import { Stagger, Item, FadeUp } from "@/components/motion/Reveal";
@@ -169,9 +169,14 @@ export default function CollateralPage() {
               {/* Wraps as a whole at narrow widths: two nowrap badges plus a long title cannot
                   share a 360px row, and `shrink-0` on the badge group only guaranteed the overflow
                   by preventing the wrap from ever triggering. */}
-              <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-                <div className="min-w-0 flex-1">
-                  <div className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight">
+              {/* Stacked below 640px. `flex-wrap` alone was not enough: the badges are
+                  whitespace-nowrap and demanded ~150px, so `min-w-0 flex-1` let the title column
+                  collapse to a few characters — the headline wrapped to six lines BEHIND the
+                  badges and the obligor line broke one word per line. Stacking gives the title the
+                  full width it needs. */}
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-x-3">
+                <div className="min-w-0 sm:flex-1">
+                  <div className="font-[family-name:var(--font-display)] text-xl font-bold leading-tight sm:text-2xl">
                     {hero.title}
                   </div>
                   <div className="eyebrow mt-0.5">
@@ -179,9 +184,13 @@ export default function CollateralPage() {
                   </div>
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <Badge color={hero.verifiedClearTitle ? "var(--state-clear)" : "var(--state-encumbered)"}>
-                    {hero.verifiedClearTitle ? "CLEAR TITLE" : hero.status}
-                  </Badge>
+                  {/* The hero said "CLEAR TITLE" while sibling cards with the same state said
+                      "CLEAR", which looked like two different states. They are also two different
+                      FACTS: `status` is the encumbrance state, `verifiedClearTitle` is whether this
+                      registry holds a prior lien. Showing the status consistently keeps them
+                      distinct — the title claim, with its registry-scoped caveat, lives on the
+                      facility page where there is room to qualify it. */}
+                  <Badge color={encumbranceColor(hero.status)}>{hero.status}</Badge>
                   <Badge color={riskColor(hero.riskLabel)}>{hero.riskLabel} risk</Badge>
                 </div>
               </div>
@@ -189,9 +198,10 @@ export default function CollateralPage() {
               <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
                 <div>
                   <Eyebrow>Target Clearing Rate</Eyebrow>
-                  <div className="num text-5xl font-bold text-gradient leading-[1.15] pb-0.5">{pct(hero.targetRatePct)}</div>
+                  <div className="num text-4xl font-bold text-gradient leading-[1.15] pb-0.5 sm:text-5xl">{pct(hero.targetRatePct)}</div>
                 </div>
-                <div className="flex gap-6 pb-1 text-sm">
+                {/* Was a non-wrapping 3-across row that ran off a 360px card. */}
+                <div className="flex flex-wrap gap-x-6 gap-y-2 pb-1 text-sm">
                   <div>
                     <Eyebrow>Face Value</Eyebrow>
                     <div className="mono mt-0.5 font-semibold">{usd(hero.faceValueUsd)}</div>
@@ -225,7 +235,8 @@ export default function CollateralPage() {
                     href={`/collateral/${hero.id}`}
                     className="btn-ghost flex items-center gap-1.5 rounded-lg px-3.5 py-2.5 text-sm font-semibold"
                   >
-                    <Layers size={14} /> View facility &amp; bid
+                    <Layers size={14} />
+                    {/^0x[0-9a-fA-F]{64}$/.test(hero.docHash) ? "View facility & bid" : "View sample facility"}
                   </Link>
                   <button
                     onClick={() => openRace(hero)}
@@ -260,8 +271,12 @@ export default function CollateralPage() {
             <Item key={c.id}>
               <Card className="flex h-full flex-col justify-between gap-3 p-5">
                 <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="font-[family-name:var(--font-display)] font-semibold">{c.title}</div>
+                  {/* Stacked below 640px. Side by side, a long title wrapped to six lines and ran
+                      underneath the badges, printing one over the other. */}
+                  <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                    <div className="min-w-0 font-[family-name:var(--font-display)] text-[15px] font-semibold leading-tight sm:text-base">
+                      {c.title}
+                    </div>
                     <Badge color={c.verifiedClearTitle ? "var(--state-clear)" : "var(--state-encumbered)"}>
                       {c.status}
                     </Badge>
@@ -305,11 +320,16 @@ export default function CollateralPage() {
                 </div>
 
                 <div className="flex flex-col gap-2 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+                  {/* A sample facility's document hash is a visible placeholder, so no vault
+                      position exists and no bid is possible. Promising "& bid" and then refusing
+                      inside is the kind of small dishonesty that costs trust in everything else on
+                      the page. */}
                   <Link
                     href={`/collateral/${c.id}`}
                     className="btn-ghost flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold"
                   >
-                    <Layers size={13} /> View facility &amp; bid
+                    <Layers size={13} />
+                    {/^0x[0-9a-fA-F]{64}$/.test(c.docHash) ? "View facility & bid" : "View sample facility"}
                   </Link>
                   <button
                     onClick={() => openRace(c)}
