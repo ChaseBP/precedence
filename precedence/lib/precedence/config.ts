@@ -152,7 +152,10 @@ export interface PrecedenceDeps {
   modeNotes: { sepolia: string; creditcoin: string };
 }
 
-const g = globalThis as unknown as { __precedenceDeps?: PrecedenceDeps };
+const g = globalThis as unknown as {
+  __precedenceDeps?: PrecedenceDeps;
+  __precedenceSimDeps?: PrecedenceDeps;
+};
 
 function buildSepolia(cfg: PrecedenceConfig, addrs: DeployedAddresses): { client: SepoliaClient; note: string } {
   if (cfg.sepoliaMode !== "chain") {
@@ -218,6 +221,41 @@ function buildCreditcoin(
   }
 }
 
+/**
+ * Adapters for a SCRIPTED race, which is always a simulation.
+ *
+ * @remarks A scripted race is a walkthrough: it runs in seconds against fixture collateral. A real
+ * settlement needs a lock proven on Sepolia and 6.5-9.3 minutes of attestation, so it cannot be
+ * what a button produces — that is exactly why the worker exists.
+ *
+ * Reads stay live. `getDeps()` still honours the env, so the registry, the badge and the facility
+ * pages show the contracts that are actually deployed. Only the scripted run is simulated, and it
+ * is labelled as such.
+ *
+ * Without this split, turning Creditcoin reads live also pointed the scripted race at the chain,
+ * where it passed the fixture's slug id (`col-8802`) into a `bytes32` argument and died inside
+ * viem with a size mismatch — a type error surfacing a design mistake.
+ */
+export function getSimulationDeps(): PrecedenceDeps {
+  if (g.__precedenceSimDeps) return g.__precedenceSimDeps;
+
+  const config = getConfig();
+  const runtime = config.runtimeMode === "agent" ? new LlmRuntime({ apiKey: process.env.GEMINI_API_KEY ?? "" }) : new LocalRuntime();
+
+  g.__precedenceSimDeps = {
+    config,
+    sepolia: new MockSepoliaClient(),
+    creditcoin: new MockCreditcoinClient(),
+    runtime,
+    prover: new ProverWorker(),
+    modeNotes: {
+      sepolia: "simulated: a scripted walkthrough, not a chain transaction",
+      creditcoin: "simulated: a scripted walkthrough, not a chain transaction",
+    },
+  };
+  return g.__precedenceSimDeps;
+}
+
 export function getDeps(): PrecedenceDeps {
   if (g.__precedenceDeps) return g.__precedenceDeps;
 
@@ -248,4 +286,5 @@ export function getDeps(): PrecedenceDeps {
 
 export function resetDeps(): void {
   delete g.__precedenceDeps;
+  delete g.__precedenceSimDeps;
 }

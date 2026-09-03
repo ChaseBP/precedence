@@ -83,6 +83,26 @@ export class RequiresWorkerError extends Error {
   }
 }
 
+/**
+ * Reject anything that is not a real 32-byte collateral id, with a reason.
+ *
+ * @remarks Fixture collateral is keyed by a slug (`col-8802`) and carries a placeholder document
+ * hash, so it has no on-chain identity at all. Passing either into a `bytes32` argument used to
+ * die inside viem with "Size of bytes col-8802 (bytes8) does not match expected size (bytes32)" —
+ * a type error where the real problem is that the caller asked the chain about something that was
+ * never registered on it.
+ */
+function requireOnChainId(collateralId: string, operation: string): ViemHex {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(collateralId)) {
+    throw new Error(
+      `${operation} needs a collateral id registered on Creditcoin, but got "${collateralId}". ` +
+        `That is a sample facility — it has no on-chain registration, so there is nothing to read. ` +
+        `Register collateral from /registry/new to get an id the chain knows.`,
+    );
+  }
+  return collateralId as ViemHex;
+}
+
 export class ChainCreditcoinClient implements CreditcoinClient {
   private readonly publicClient: PublicClient;
   private readonly cfg: ChainCreditcoinConfig;
@@ -113,11 +133,12 @@ export class ChainCreditcoinClient implements CreditcoinClient {
 
   /** The trust anchor: the vault every proof for this collateral must have been emitted by. */
   async vaultOf(collateralId: string): Promise<Hex> {
+    const id = requireOnChainId(collateralId, "vaultOf");
     return (await this.publicClient.readContract({
       address: this.cfg.registryAddress,
       abi: CollateralRegistry_ABI,
       functionName: "vaultOf",
-      args: [collateralId as ViemHex],
+      args: [id],
     })) as Hex;
   }
 
@@ -195,6 +216,7 @@ export class ChainCreditcoinClient implements CreditcoinClient {
   }
 
   async getEncumbranceState(collateralId: string): Promise<{ state: string; activeLiens: number }> {
+    const id = requireOnChainId(collateralId, "getEncumbranceState");
     const [state, liens] = (await this.publicClient.readContract({
       address: this.cfg.registryAddress,
       abi: CollateralRegistry_ABI,

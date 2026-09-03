@@ -9,7 +9,7 @@
  * manual step cannot walk the race somewhere the protocol does not allow.
  */
 import type { Agent, EventLevel, LifecyclePhase, PriorityRace } from "../types";
-import { getDeps } from "../config";
+import { getSimulationDeps } from "../config";
 import { listAgents, getRace, saveRace } from "../store/repositories";
 import { emitEvent } from "./events";
 import { canTransition, isTerminal, nextPhase, PHASE_LABELS, trackOf } from "./lifecycle";
@@ -72,7 +72,9 @@ async function makeCtx(race: PriorityRace, agents: Agent[]): Promise<PhaseCtx> {
   return {
     race,
     agents,
-    deps: getDeps(),
+    // A scripted race is a walkthrough, so it runs against simulated adapters even when the
+    // registry reads are live. Real settlement is the worker's job and takes minutes.
+    deps: getSimulationDeps(),
     emit: async (level: EventLevel, message: string, data?: unknown) => {
       await emitEvent(race.id, race.status, level, message, data);
     },
