@@ -11,7 +11,7 @@
  * So this handles all four wallet states in one place: no wallet installed, not connected, on the
  * wrong chain, and connected. A page that needs a wallet renders this and cannot forget a branch.
  */
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { ConnectWallet } from "@/components/ConnectWallet";
 import { AlertTriangle, CheckCircle2, Wallet } from "lucide-react";
 import { Card } from "@/components/ui";
 import { CHAINS, shortAddress, useWallet, type ChainKey } from "@/lib/client/wallet";
@@ -57,7 +57,7 @@ export function ConnectPrompt({
             </div>
           </div>
           <div className="shrink-0">
-            <ConnectButton showBalance={false} chainStatus="none" label="Connect Wallet" />
+            <ConnectWallet />
           </div>
         </div>
       </Card>

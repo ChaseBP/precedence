@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import type { Address, Hex } from "viem";
 import { Badge, Card, Why } from "@/components/ui";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { ConnectWallet } from "@/components/ConnectWallet";
 import { useWallet } from "@/lib/client/wallet";
 import {
   approveAndLock,
@@ -397,7 +397,7 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
           // connect flow. And there is no longer a "wrong chain" branch: the write below carries
           // chainId, so the wallet is asked to move to Sepolia as part of signing.
           <div className="flex flex-wrap items-center gap-3">
-            <ConnectButton showBalance={false} chainStatus="none" label="Connect a wallet to bid" />
+            <ConnectWallet />
             <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
               Capital locks on Sepolia; your wallet will be asked to switch when you sign.
             </span>
