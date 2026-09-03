@@ -235,7 +235,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       {/* ── Desktop: persistent top navbar ── */}
       <header
-        className="glass-heavy sticky top-0 z-30 hidden h-16 items-center gap-4 overflow-hidden border-b px-5 md:flex"
+        className="glass-chrome sticky top-0 z-30 hidden h-16 items-center gap-4 overflow-hidden border-b px-5 md:flex"
         style={{ borderColor: "var(--border)" }}
       >
         <Link href="/collateral" className="flex min-w-0 shrink items-center gap-2.5">
@@ -301,7 +301,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
       {/* ── Mobile: top bar with hamburger ── */}
       <header
-        className="glass-heavy sticky top-0 z-30 flex items-center gap-2.5 overflow-hidden border-b px-3 py-3 md:hidden"
+        className="glass-chrome sticky top-0 z-30 flex items-center gap-2.5 overflow-hidden border-b px-3 py-2.5 md:hidden"
         style={{ borderColor: "var(--border)" }}
       >
         <button

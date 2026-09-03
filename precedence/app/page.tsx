@@ -179,7 +179,7 @@ export default function Landing() {
         <motion.p
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.9 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
           style={{ x: tagX, color: "var(--text-muted)", textWrap: "balance" }}
           className="mt-5 max-w-xl text-base leading-relaxed sm:text-lg"
         >
@@ -191,7 +191,10 @@ export default function Landing() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.15 }}
+          // Was delay: 1.15. The only navigation off the landing page was invisible for over a
+          // second after load — long enough for a visitor to conclude there is nothing to click.
+          // The reveal still reads as a sequence; it just does not withhold the way out.
+          transition={{ duration: 0.45, delay: 0.35 }}
           className="mt-9 flex w-full flex-col items-center gap-5"
         >
           <div className="flex w-full max-w-2xl items-center gap-4">
@@ -210,7 +213,37 @@ export default function Landing() {
             <span aria-hidden className="h-px min-w-6 flex-1" style={{ background: "linear-gradient(90deg, var(--border-strong), transparent)" }} />
           </div>
 
-          <div className="mono min-h-[1.2em] text-xs" style={{ color: "var(--text-faint)" }}>
+          {/* The landing page offered exactly one destination, so a visitor who did not want the
+              "command center" had nowhere to go and no idea what else existed. These name the two
+              sides of the protocol in the words a visitor would use. */}
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs">
+            {[
+              { href: "/collateral", label: "Browse facilities", hint: "Lend against real-world collateral" },
+              { href: "/registry/new", label: "Register collateral", hint: "Borrow against an asset you hold" },
+              { href: "/registry", label: "The registry", hint: "Every lien this protocol has recorded" },
+            ].map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                title={l.hint}
+                className="underline-offset-4 transition-colors hover:underline"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {l.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Was --text-faint and clipped hard at the edge mid-word. Muted reads on a projector,
+              and the fade mask makes the cut look deliberate rather than broken. */}
+          <div
+            className="mono min-h-[1.2em] max-w-full overflow-hidden whitespace-nowrap text-xs"
+            style={{
+              color: "var(--text-muted)",
+              maskImage: "linear-gradient(90deg, #000 0, #000 88%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(90deg, #000 0, #000 88%, transparent 100%)",
+            }}
+          >
             {line}
             {full !== null ? <span className="caret" style={{ color: "var(--accent)" }}>▌</span> : null}
           </div>
