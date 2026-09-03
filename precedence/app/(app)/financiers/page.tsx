@@ -87,7 +87,9 @@ export default function FinanciersPage() {
           <Loader2 className="animate-spin" size={16} /> Connecting to financier fleet…
         </div>
       ) : (
-        <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        // Was lg:grid-cols-3 with four agents, which stranded the fourth alone on a second row.
+        // Two columns give a balanced 2x2 at desktop widths.
+        <Stagger className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {agents.map((a) => (
             <Item key={a.id} className="h-full">
               <motion.div whileHover={{ y: -4, scale: 1.01 }} transition={{ duration: 0.2 }} className="h-full">
@@ -112,13 +114,21 @@ export default function FinanciersPage() {
                   <ReputationBar score={a.reputation.avgScore} count={a.reputation.count} />
 
                   <div className="grid grid-cols-2 gap-3 text-sm">
+                    {/* These are different quantities and the old labels did not say so, so a
+                        wallet holding slightly more than its own per-position cap read as a
+                        contradiction. They are a balance and a policy limit. */}
                     <div>
-                      <Eyebrow>Available Capital</Eyebrow>
+                      <Eyebrow>Wallet balance</Eyebrow>
                       <div className="mono mt-0.5 font-semibold">{usd(a.balanceUsd)}</div>
                     </div>
                     <div>
-                      <Eyebrow>Max / Position</Eyebrow>
+                      <Eyebrow>Cap per position</Eyebrow>
                       <div className="mono mt-0.5 font-semibold">{usd(a.policy.maxCapitalUsd)}</div>
+                      {a.balanceUsd > a.policy.maxCapitalUsd ? (
+                        <div className="text-[10px]" style={{ color: "var(--text-faint)" }}>
+                          policy limit, not a shortfall
+                        </div>
+                      ) : null}
                     </div>
                     <div>
                       <Eyebrow>Min Rate Floor</Eyebrow>

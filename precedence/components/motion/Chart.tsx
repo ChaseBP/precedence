@@ -33,6 +33,24 @@ export function AreaChart({
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
+      {/* Gridlines and a baseline. Without them this was an uncalibrated rising line: pretty, and
+          it told a reader nothing about magnitude — which on a page headed "Settlement Volume" is
+          worse than no chart, because it looks like data. The caller supplies the axis labels,
+          which it can do because it knows the units. */}
+      {[0.25, 0.5, 0.75].map((f) => (
+        <line
+          key={f}
+          x1={0}
+          x2={width}
+          y1={height * f}
+          y2={height * f}
+          stroke="var(--border)"
+          strokeWidth={1}
+          strokeDasharray="3 4"
+          opacity={0.55}
+        />
+      ))}
+      <line x1={0} x2={width} y1={height - 0.5} y2={height - 0.5} stroke="var(--border-strong)" strokeWidth={1} />
       <motion.path d={area} fill={`url(#area-${gid})`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.35 }} />
       <motion.path
         d={line}

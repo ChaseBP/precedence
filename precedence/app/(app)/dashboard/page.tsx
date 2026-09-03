@@ -144,7 +144,22 @@ export default function DashboardPage() {
         <Card className="p-5">
           <SectionTitle kicker="Financed Capital" title="Priority Settlement Volume" />
           {volumeSeries.length >= 2 ? (
-            <AreaChart points={volumeSeries} />
+            // The chart draws gridlines; the scale has to come from here, because only this page
+            // knows the series is dollars. A rising line with no magnitude was decoration that
+            // looked like data.
+            <div>
+              <div className="flex items-baseline justify-between text-[10.5px]" style={{ color: "var(--text-faint)" }}>
+                <span className="mono">{usd(Math.max(...volumeSeries))}</span>
+                <span>peak per race</span>
+              </div>
+              <AreaChart points={volumeSeries} />
+              <div className="mt-1 flex items-baseline justify-between text-[10.5px]" style={{ color: "var(--text-faint)" }}>
+                <span className="mono">{usd(Math.min(...volumeSeries))}</span>
+                <span className="mono">
+                  {volumeSeries.length} race{volumeSeries.length === 1 ? "" : "s"}, oldest to newest
+                </span>
+              </div>
+            </div>
           ) : (
             <div className="py-10 text-sm" style={{ color: "var(--text-faint)" }}>
               Run priority races from the Collateral Scanner to populate the trend graph.
@@ -163,16 +178,20 @@ export default function DashboardPage() {
               attestations.slice(0, 6).map((a) => (
                 <div
                   key={a.raceId}
-                  className="flex items-center justify-between rounded-lg border p-2.5 text-xs"
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border p-2.5 text-xs"
                   style={{ borderColor: "var(--border)" }}
                 >
-                  <div className="flex items-center gap-2">
+                  {/* Two lines on narrow screens rather than one wrapping row: the block number
+                      used to break mid-digit and collide with the timestamp, which makes a proof
+                      reference unreadable — and an unreadable block number is the one thing on
+                      this card a judge might want to check. */}
+                  <div className="flex min-w-0 items-center gap-2">
                     <Badge color={a.status === "confirmed" ? "var(--proof-verified)" : "var(--warn)"}>
                       {a.status.toUpperCase()}
                     </Badge>
-                    <span className="mono">Block #{a.sourceBlockNumber}</span>
+                    <span className="mono whitespace-nowrap">Block #{a.sourceBlockNumber}</span>
                   </div>
-                  <span className="mono" style={{ color: "var(--text-muted)" }}>
+                  <span className="mono whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
                     Score {a.score} · {dateOf(a.attestedAt)}
                   </span>
                 </div>

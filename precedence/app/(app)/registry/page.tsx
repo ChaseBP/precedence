@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Loader2, ChevronRight, ShieldCheck, FileText, CheckCircle2, Lock, Sparkles } from "lucide-react";
 import type { RaceSummary } from "@/lib/precedence/types";
@@ -11,13 +11,6 @@ import { LoadError } from "@/components/LoadError";
 import { Stagger, Item, FadeUp } from "@/components/motion/Reveal";
 
 type Filter = "all" | "settled" | "in-progress" | "rejected";
-
-const OUTCOME_COLOR: Record<string, string> = {
-  won: "var(--state-encumbered)",
-  settled: "var(--state-encumbered)",
-  rejected: "var(--text-faint)",
-  "in-progress": "var(--warn)",
-};
 
 export default function RegistryPage() {
   const [rows, setRows] = useState<RaceSummary[]>([]);
@@ -47,6 +40,16 @@ export default function RegistryPage() {
       cancelled = true;
     };
   }, []);
+
+  const countFor = useCallback(
+    (f: Filter) =>
+      f === "all"
+        ? rows.length
+        : f === "settled"
+          ? rows.filter((r) => r.outcome === "won").length
+          : rows.filter((r) => r.outcome === f).length,
+    [rows],
+  );
 
   const filtered = useMemo(() => {
     if (filter === "all") return rows;
@@ -81,6 +84,8 @@ export default function RegistryPage() {
       </FadeUp>
 
       <div className="mb-4 flex gap-2">
+        {/* Counts on the tabs. Two rows in a tall viewport looked like a page that had failed to
+            load; "All (2)" makes it read as the registry genuinely holding two records. */}
         {(["all", "settled", "in-progress", "rejected"] as Filter[]).map((f) => (
           <button
             key={f}
@@ -92,7 +97,7 @@ export default function RegistryPage() {
               color: filter === f ? "var(--text)" : "var(--text-muted)",
             }}
           >
-            {f}
+            {f} ({countFor(f)})
           </button>
         ))}
       </div>
