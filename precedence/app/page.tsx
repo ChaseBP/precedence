@@ -149,12 +149,19 @@ export default function Landing() {
       <div className="grain" aria-hidden />
       <ThemeToggle className="!fixed right-5 top-5 z-20" />
 
-      <div className="relative z-10 flex flex-col items-center">
+      {/* w-full + max-w-full so nothing inside can widen this past the padded viewport. `main` is
+          `overflow-hidden`, so anything that does gets CLIPPED rather than becoming scrollable —
+          which is why a mechanical scrollWidth check reported this page as clean while the
+          wordmark was visibly cut off at both edges on a 360px screen. */}
+      <div className="relative z-10 flex w-full max-w-full flex-col items-center">
         <div className="mb-7">{reduced ? <Logo size={76} /> : <HeroLogo tiltX={tiltX} tiltY={tiltY} />}</div>
 
         <motion.h1
           style={{ x: heroX, y: heroY, letterSpacing: "-0.04em" }}
-          className="flex font-[family-name:var(--font-display)] text-6xl font-bold sm:text-7xl"
+          // Started at text-6xl with no smaller step: ten letters at 60px overflow a 360px
+          // viewport, and because this h1 sets the width of the centered column, it pushed the
+          // tagline off both edges too.
+          className="flex max-w-full justify-center font-[family-name:var(--font-display)] text-[2.15rem] font-bold leading-[1.1] sm:text-6xl md:text-7xl"
         >
           {TITLE.map((c, i) => (
             <motion.span
