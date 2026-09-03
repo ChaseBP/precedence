@@ -390,7 +390,7 @@ function RaceInner() {
       </FadeUp>
 
       <FadeUp delay={0.08}>
-        <Card className="p-3.5">
+        <Card>
           <LifecycleTimeline stages={STAGES} status={race.status} />
         </Card>
       </FadeUp>
@@ -660,25 +660,37 @@ function RaceInner() {
 
         {/* Right Sidebar: Visual telemetry & Judge Mode */}
         <div className="flex min-w-0 flex-col gap-4">
-          <Card className="p-4">
+          {/* The per-phase stepper. `PhaseStepper` existed and was imported here but never
+              rendered, so the console showed only a compressed horizontal rail — a viewer could
+              see WHERE the race was but not the shape of the sequence it moves through, and it
+              runs fast enough that the rail alone is easy to miss. Vertical, with the active phase
+              highlighted and spinning, is what makes each step legible as it passes. */}
+          <Card>
+            <Eyebrow>Protocol Phase</Eyebrow>
+            <div className="mt-2.5">
+              <PhaseStepper status={race.status} />
+            </div>
+          </Card>
+
+          <Card>
             <Eyebrow>Priority Engine Core</Eyebrow>
             <PriorityCore active={!settled} label={race.status.toUpperCase()} />
           </Card>
 
-          <Card className="p-4">
+          <Card>
             <Eyebrow>Capital Waterfall Flow</Eyebrow>
             <CapitalFlowGraph bids={race.bids} active={!settled} />
           </Card>
 
           <ProofRail race={race} creditcoinLive={creditcoinLive} />
 
-          <Card className="p-4">
+          <Card>
             <LogDrawer events={events} />
           </Card>
 
           {/* Stepper Controls */}
           {!settled ? (
-            <Card className="flex items-center justify-between p-3.5">
+            <Card className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <button
                   onClick={advanceStep}
@@ -702,7 +714,7 @@ function RaceInner() {
               </span>
             </Card>
           ) : (
-            <Card className="flex items-center justify-between p-3.5">
+            <Card className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs" style={{ color: "var(--success)" }}>
                 <Award size={14} />
                 <span>Priority Race Finalized</span>
