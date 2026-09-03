@@ -11,8 +11,15 @@ import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ConnectWallet } from "@/components/ConnectWallet";
 
+/**
+ * @remarks "Borrow" earns a top-level slot because without it the borrower half of the product was
+ * unreachable: no nav entry, and /registry listed past races with no way to start one. Half the
+ * app could only be found by typing a URL. The nav rail scrolls, so the extra item cannot reopen
+ * the header-overflow problem.
+ */
 const NAV = [
   { href: "/collateral", label: "Collateral" },
+  { href: "/registry/new", label: "Borrow" },
   { href: "/race", label: "Priority Race" },
   { href: "/financiers", label: "Financiers" },
   { href: "/dashboard", label: "Telemetry" },
@@ -243,7 +250,12 @@ export function Shell({ children }: { children: ReactNode }) {
 
         <nav className="no-scrollbar mx-auto flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
           {NAV.map(({ href, label }) => {
-            const active = pathname === href || (href !== "/collateral" && pathname.startsWith(href));
+            // Exact match for /registry so it does not also highlight while on /registry/new — two
+            // different destinations should never both look current.
+            const active =
+              href === "/registry" || href === "/registry/new" || href === "/collateral"
+                ? pathname === href
+                : pathname === href || pathname.startsWith(href);
             return (
               <Link
                 key={href}
@@ -346,7 +358,12 @@ export function Shell({ children }: { children: ReactNode }) {
 
                 <nav className="flex flex-col gap-1">
                   {NAV.map(({ href, label }) => {
-                    const active = pathname === href || (href !== "/collateral" && pathname.startsWith(href));
+                    // Exact match for /registry so it does not also highlight while on /registry/new — two
+            // different destinations should never both look current.
+            const active =
+              href === "/registry" || href === "/registry/new" || href === "/collateral"
+                ? pathname === href
+                : pathname === href || pathname.startsWith(href);
                     return (
                       <Link
                         key={href}

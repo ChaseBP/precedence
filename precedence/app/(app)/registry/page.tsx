@@ -57,14 +57,26 @@ export default function RegistryPage() {
   return (
     <div>
       <FadeUp>
-        <header className="mb-6">
-          <Eyebrow>Self-Populating Encumbrance Registry · Creditcoin CC3</Eyebrow>
-          <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight">
-            The <span className="text-gradient">Registry</span>
-          </h1>
-          <p className="mt-2 max-w-xl text-sm" style={{ color: "var(--text-muted)" }}>
-            The registry nobody had to join. Every proof-ordered financing race automatically writes its lien structure to Creditcoin CC3 — double-pledging stops being possible to commit.
-          </p>
+        {/* The registry is a RECORD of past races. It listed them with no way to start one, so a
+            borrower arriving here had nowhere to go — the action belongs next to the thing it
+            acts on, not only in the nav. */}
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <Eyebrow>Self-Populating Encumbrance Registry · Creditcoin CC3</Eyebrow>
+            <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight">
+              The <span className="text-gradient">Registry</span>
+            </h1>
+            <p className="mt-2 max-w-xl text-sm" style={{ color: "var(--text-muted)" }}>
+              The registry nobody had to join. Every proof-ordered financing race automatically writes its lien structure to Creditcoin CC3 — double-pledging stops being possible to commit.
+            </p>
+          </div>
+          <Link
+            href="/registry/new"
+            className="shrink-0 rounded-lg px-3.5 py-2 text-xs font-semibold"
+            style={{ background: "var(--accent)", color: "var(--on-accent)" }}
+          >
+            Register collateral
+          </Link>
         </header>
       </FadeUp>
 
