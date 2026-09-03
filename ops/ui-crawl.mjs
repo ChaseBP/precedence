@@ -6,8 +6,17 @@ const OUT = "/home/raven_bp/projects/ctc/analysis/ui/shots";
 mkdirSync(OUT, { recursive: true });
 
 // /agents, /deals and /history were orphan re-exports of other pages and are deleted.
-const ROUTES = ["/", "/collateral", "/collateral/col-8802", "/race", "/financiers", "/dashboard",
-                "/registry", "/registry/new", "/portfolio"];
+//
+// `/race` WITHOUT an id renders a resolver, not the race console — so crawling it tested a much
+// simpler page and reported the console as clean while it overflowed by ~1000px at every width.
+// Pass RACE_ID to crawl the real thing; without it, the console is NOT covered and the run says so.
+const RACE_ID = process.env.RACE_ID;
+const ROUTES = ["/", "/collateral", "/collateral/col-8802", "/financiers", "/dashboard",
+                "/registry", "/registry/new", "/portfolio",
+                RACE_ID ? `/race?id=${RACE_ID}` : "/race"];
+if (!RACE_ID) {
+  console.log("WARNING: RACE_ID not set — crawling /race bare, which does NOT exercise the race console.\n");
+}
 // Breakpoint boundaries on purpose: Tailwind sm/md/lg/xl/2xl are 640/768/1024/1280/1536.
 const WIDTHS = [360, 414, 639, 640, 767, 768, 1023, 1024, 1279, 1280, 1535, 1536, 1920];
 
@@ -82,7 +91,7 @@ for (const width of WIDTHS) {
 
     // Screenshot a representative set of widths only, to keep the output reviewable.
     if ([360, 768, 1280, 1920].includes(width)) {
-      const name = route === "/" ? "root" : route.slice(1).replace(/\//g, "_");
+      const name = route === "/" ? "root" : route.slice(1).replace(/[^A-Za-z0-9_.-]+/g, "_").replace(/^_+|_+$/g, "");
       await page.screenshot({ path: `${OUT}/${name}@${width}.png`, fullPage: true });
     }
     await page.close();

@@ -53,3 +53,6 @@ evidence/stage-race.log
 evidence/prove-race-*.log
 analysis/ui/shots/
 analysis/ui/logs/
+analysis/ux/shots/
+analysis/ux/logs/
+evidence/.ux-store.json
