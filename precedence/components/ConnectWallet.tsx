@@ -57,7 +57,7 @@ export function ConnectWallet() {
             <button
               onClick={openChainModal}
               title={`Connected to ${chain.name}. Click to switch.`}
-              className="btn-ghost hidden h-8 items-center gap-1.5 px-2.5 text-[10.5px] font-semibold [@media(min-width:1120px)]:flex"
+              className="btn-ghost hidden h-8 items-center gap-1.5 px-2.5 text-[10.5px] font-semibold [@media(min-width:1280px)]:flex"
             >
               <span
                 className="size-1.5 shrink-0 rounded-full"

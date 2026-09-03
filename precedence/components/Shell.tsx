@@ -28,10 +28,10 @@ import { ConnectWallet } from "@/components/ConnectWallet";
  */
 const NAV = [
   { href: "/registry/new", label: "Register asset" },
-  { href: "/collateral", label: "Open facilities" },
+  { href: "/collateral", label: "Facilities" },
   { href: "/race", label: "Priority race" },
-  { href: "/registry", label: "Lien registry" },
-  { href: "/portfolio", label: "My positions" },
+  { href: "/registry", label: "Liens" },
+  { href: "/portfolio", label: "Positions" },
   { href: "/financiers", label: "Lenders" },
   { href: "/dashboard", label: "Telemetry" },
 ];
@@ -257,7 +257,15 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </Link>
 
-        <nav className="no-scrollbar mx-auto flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+        <nav
+          className="no-scrollbar mx-auto flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+          // The rail scrolls, but a hard cut looks like a layout bug rather than an invitation to
+          // scroll. The mask only bites when there is actually overflow to reveal.
+          style={{
+            maskImage: "linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%)",
+            WebkitMaskImage: "linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%)",
+          }}
+        >
           {NAV.map(({ href, label }) => {
             // Exact match for /registry so it does not also highlight while on /registry/new — two
             // different destinations should never both look current.
