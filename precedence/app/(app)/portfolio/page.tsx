@@ -373,10 +373,13 @@ function FirstRun() {
           </Link>
         ))}
       </div>
-      <p className="mt-3 flex items-start gap-1.5 text-[11px]" style={{ color: "var(--text-faint)" }}>
+      {/* Was "Nothing here asks for a private key…". Volunteering that reads exactly like the
+          reassurance a phishing site offers, and it drew attention to a risk nobody had raised.
+          The same fact stated positively: your wallet signs, and it stays yours. */}
+      <p className="mt-3 flex items-start gap-1.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
         <ShieldCheck size={12} className="mt-0.5 shrink-0" />
-        Nothing here asks for a private key. Locking capital is signed by your own wallet, and the
-        scripted demo financiers are signed off-web by the worker.
+        Every transaction is signed in your own wallet. PRECEDENCE holds no keys and has no
+        accounts.
       </p>
     </section>
   );

@@ -17,14 +17,23 @@ import { ConnectWallet } from "@/components/ConnectWallet";
  * app could only be found by typing a URL. The nav rail scrolls, so the extra item cannot reopen
  * the header-overflow problem.
  */
+/**
+ * Ordered by the sequence the protocol actually runs in, not by when each page was built.
+ *
+ * @remarks A borrower registers an asset, lenders see it and race for a rank, priority settles,
+ * and the outcome lands in the registry. The old order opened with the marketplace and buried
+ * registration in the middle, so the nav read as a list of screens rather than a description of
+ * how the thing works. "My positions" and "Lenders" sit at the end because they are lookups, not
+ * steps.
+ */
 const NAV = [
-  { href: "/collateral", label: "Collateral" },
-  { href: "/registry/new", label: "Borrow" },
-  { href: "/race", label: "Priority Race" },
-  { href: "/financiers", label: "Financiers" },
+  { href: "/registry/new", label: "Register asset" },
+  { href: "/collateral", label: "Open facilities" },
+  { href: "/race", label: "Priority race" },
+  { href: "/registry", label: "Lien registry" },
+  { href: "/portfolio", label: "My positions" },
+  { href: "/financiers", label: "Lenders" },
   { href: "/dashboard", label: "Telemetry" },
-  { href: "/registry", label: "Registry" },
-  { href: "/portfolio", label: "My Book" },
 ];
 
 function Wordmark({ size = "text-lg" }: { size?: string }) {
@@ -279,15 +288,21 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 shrink-0 items-center gap-3">
           {truth ? (
             <span
-              className="mono hidden truncate rounded-full border px-2.5 py-1 text-[0.66rem] uppercase tracking-wider [@media(min-width:1750px)]:inline"
+              className="mono hidden truncate rounded-full border px-2.5 py-1 text-[0.66rem] uppercase tracking-wider [@media(min-width:1900px)]:inline"
               style={{ borderColor: "var(--border)", color: "var(--text-faint)" }}
               title={truth.chip}
             >
               {truth.chip}
             </span>
           ) : null}
-          <div className="hidden min-w-0 [@media(min-width:1180px)]:flex [@media(min-width:1180px)]:items-center">
+          <div className="hidden min-w-0 [@media(min-width:1480px)]:flex [@media(min-width:1480px)]:items-center">
             <StatusCluster agents={agents} truth={truth} />
+          </div>
+          {/* Below 1480px the full cluster does not fit beside a seven-item nav and a connect
+              button, but the live/simulated signal must never be the thing that drops — so the
+              compact dot takes over rather than showing nothing. */}
+          <div className="flex shrink-0 items-center [@media(min-width:1480px)]:hidden">
+            <StatusCluster agents={agents} truth={truth} compact />
           </div>
           <ConnectWallet />
           <ThemeToggle />
