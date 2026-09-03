@@ -140,6 +140,33 @@ export interface FacilityTerms {
   postedAt?: ISO;
 }
 
+/**
+ * Fields a model believes it read from an unregistered document.
+ *
+ * @remarks Distinct from `DocumentExtraction`, which is *ratified against* an existing on-chain
+ * record. At registration time there is no record yet — the document is all there is — so nothing
+ * can be corroborated and none of this is evidence. It exists solely to pre-fill a form the
+ * borrower must then read and confirm, and every field stays independently editable. The borrower
+ * signing the transaction is what makes any of it a claim.
+ */
+export interface RegistrationProposal {
+  assetType?: CollateralAssetType;
+  title?: string;
+  /** The receipt or invoice reference as printed. */
+  docIdentifier?: string;
+  obligor?: string;
+  custodian?: string;
+  custodianLocation?: string;
+  faceValueUsd?: number;
+  termDays?: number;
+  /** The model's own 0-1 confidence. Displayed, never acted on. */
+  confidence: number;
+  /** Anything the reader should be suspicious of — missing dates, hedged language, alterations. */
+  concerns: string[];
+  model: string;
+  extractedAt: ISO;
+}
+
 export interface CollateralAsset {
   id: string;
   assetType: CollateralAssetType;

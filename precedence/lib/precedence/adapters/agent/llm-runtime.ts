@@ -25,13 +25,27 @@
  *
  * @see https://ai.google.dev/gemini-api/docs
  */
-import type { AgentDecision, CollateralAsset, DocumentExtraction, Hex } from "../../types";
+import type {
+  AgentDecision,
+  CollateralAsset,
+  CollateralAssetType,
+  DocumentExtraction,
+  Hex,
+  RegistrationProposal,
+} from "../../types";
 import type { AgentRuntime, DecideParams } from "./agent-runtime";
 import { evaluate } from "../../domain/policy";
 import { deriveFinancierAccount } from "../../domain/lock";
 import { ratifyExtraction, sanitizeNarration, type RatificationResult } from "../../domain/ratify";
 
 export const GEMINI_MODEL = "gemini-3.5-flash-lite";
+
+/** The only asset types the protocol prices. A model cannot introduce a fourth. */
+const VALID_ASSET_TYPES: CollateralAssetType[] = [
+  "warehouse-receipt",
+  "trade-receivable",
+  "commodity-pledge",
+];
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 // Generous but bounded. This call is never on the demo critical path — extraction happens during
 // registration, and a timeout degrades to "extraction skipped" rather than breaking anything. At
@@ -277,6 +291,82 @@ export class LlmRuntime implements AgentRuntime {
       return text;
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+
+  /**
+   * Read an unregistered trade-finance document and propose form values.
+   *
+   * @remarks Nothing here is ratified, because at registration time there is no on-chain record to
+   * ratify against — the document is the only input. So this is explicitly a *pre-fill*: it is
+   * returned to a form the borrower must read and confirm, every field stays editable, and the
+   * signature they give is what turns any of it into a claim.
+   *
+   * `concerns` matters more than the extracted values. A model reading a receipt is genuinely
+   * useful at noticing what a hurried human skims — a missing issue date, hedged title language,
+   * an altered figure — and surfacing those is worth more than saving someone four keystrokes.
+   */
+  async proposeRegistration(documentText: string): Promise<RegistrationProposal> {
+    const started = Date.now();
+    const empty: RegistrationProposal = {
+      confidence: 0,
+      concerns: [],
+      model: this.model,
+      extractedAt: new Date().toISOString(),
+    };
+    if (!this.available) {
+      return { ...empty, concerns: ["No GEMINI_API_KEY configured — nothing was read."] };
+    }
+
+    const prompt =
+      `You are reading a trade-finance collateral document: a warehouse receipt, trade receivable ` +
+      `or commodity pledge. Return ONLY minified JSON with these keys:\n` +
+      `  assetType: exactly one of "warehouse-receipt" | "trade-receivable" | "commodity-pledge"\n` +
+      `  title: a short human title for the asset, max 70 chars\n` +
+      `  docIdentifier: the receipt, pledge or invoice reference number exactly as printed\n` +
+      `  obligor: the depositor or borrower named in the document\n` +
+      `  custodian: the custodian institution NAME ONLY, no city or country\n` +
+      `  custodianLocation: the custodian's city and country\n` +
+      `  faceValueUsd: the appraised or face value as a plain number in USD, no symbols or commas\n` +
+      `  termDays: the financing term in days, if the document states one\n` +
+      `  confidence: your own 0-1 confidence in the above\n` +
+      `  concerns: an array of short strings naming anything a lender should be suspicious of — ` +
+      `a missing or expired date, hedged title language, an apparent alteration, an absent ` +
+      `signature, a value that does not match a quantity. Empty array if genuinely none.\n` +
+      `Omit any key you cannot read with confidence. Never guess a number.\n\n` +
+      `DOCUMENT:\n${documentText.slice(0, 12000)}`;
+
+    let note: string | undefined;
+    try {
+      const raw = await this.call(prompt, { json: true });
+      const p = JSON.parse(stripFences(raw)) as Record<string, unknown>;
+      const str = (k: string) => (typeof p[k] === "string" && (p[k] as string).trim() ? (p[k] as string).trim() : undefined);
+      const num = (k: string) => (typeof p[k] === "number" && Number.isFinite(p[k]) ? (p[k] as number) : undefined);
+      const kind = str("assetType");
+      this.opts.onCall?.({ kind: "proposeRegistration", ok: true, ms: Date.now() - started });
+      return {
+        assetType: VALID_ASSET_TYPES.includes(kind as CollateralAssetType)
+          ? (kind as CollateralAssetType)
+          : undefined,
+        title: str("title")?.slice(0, 70),
+        docIdentifier: str("docIdentifier")?.slice(0, 40),
+        obligor: str("obligor"),
+        custodian: str("custodian"),
+        custodianLocation: str("custodianLocation"),
+        faceValueUsd: num("faceValueUsd"),
+        termDays: num("termDays"),
+        confidence: num("confidence") ?? 0,
+        concerns: Array.isArray(p.concerns)
+          ? (p.concerns as unknown[]).filter((c): c is string => typeof c === "string").slice(0, 8)
+          : [],
+        model: this.model,
+        extractedAt: new Date().toISOString(),
+      };
+    } catch (e) {
+      note = (e as Error).message.slice(0, 140);
+      this.opts.onCall?.({ kind: "proposeRegistration", ok: false, ms: Date.now() - started, note });
+      return { ...empty, concerns: [`Could not read the document: ${note}`] };
     }
   }
 
