@@ -29,7 +29,10 @@
 
   --text: #F8FAFC;
   --text-muted: #8896AD;
-  --text-faint: #5E6E87;
+  /* Raised from #5E6E87, which was 3.55:1 on --bg-2 and so failed AA for the 10.5-11px
+     labels it is used on. Four separate review findings were all this one token. Same
+     hue, enough lightness for 4.7:1, still clearly the quietest tier. */
+  --text-faint: #71829C;
 
   --grad: linear-gradient(135deg, #536DFE 0%, #8896AD 55%, #F8FAFC 100%);
   --grad-soft: linear-gradient(135deg, rgba(83, 109, 254, 0.18), rgba(255, 255, 255, 0.04));
@@ -88,16 +91,19 @@ html.light {
   --danger: #DC2626;
   --text: #060810;
   --text-muted: #565C70;
-  --text-faint: #7A8195;
+  --text-faint: #666D80;   /* 4.7:1 on --bg-0; see the dark note above */
   --grad: linear-gradient(135deg, #2535F5 0%, #1623D4 55%, #060810 100%);
   --grad-soft: linear-gradient(135deg, rgba(37, 53, 245, 0.12), rgba(0, 0, 0, 0.03));
   --track: rgba(0, 0, 0, 0.08);
   --logo-edge-a: #171C2A;
   --logo-edge-b: #8896AD;
 
-  --rank-senior: #050A1A;        --rank-senior-soft: rgba(5, 10, 26, 0.08);
-  --rank-junior: #334155;        --rank-junior-soft: rgba(51, 65, 85, 0.08);
-  --rank-subordinate: #5B6B82;   --rank-subordinate-soft: rgba(91, 107, 130, 0.09);
+  /* Hues unchanged; only the alpha steps widen. At 0.08/0.08/0.09 all three pill backgrounds
+     rendered as the same pale grey on white, so seniority could NOT be read from colour alone —
+     which is the one thing this ramp exists to do. Same intent, made visible. */
+  --rank-senior: #050A1A;        --rank-senior-soft: rgba(5, 10, 26, 0.16);
+  --rank-junior: #334155;        --rank-junior-soft: rgba(51, 65, 85, 0.10);
+  --rank-subordinate: #5B6B82;   --rank-subordinate-soft: rgba(91, 107, 130, 0.06);
 
   --state-clear: #047857;        --state-clear-soft: rgba(4, 120, 87, 0.08);
   --state-encumbered: #1D4ED8;   --state-encumbered-soft: rgba(29, 78, 216, 0.08);
@@ -208,6 +214,15 @@ h1, h2, h3, h4 {
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid var(--border);
+}
+
+/* Sticky chrome needs to be more opaque than a floating panel. At --panel-heavy's 72% the
+   high-contrast page text underneath bled through the header while scrolling, so headings appeared
+   to sit inside the nav. A blur cannot hide text of that contrast; only opacity can. */
+.glass-chrome {
+  background: color-mix(in srgb, var(--bg-0) 94%, transparent);
+  backdrop-filter: blur(20px) saturate(1.1);
+  -webkit-backdrop-filter: blur(20px) saturate(1.1);
 }
 
 .text-gradient {
