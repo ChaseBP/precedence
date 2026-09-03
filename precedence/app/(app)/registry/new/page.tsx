@@ -18,7 +18,7 @@
  * Registration signs on **Creditcoin CC3**, not Sepolia, because `registerCollateral` takes
  * `msg.sender` as the obligor of record.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -26,6 +26,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   FileText,
+  Info,
   Loader2,
   Sparkles,
 } from "lucide-react";
@@ -33,7 +34,9 @@ import { api } from "@/lib/client/api";
 import { usd } from "@/lib/client/format";
 import { Badge, Card, Eyebrow, Why } from "@/components/ui";
 import { FadeUp } from "@/components/motion/Reveal";
+import type { Address } from "viem";
 import { useWallet } from "@/lib/client/wallet";
+import { registerCollateralOnChain, type RegisterStage } from "@/lib/client/registry";
 import { ConnectPrompt } from "@/components/ConnectPrompt";
 import { SUGGESTED_RATES } from "@/lib/precedence/domain/collateral";
 import type { CollateralAssetType, RegistrationProposal } from "@/lib/precedence/types";
@@ -117,6 +120,27 @@ export default function RegisterCollateralPage() {
   // A fresh form must not scold. Validation appears once the borrower has actually engaged with
   // the terms, or as soon as they try to submit — never before they have typed anything.
   const [attempted, setAttempted] = useState(false);
+  const [chainStage, setChainStage] = useState<RegisterStage | null>(null);
+  const [addresses, setAddresses] = useState<{
+    sepolia?: { PriorityVault: string };
+    creditcoin?: { CollateralRegistry: string };
+  } | null>(null);
+
+  // Deployed addresses decide whether a real registration is even possible.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const j = await (await fetch("/api/config", { cache: "no-store" })).json();
+        if (!cancelled) setAddresses(j?.addresses ?? {});
+      } catch {
+        if (!cancelled) setAddresses({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((p) => ({ ...p, [k]: v }));
   // ── the facility arithmetic, shown live so the caps rule is obvious before submitting ──
   const money = useMemo(() => {
@@ -203,7 +227,54 @@ export default function RegisterCollateralPage() {
     if (localProblems.length > 0) return;
     setSubmitting(true);
     try {
+      // ── the real registration ──
+      //
+      // registerCollateralOnChain was written and then never called from here, so every
+      // registration fell through to the store and reported itself as simulated even with the
+      // registry live. Signing is the point: the transaction's msg.sender becomes the obligor of
+      // record, which is a thing only the borrower can establish.
+      //
+      // wagmi carries chainId, so the wallet is asked to move to Creditcoin as part of signing.
+      let onChain: { docHash: string; txHash: string; registryAddress: string; vaultAddress: string } | undefined;
+      const registry = addresses?.creditcoin?.CollateralRegistry;
+      const vault = addresses?.sepolia?.PriorityVault;
+
+      if (registry && vault && status === "connected") {
+        setChainStage("registering");
+        const res = await registerCollateralOnChain(
+          {
+            registry: registry as Address,
+            vault: vault as Address,
+            assetType: f.assetType,
+            docIdentifier: f.docIdentifier,
+            obligorName: f.obligor,
+            custodian: f.custodian,
+            faceValueUsd: n(f.faceValueUsd),
+            haircutPct: n(f.haircutPct),
+            termDays: n(f.termDays),
+            metadataURI: `precedence:${f.docIdentifier.trim()}`,
+            terms: {
+              seniorCapUsd: n(f.seniorCapUsd),
+              juniorCapUsd: n(f.juniorCapUsd),
+              subordinateCapUsd: n(f.subordinateCapUsd),
+              seniorRatePct: n(f.seniorRatePct),
+              juniorRatePct: n(f.juniorRatePct),
+              subordinateRatePct: n(f.subordinateRatePct),
+            },
+          },
+          (stage) => setChainStage(stage),
+        );
+        onChain = {
+          docHash: res.docHash,
+          txHash: res.termsTx,
+          registryAddress: registry,
+          vaultAddress: vault,
+        };
+      }
+      setChainStage(null);
+
       const r = await api.registerCollateral({
+        onChain,
         assetType: f.assetType,
         title: f.title,
         obligor: f.obligor,
@@ -229,6 +300,7 @@ export default function RegisterCollateralPage() {
       }
       setDone({ id: r.collateral!.id, chain: Boolean(r.chain), note: r.note ?? "" });
     } catch (e) {
+      setChainStage(null);
       setProblems([(e as Error).message]);
     } finally {
       setSubmitting(false);
@@ -248,7 +320,7 @@ export default function RegisterCollateralPage() {
           </p>
           {!done.chain ? (
             <div className="mt-3 flex justify-center">
-              <Badge color="var(--warn)">Simulated — nothing was written to a chain</Badge>
+              <Badge color="var(--warn)">Stored locally — not signed on-chain</Badge>
             </div>
           ) : null}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -526,14 +598,46 @@ export default function RegisterCollateralPage() {
           </Card>
         </div>
       ) : null}
-      <div className="mt-5 mb-10 flex flex-wrap items-center gap-3">
+      {/* Set the expectation before the button, not after. A borrower should know whether they are
+          about to sign two transactions or write a local record. */}
+      {addresses ? (
+        <p className="mt-5 flex items-start gap-1.5 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
+          <Info size={12} className="mt-0.5 shrink-0" style={{ color: "var(--accent)" }} />
+          {addresses.creditcoin?.CollateralRegistry && addresses.sepolia?.PriorityVault ? (
+            status === "connected" ? (
+              <span>
+                This registers on Creditcoin CC3 for real — two signatures, one to record the asset
+                and one to post your terms. Your wallet will be asked to switch networks as part of
+                signing.
+              </span>
+            ) : (
+              <span>Connect a wallet to register on Creditcoin CC3. Without one this is only stored locally.</span>
+            )
+          ) : (
+            <span>
+              No registry is deployed, so this will be stored locally as a sample rather than
+              written to a chain.
+            </span>
+          )}
+        </p>
+      ) : null}
+
+      <div className="mt-4 mb-10 flex flex-wrap items-center gap-3">
         <button
           onClick={submit}
           disabled={submitting || disconnected}
           className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold"
         >
           {submitting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
-          {submitting ? "Registering…" : "Register collateral and post terms"}
+          {/* Two signatures, so say which one is waiting. "Registering…" for twenty seconds with
+              a wallet popup in between tells a borrower nothing about what they are approving. */}
+          {chainStage === "registering"
+            ? "Approve 1 of 2: register the asset…"
+            : chainStage === "posting-terms"
+              ? "Approve 2 of 2: post your terms…"
+              : submitting
+                ? "Registering…"
+                : "Register collateral and post terms"}
         </button>
         <button onClick={() => router.push("/collateral")} className="btn-ghost rounded-lg px-3.5 py-2 text-xs">
           Cancel

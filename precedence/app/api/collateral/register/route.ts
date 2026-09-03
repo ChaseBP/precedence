@@ -167,9 +167,16 @@ export async function POST(req: Request) {
     collateral: asset,
     chain,
     txHash: b.onChain?.txHash ?? null,
+    // The old message read "no live registry is connected (live at 0x1E67…)" — it interpolated
+    // the adapter note into a sentence that contradicted it. Whether a registry is DEPLOYED and
+    // whether the caller SIGNED are different facts, and the message has to keep them apart.
     note: chain
       ? "Registered on Creditcoin CC3 and mirrored into the read store."
-      : `Stored as a SIMULATED registration — no live registry is connected ` +
-        `(${deps.modeNotes.creditcoin}). Nothing was written to a chain.`,
+      : deps.creditcoin.isLive()
+        ? "Stored locally only — the registry is deployed and live, but this registration was not " +
+          "signed, so nothing was written to a chain. Connect a wallet and register again to put " +
+          "it on Creditcoin."
+        : `Stored locally only — no registry is connected (${deps.modeNotes.creditcoin}). ` +
+          `Nothing was written to a chain.`,
   });
 }
