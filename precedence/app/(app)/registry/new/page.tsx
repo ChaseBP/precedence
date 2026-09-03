@@ -1,5 +1,4 @@
 "use client";
-
 /**
  * Register real-world collateral, and post the facility terms lenders will bid into.
  *
@@ -27,25 +26,22 @@ import {
   ArrowLeft,
   CheckCircle2,
   FileText,
-  Info,
   Loader2,
   Sparkles,
-  Wallet,
 } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { usd } from "@/lib/client/format";
 import { Badge, Card, Eyebrow, Why } from "@/components/ui";
 import { FadeUp } from "@/components/motion/Reveal";
-import { CHAINS, shortAddress, useWallet } from "@/lib/client/wallet";
+import { useWallet } from "@/lib/client/wallet";
+import { ConnectPrompt } from "@/components/ConnectPrompt";
 import { SUGGESTED_RATES } from "@/lib/precedence/domain/collateral";
 import type { CollateralAssetType, RegistrationProposal } from "@/lib/precedence/types";
-
 const ASSET_TYPES: { value: CollateralAssetType; label: string; hint: string }[] = [
   { value: "warehouse-receipt", label: "Warehouse receipt", hint: "Goods in a bonded store" },
   { value: "trade-receivable", label: "Trade receivable", hint: "An invoice owed to you" },
   { value: "commodity-pledge", label: "Commodity pledge", hint: "Metal or bulk under pledge" },
 ];
-
 interface Form {
   assetType: CollateralAssetType;
   title: string;
@@ -63,7 +59,6 @@ interface Form {
   juniorRatePct: string;
   subordinateRatePct: string;
 }
-
 const EMPTY: Form = {
   assetType: "warehouse-receipt",
   title: "",
@@ -81,12 +76,10 @@ const EMPTY: Form = {
   juniorRatePct: String(SUGGESTED_RATES.JUNIOR),
   subordinateRatePct: String(SUGGESTED_RATES.SUBORDINATE),
 };
-
 const n = (v: string) => (v.trim() === "" ? Number.NaN : Number(v));
-
 export default function RegisterCollateralPage() {
   const router = useRouter();
-  const { address, status, chainKey, connect, switchChain } = useWallet();
+  const { address, status } = useWallet();
   const [f, setF] = useState<Form>(EMPTY);
   const [doc, setDoc] = useState("");
   const [reading, setReading] = useState(false);
@@ -98,9 +91,7 @@ export default function RegisterCollateralPage() {
   // A fresh form must not scold. Validation appears once the borrower has actually engaged with
   // the terms, or as soon as they try to submit — never before they have typed anything.
   const [attempted, setAttempted] = useState(false);
-
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((p) => ({ ...p, [k]: v }));
-
   // ── the facility arithmetic, shown live so the caps rule is obvious before submitting ──
   const money = useMemo(() => {
     const face = n(f.faceValueUsd);
@@ -112,7 +103,6 @@ export default function RegisterCollateralPage() {
     const total = caps.reduce((s, c) => s + (Number.isFinite(c) ? c : 0), 0);
     return { face, haircut, advance, total, headroom: advance - total };
   }, [f.faceValueUsd, f.haircutPct, f.seniorCapUsd, f.juniorCapUsd, f.subordinateCapUsd]);
-
   // Mirrors the contract's own two rules, so the reason a facility is invalid is visible here
   // rather than arriving as a revert.
   const localProblems = useMemo(() => {
@@ -133,11 +123,9 @@ export default function RegisterCollateralPage() {
     if (money.total === 0) out.push("Give at least one tranche a cap — that is the facility.");
     return out;
   }, [f.seniorRatePct, f.juniorRatePct, f.subordinateRatePct, f.haircutPct, money]);
-
   // Server-side problems always show — they came from an actual attempt. Local ones wait until
   // the borrower has entered a cap or pressed the button.
   const showProblems = [...(attempted || money.total > 0 ? localProblems : []), ...problems];
-
   /** Split the advance 60/30/10 — a conventional starting point, not a recommendation. */
   function suggestCaps() {
     if (!Number.isFinite(money.advance) || money.advance <= 0) return;
@@ -150,7 +138,6 @@ export default function RegisterCollateralPage() {
       subordinateCapUsd: String(money.advance - senior - junior),
     }));
   }
-
   async function readDocument() {
     setReading(true);
     setReadNote(null);
@@ -182,7 +169,6 @@ export default function RegisterCollateralPage() {
       setReading(false);
     }
   }
-
   async function submit() {
     setAttempted(true);
     setProblems([]);
@@ -222,7 +208,6 @@ export default function RegisterCollateralPage() {
       setSubmitting(false);
     }
   }
-
   // ── success ──
   if (done) {
     return (
@@ -257,9 +242,7 @@ export default function RegisterCollateralPage() {
       </FadeUp>
     );
   }
-
   const disconnected = status !== "connected";
-
   return (
     <div className="mx-auto max-w-3xl">
       <FadeUp>
@@ -278,58 +261,13 @@ export default function RegisterCollateralPage() {
           </p>
         </header>
       </FadeUp>
-
-      {/* ── wallet ── */}
-      {disconnected ? (
-        <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-start gap-2.5">
-              <Wallet size={16} className="mt-0.5 shrink-0" style={{ color: "var(--text-faint)" }} />
-              <div>
-                <h3 className="text-sm font-semibold">Connect a wallet first</h3>
-                <p className="mt-0.5 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
-                  Your address becomes the obligor of record, so registering is something only you
-                  can sign.
-                </p>
-              </div>
-            </div>
-            <button onClick={connect} className="shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-semibold"
-              style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
-              Connect Wallet
-            </button>
-          </div>
-        </Card>
-      ) : chainKey !== "creditcoin" ? (
-        <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-start gap-2.5">
-              <Info size={16} className="mt-0.5 shrink-0" style={{ color: "var(--accent)" }} />
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold">Registration signs on {CHAINS.creditcoin.name}</h3>
-                <p className="mt-0.5 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
-                  Collateral and liens live on Creditcoin; capital locks on Sepolia. You are on{" "}
-                  {chainKey ? CHAINS[chainKey].name : "another network"} as{" "}
-                  <span className="mono">{address ? shortAddress(address) : "—"}</span>.
-                </p>
-              </div>
-            </div>
-            <button onClick={() => switchChain("creditcoin")}
-              className="shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-semibold"
-              style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
-              Switch to CC3
-            </button>
-          </div>
-        </Card>
-      ) : (
-        <Card>
-          <div className="flex items-center gap-2 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
-            <CheckCircle2 size={14} style={{ color: "var(--proof-verified)" }} />
-            Signing as <span className="mono">{address ? shortAddress(address) : "—"}</span> on{" "}
-            {CHAINS.creditcoin.name} — this address will be the obligor of record.
-          </div>
-        </Card>
-      )}
-
+      {/* One shared prompt rather than three hand-rolled branches. The previous version
+          rendered a Connect button and never displayed connect()'s error, so in a browser with no
+          wallet it silently did nothing. */}
+      <ConnectPrompt
+        need="creditcoin"
+        why="Registering collateral records you as the obligor of record, so only you can sign it."
+      />
       {/* ── document reader ── */}
       <section className="mt-5">
         <Card>
@@ -365,13 +303,11 @@ export default function RegisterCollateralPage() {
               </span>
             ) : null}
           </div>
-
           {readNote ? (
             <p className="mt-3 flex items-start gap-1.5 text-[11px]" style={{ color: "var(--warn)" }}>
               <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {readNote}
             </p>
           ) : null}
-
           {proposal ? (
             <div className="mt-3 rounded-lg p-3" style={{ background: "var(--bg-2)", border: "1px solid var(--border)" }}>
               <div className="flex flex-wrap items-center gap-2">
@@ -402,7 +338,6 @@ export default function RegisterCollateralPage() {
           ) : null}
         </Card>
       </section>
-
       {/* ── the asset ── */}
       <section className="mt-5">
         <Card>
@@ -453,7 +388,6 @@ export default function RegisterCollateralPage() {
               <Input field="termDays" value={f.termDays} onChange={(v) => set("termDays", v)} numeric />
             </Field>
           </div>
-
           {Number.isFinite(money.advance) && money.advance > 0 ? (
             <p className="mt-3 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
               A {f.haircutPct}% haircut on {usd(money.face)} leaves a maximum advance of{" "}
@@ -463,7 +397,6 @@ export default function RegisterCollateralPage() {
           ) : null}
         </Card>
       </section>
-
       {/* ── the terms ── */}
       <section className="mt-5">
         <Card>
@@ -479,7 +412,6 @@ export default function RegisterCollateralPage() {
             takes each rank — never what that rank costs. Senior is repaid first and sits behind
             everything below it, so it must be the cheapest.
           </Why>
-
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             {([
               ["SENIOR", "seniorCapUsd", "seniorRatePct", "var(--rank-senior)"],
@@ -501,7 +433,6 @@ export default function RegisterCollateralPage() {
               </div>
             ))}
           </div>
-
           <div className="mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-1.5 text-[11.5px]">
             <span style={{ color: "var(--text-muted)" }}>
               {money.total > 0 ? (
@@ -519,7 +450,6 @@ export default function RegisterCollateralPage() {
           </div>
         </Card>
       </section>
-
       {/* ── problems and submit ── */}
       {showProblems.length > 0 ? (
         <div className="mt-5">
@@ -538,7 +468,6 @@ export default function RegisterCollateralPage() {
           </Card>
         </div>
       ) : null}
-
       <div className="mt-5 mb-10 flex flex-wrap items-center gap-3">
         <button
           onClick={submit}
@@ -561,7 +490,6 @@ export default function RegisterCollateralPage() {
     </div>
   );
 }
-
 function Field({ label, hint, full, children }: { label: string; hint?: string; full?: boolean; children: React.ReactNode }) {
   return (
     <label className={`flex flex-col gap-1 ${full ? "sm:col-span-2" : ""}`}>
@@ -571,7 +499,6 @@ function Field({ label, hint, full, children }: { label: string; hint?: string; 
     </label>
   );
 }
-
 function Input({ value, onChange, placeholder, numeric, field }: {
   value: string;
   onChange: (v: string) => void;

@@ -23,6 +23,7 @@ import { usd, pct, trancheColor, encumbranceColor } from "@/lib/client/format";
 import { Badge, Card, Eyebrow, SectionTitle, Stat, Why } from "@/components/ui";
 import { FadeUp, Item, Stagger } from "@/components/motion/Reveal";
 import { shortAddress, useWallet } from "@/lib/client/wallet";
+import { ConnectPrompt } from "@/components/ConnectPrompt";
 
 const ROLE_COPY: Record<Portfolio["role"], { label: string; blurb: string }> = {
   new: {
@@ -46,7 +47,7 @@ const ROLE_COPY: Record<Portfolio["role"], { label: string; blurb: string }> = {
 };
 
 export default function PortfolioPage() {
-  const { address, chainKey, status, connect } = useWallet();
+  const { address, chainKey, status } = useWallet();
   const [data, setData] = useState<Portfolio | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -88,25 +89,27 @@ export default function PortfolioPage() {
   const loading = Boolean(address) && !shown && !error;
 
   // ── not connected ──
+  //
+  // The hand-rolled version never rendered connect()'s error, so with no wallet installed the
+  // button silently did nothing. ConnectPrompt covers all four states in one place.
   if (status !== "connected") {
     return (
       <FadeUp>
-        <div className="mx-auto max-w-lg py-16 text-center">
-          <Wallet size={30} className="mx-auto mb-4" style={{ color: "var(--text-faint)" }} />
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">
-            Connect a wallet to see <span className="text-gradient">your book</span>
-          </h1>
-          <p className="mx-auto mt-2.5 max-w-sm text-sm" style={{ color: "var(--text-muted)" }}>
-            PRECEDENCE has no accounts and no passwords. Your positions are whatever your address
-            holds on-chain, so connecting is the whole of signing in.
-          </p>
-          <button
-            onClick={connect}
-            className="mt-5 rounded-lg px-4 py-2 text-xs font-semibold"
-            style={{ background: "var(--accent)", color: "var(--on-accent)" }}
-          >
-            Connect Wallet
-          </button>
+        <div className="mx-auto max-w-2xl py-14">
+          <div className="mb-5 text-center">
+            <Wallet size={28} className="mx-auto mb-3" style={{ color: "var(--text-faint)" }} />
+            <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight tracking-tight">
+              Connect a wallet to see <span className="text-gradient">your book</span>
+            </h1>
+            <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--text-muted)" }}>
+              PRECEDENCE has no accounts and no passwords. Your positions are whatever your address
+              holds on-chain, so connecting is the whole of signing in.
+            </p>
+          </div>
+          <ConnectPrompt
+            need="sepolia"
+            why="Your positions are read from the address you connect."
+          />
         </div>
       </FadeUp>
     );
