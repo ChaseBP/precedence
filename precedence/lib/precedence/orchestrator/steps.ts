@@ -561,9 +561,13 @@ export async function runRefiDiscovered(ctx: PhaseCtx): Promise<StepOutcome> {
     await ctx.emit(
       "info",
       `Priority Agent scanned the registry: facility at ${col.currentRatePct}% is within ` +
-        `100 bps of market — no refinance arbitrage. Skipping to servicing.`,
+        `100 bps of market — no refinance arbitrage. Nothing to execute.`,
     );
-    return ok("REPAYMENT_PROOF");
+    // `ok()` takes the track's next state, ATOMIC_REFINANCE, which then finds no opportunity and
+    // advances to REPAYMENT_PROOF itself. Returning REPAYMENT_PROOF from HERE is an illegal move
+    // and the machine correctly aborted the race — a latent bug that only surfaced once a race
+    // legitimately had no senior position to refinance, and so no arbitrage to find.
+    return ok();
   }
 
   race.refinanceOpportunity = refi;
@@ -586,7 +590,22 @@ export async function runAtomicRefinance(ctx: PhaseCtx): Promise<StepOutcome> {
   const refi = race.refinanceOpportunity;
   if (!refi) return ok("REPAYMENT_PROOF");
 
-  const oldFinancier = race.settlement?.seniorFinancier || "vector";
+  // Refinancing REPLACES an existing senior position. If none was won — every bid was junior or
+  // subordinate, or the senior tranche simply went unfilled — there is nothing to refinance, and
+  // proceeding invented one: it set seniorFinancier to the incoming agent while the amount stayed
+  // zero and no SENIOR claim existed, so the UI credited the senior lien to an agent that had
+  // declined to bid. A hardcoded "vector" fallback hid the same hole.
+  const seniorClaim = (race.claims ?? []).find((c) => c.tranche === "SENIOR" && c.principalUsd > 0);
+  if (!seniorClaim || !race.settlement?.seniorFinancier) {
+    await ctx.emit(
+      "info",
+      `No senior position exists on ${race.collateral.symbol}, so there is nothing to refinance — ` +
+        `the senior tranche went unfilled in this race. Skipping to repayment.`,
+    );
+    return ok("REPAYMENT_PROOF");
+  }
+
+  const oldFinancier = race.settlement.seniorFinancier;
   const newFinancier = refi.candidateFinancier;
 
   const res = await deps.creditcoin.executeAtomicRefinance(
@@ -620,7 +639,12 @@ export async function runAtomicRefinance(ctx: PhaseCtx): Promise<StepOutcome> {
       ? { ...c, holder: newFinancier, ratePct: refi.proposedSeniorRatePct, state: "ACTIVE" as const }
       : c,
   );
-  if (race.settlement) race.settlement.seniorFinancier = newFinancier;
+  if (race.settlement) {
+    // The amount moves with the name. Leaving the amount behind is what let a zero-value senior
+    // "holder" exist at all.
+    race.settlement.seniorFinancier = newFinancier;
+    race.settlement.seniorAmountUsd = seniorClaim.principalUsd;
+  }
 
   await updateCollateral(race.collateral.id, (c) => {
     c.currentRatePct = refi.proposedSeniorRatePct;

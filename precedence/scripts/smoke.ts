@@ -298,6 +298,57 @@ if (!br) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// A named holder must mean a real position
+//
+// The UI read settlement.seniorFinancier and rendered it under "SENIOR CLAIM". The refinance step
+// set that name while leaving seniorAmountUsd at zero and creating no SENIOR claim, so a financier
+// who had DECLINED to bid appeared as the senior lien holder. Nothing asserted that a name implies
+// an amount, so nothing caught it.
+// ══════════════════════════════════════════════════════════════════════
+{
+  console.log("\n── settlement consistency ──\n");
+  for (const [label, r] of [["performing", perf], ["default", def], ["breach", br]] as const) {
+    if (!r) {
+      check(`${label}: race exists`, false);
+      continue;
+    }
+    const s = r.settlement;
+    if (!s) {
+      check(`${label}: reaches a settlement`, false);
+      continue;
+    }
+    check(
+      `${label}: a named senior holder has a non-zero amount`,
+      !s.seniorFinancier || s.seniorAmountUsd > 0,
+      `seniorFinancier=${JSON.stringify(s.seniorFinancier)} amount=${s.seniorAmountUsd}`,
+    );
+    check(
+      `${label}: a named senior holder has a matching SENIOR claim`,
+      !s.seniorFinancier || (r.claims ?? []).some((c) => c.tranche === "SENIOR" && c.holder === s.seniorFinancier),
+      `no SENIOR claim held by ${s.seniorFinancier}`,
+    );
+    check(
+      `${label}: every award names a financier that actually locked`,
+      (r.claims ?? []).every((c) => r.locks.some((l) => l.financier === c.holder)),
+      "a claim is held by an address with no lock in this race",
+    );
+    // The invariant that was missing. A race where the senior tranche goes unfilled has no
+    // position to refinance, so the refinance path finds nothing — and a step that answered that
+    // with an illegal phase transition aborted the whole race instead of servicing it.
+    check(
+      `${label}: never aborts on an illegal transition`,
+      r.status !== "ABORTED" || !/Illegal transition/.test(r.aborted?.reason ?? ""),
+      r.aborted?.reason ?? "",
+    );
+    check(
+      `${label}: no financier holds two ranks in the same tranche`,
+      new Set((r.claims ?? []).map((c) => `${c.tranche}:${c.holder}`)).size === (r.claims ?? []).length,
+      "duplicate tranche/holder pair",
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
 console.log("\n" + "═".repeat(60));
 if (failures === 0) {
   console.log("ALL CHECKS PASSED — three tracks, invariants held.");

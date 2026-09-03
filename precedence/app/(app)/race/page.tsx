@@ -270,6 +270,19 @@ function RaceInner() {
     return stop;
   }, [id, refetch]);
 
+  /**
+   * Who actually holds the senior lien — or nobody.
+   *
+   * @remarks A NAME alone is not a position. `settlement.seniorFinancier` can be set while
+   * `seniorAmountUsd` is zero (the refinance step used to do exactly that), so the amount is what
+   * decides whether a senior holder exists. Reading the name alone credited the senior lien to an
+   * agent that had declined to bid.
+   */
+  const seniorHolder =
+    race?.settlement?.seniorFinancier && (race.settlement.seniorAmountUsd ?? 0) > 0
+      ? race.settlement.seniorFinancier
+      : null;
+
   useEffect(() => {
     if (!race || notified.current === race.id + race.status) return;
     if (race.status === "SETTLED_CLOSED") {
@@ -277,7 +290,11 @@ function RaceInner() {
       toast({
         level: "success",
         title: "Priority Settled",
-        body: `Senior Lien: ${race.settlement?.seniorFinancier?.toUpperCase() ?? "MERIDIAN"} · Encumbrance registered on Creditcoin CC3`,
+        // A hardcoded "MERIDIAN" fallback used to fire whenever no senior position was won,
+        // crediting the senior lien to an agent that had declined to bid. Say what is true.
+        body: seniorHolder
+          ? `Senior Lien: ${seniorHolder.toUpperCase()} · Encumbrance registered on Creditcoin CC3`
+          : `No senior lien taken — the senior tranche went unfilled. Encumbrance registered on Creditcoin CC3`,
       });
     } else if (race.status === "ABORTED") {
       notified.current = race.id + race.status;
@@ -379,9 +396,14 @@ function RaceInner() {
       </FadeUp>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.55fr_1fr]">
+      {/* minmax(0, …) rather than bare fr. A grid track's default min-width is `auto`, so the long
+          unbreakable mono strings in the prover pipeline forced their track wider than its share
+          and pushed the whole page to 2326px at a 1280 viewport — about 1000px of horizontal
+          overflow on the app's most complex screen. `min-w-0` on each column is the same fix from
+          the child side, and both are needed because either alone can be defeated by content. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         {/* Left: Progressive Disclosure Stages */}
-        <div className="flex flex-col gap-3.5">
+        <div className="flex min-w-0 flex-col gap-3.5">
           {/* Stage 1: Collateral & Haircut Analysis */}
           <StageSection
             kicker="STAGE 1"
@@ -492,13 +514,17 @@ function RaceInner() {
                         style={{ borderColor: "var(--border)" }}
                       >
                         <div className="flex items-center gap-2.5">
+                          {/* The circle is the PROVEN POSITION, which is genuinely ordinal — first
+                              proven lock, second, third. The tranche badge on the right is a
+                              separate fact and must not be inferred from it. */}
                           <span
                             className="mono flex h-5 w-5 items-center justify-center rounded-full text-[0.65rem] font-bold"
                             style={{
-                              background: idx === 0 ? "var(--rank-senior-soft)" : "var(--rank-junior-soft)",
-                              color: idx === 0 ? "var(--rank-senior)" : "var(--rank-junior)",
-                              border: `1px solid ${idx === 0 ? "var(--rank-senior)" : "var(--rank-junior)"}`,
+                              background: "var(--rank-senior-soft)",
+                              color: "var(--rank-senior)",
+                              border: "1px solid var(--rank-senior)",
                             }}
+                            title={`proven position ${idx + 1} in this race`}
                           >
                             #{idx + 1}
                           </span>
@@ -511,8 +537,14 @@ function RaceInner() {
                             </div>
                           </div>
                         </div>
-                        <Badge color={lock.refunded ? "var(--event-refund)" : idx === 0 ? "var(--rank-senior)" : "var(--rank-junior)"}>
-                          {lock.refunded ? "AUTO-REFUNDED" : idx === 0 ? "SENIOR" : "JUNIOR"}
+                        {/* Was `idx === 0 ? "SENIOR" : "JUNIOR"`, which labelled every lock by its
+                            POSITION rather than its tranche. It could never say SUBORDINATE, and it
+                            contradicted the tranche printed immediately to its left — a junior lock
+                            sat under a SENIOR badge, which reads as a settlement bug to anyone
+                            looking. The tranche is a property of the lock; only the position is
+                            ordinal. */}
+                        <Badge color={lock.refunded ? "var(--event-refund)" : trancheColor(lock.tranche)}>
+                          {lock.refunded ? `${lock.tranche} · AUTO-REFUNDED` : lock.tranche}
                         </Badge>
                       </div>
                     ))}
@@ -627,7 +659,7 @@ function RaceInner() {
         </div>
 
         {/* Right Sidebar: Visual telemetry & Judge Mode */}
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <Card className="p-4">
             <Eyebrow>Priority Engine Core</Eyebrow>
             <PriorityCore active={!settled} label={race.status.toUpperCase()} />

@@ -18,7 +18,13 @@ export function SummaryHeader({
 
   const totalLocked =
     currentRace.bids.reduce((s, b) => s + b.committedUsd, 0) || currentRace.requestedTotalUsd;
-  const senior = currentRace.settlement?.seniorFinancier;
+  // A name with a zero amount is not a senior holder. The refinance step could set the name
+  // while no senior position existed, and reading the name alone put a financier who had DECLINED
+  // to bid under a "SENIOR CLAIM" heading.
+  const senior =
+    currentRace.settlement?.seniorFinancier && (currentRace.settlement.seniorAmountUsd ?? 0) > 0
+      ? currentRace.settlement.seniorFinancier
+      : null;
   const stage = PHASE_LABELS[currentRace.status];
 
   // Distress and default read as danger; a clean close reads as success.
@@ -66,7 +72,7 @@ export function SummaryHeader({
         <KPI label="Financiers" value={currentRace.bids.length ? String(currentRace.bids.length) : "—"} />
         <KPI
           label="Senior Claim"
-          value={senior ? senior.toUpperCase() : "Pending Proof"}
+          value={senior ? senior.toUpperCase() : currentRace.settlement ? "Unfilled" : "Pending Proof"}
           accent={!!senior}
           color={senior ? "var(--rank-senior)" : undefined}
         />
