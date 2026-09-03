@@ -1,4 +1,4 @@
-import { getConfig, getDeps } from "@/lib/precedence/config";
+import { getConfig, getDeps, loadDeployedAddresses } from "@/lib/precedence/config";
 import { isPersistent, storePath } from "@/lib/precedence/store/json-store";
 
 /**
@@ -19,5 +19,12 @@ export async function GET() {
     store: { persistent: isPersistent(), path: storePath() ?? null },
     explorers: { sepolia: c.explorerBaseSepolia, creditcoin: c.explorerBaseCreditcoin },
     proofBuilderUrl: c.proofBuilderUrl,
+    // Deployed addresses, so the browser can read the vault and sign a lock itself. Public
+    // information by definition — they are on two block explorers — and sourced from the deploy
+    // files rather than env, so a mistyped vault cannot break the proof-to-vault binding while
+    // looking like a verification failure. Absent when nothing is deployed, which is the signal
+    // the UI uses to say a live lock is not currently possible.
+    addresses: loadDeployedAddresses(),
+    chainIds: { sepolia: 11155111, creditcoin: 102031 },
   });
 }
