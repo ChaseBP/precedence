@@ -80,7 +80,7 @@ export default function DashboardPage() {
 
       <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Item>
-          <Card className="p-5">
+          <Card>
             <Stat
               label="Total Volume Financed"
               value={<CountUp value={totalVolume} format={(n) => usd(n, 0)} />}
@@ -94,7 +94,7 @@ export default function DashboardPage() {
           </Card>
         </Item>
         <Item>
-          <Card className="p-5">
+          <Card>
             {/* Was "100%" in success green. The protocol prevents double-FINANCING of a claim
                 already registered here; it cannot detect a custodian issuing two receipts for one
                 physical lot. An absolute number in green claimed the second thing, and a
@@ -112,7 +112,7 @@ export default function DashboardPage() {
           </Card>
         </Item>
         <Item>
-          <Card className="p-5">
+          <Card>
             <Stat
               label="Active Priority Races"
               value={<CountUp value={active} format={(n) => String(Math.round(n))} />}
@@ -125,7 +125,7 @@ export default function DashboardPage() {
           </Card>
         </Item>
         <Item>
-          <Card className="p-5">
+          <Card>
             <Stat
               label="Avg Settlement Score"
               value={<CountUp value={avgRep} format={(n) => n.toFixed(0)} />}
@@ -141,7 +141,7 @@ export default function DashboardPage() {
       </Stagger>
 
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
-        <Card className="p-5">
+        <Card>
           <SectionTitle kicker="Financed Capital" title="Priority Settlement Volume" />
           {volumeSeries.length >= 2 ? (
             // The chart draws gridlines; the scale has to come from here, because only this page
@@ -167,7 +167,7 @@ export default function DashboardPage() {
           )}
         </Card>
 
-        <Card className="p-5">
+        <Card>
           <SectionTitle kicker="Precompile 0x0FD2" title="Recent Attestcoin Proofs" />
           <div className="flex flex-col gap-2">
             {attestations.length === 0 ? (

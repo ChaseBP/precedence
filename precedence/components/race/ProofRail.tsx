@@ -114,7 +114,7 @@ export function ProofRail({
     : undefined;
 
   return (
-    <Card className="p-4">
+    <Card>
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShieldCheck size={14} style={{ color: "var(--accent)" }} />
