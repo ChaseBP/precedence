@@ -96,14 +96,14 @@ export default function FacilityPage() {
       {/* ── the numbers ── */}
       <Card>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label="Face value" value={usd(c.faceValueUsd)} />
-          <Stat label={`Haircut ${c.haircutPct}%`} value={usd(maxAdvance)} sub="maximum advance" />
+          <Stat label="Asset value" value={usd(c.faceValueUsd)} />
+          <Stat label={`Safety margin ${c.haircutPct}%`} value={usd(maxAdvance)} sub="most that can be borrowed" />
           <Stat label="Term" value={`${c.termDays}d`} />
-          <Stat label="Blended coupon" value={pct(c.currentRatePct)} />
+          <Stat label="Average interest" value={pct(c.currentRatePct)} />
         </div>
         <div className="mt-4 flex flex-col gap-1 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
-          <div>Obligor: {c.obligor}</div>
-          <div>Custodian, as declared and unverified: {c.custodian}</div>
+          <div>Borrower: {c.obligor}</div>
+          <div>Held by, as declared and unverified: {c.custodian}</div>
           <div className="break-all">
             Document hash: <span className="mono">{c.docHash}</span>
           </div>
@@ -121,7 +121,7 @@ export default function FacilityPage() {
         <Card>
           <div className="flex items-center gap-2">
             <Layers size={15} style={{ color: "var(--accent)" }} />
-            <h2 className="text-sm font-semibold">Terms the borrower posted</h2>
+            <h2 className="text-sm font-semibold">The borrower's terms</h2>
           </div>
           {c.terms ? (
             <>
@@ -138,9 +138,9 @@ export default function FacilityPage() {
                 <table className="w-full min-w-[300px] text-left text-[11.5px]">
                   <thead>
                     <tr style={{ color: "var(--text-faint)" }}>
-                      <th className="pb-1.5 font-normal">Tranche</th>
-                      <th className="pb-1.5 font-normal">Cap</th>
-                      <th className="pb-1.5 font-normal">Coupon</th>
+                      <th className="pb-1.5 font-normal">Repayment tier</th>
+                      <th className="pb-1.5 font-normal">Max amount</th>
+                      <th className="pb-1.5 font-normal">Interest</th>
                       <th className="pb-1.5 font-normal">Repaid</th>
                     </tr>
                   </thead>

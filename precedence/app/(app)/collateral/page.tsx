@@ -25,7 +25,7 @@ function CapitalTrancheBar({ col, agents }: { col: CollateralAsset; agents: Agen
   return (
     <div>
       <div className="flex items-center justify-between text-[0.68rem]">
-        <span className="eyebrow">Tranche Structure · Senior / Junior / Subordinate</span>
+        <span className="eyebrow">Repayment Tiers · Senior / Junior / Subordinate</span>
         <span className="mono" style={{ color: "var(--text)" }}>
           {usd(req)} Total Funding
         </span>
@@ -118,7 +118,7 @@ export default function CollateralPage() {
       <WaveAlert show={!!wave} label={wave ?? ""} />
       <FadeUp>
         <header className="mb-6">
-          <Eyebrow>Live · Encumbrance Registry · Creditcoin CC3</Eyebrow>
+          <Eyebrow>Live · Lien Registry · Creditcoin CC3</Eyebrow>
           <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight">
             Collateral <span className="text-gradient">Scanner</span>
           </h1>
@@ -180,7 +180,7 @@ export default function CollateralPage() {
                     {hero.title}
                   </div>
                   <div className="eyebrow mt-0.5">
-                    Obligor: {hero.obligor} · Custodian: {hero.custodian} ({hero.custodianLocation})
+                    Borrower: {hero.obligor} · Custodian: {hero.custodian} ({hero.custodianLocation})
                   </div>
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -197,13 +197,13 @@ export default function CollateralPage() {
 
               <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
                 <div>
-                  <Eyebrow>Target Clearing Rate</Eyebrow>
+                  <Eyebrow>Target Interest Rate</Eyebrow>
                   <div className="num text-4xl font-bold text-gradient leading-[1.15] pb-0.5 sm:text-5xl">{pct(hero.targetRatePct)}</div>
                 </div>
                 {/* Was a non-wrapping 3-across row that ran off a 360px card. */}
                 <div className="flex flex-wrap gap-x-6 gap-y-2 pb-1 text-sm">
                   <div>
-                    <Eyebrow>Face Value</Eyebrow>
+                    <Eyebrow>Asset Value</Eyebrow>
                     <div className="mono mt-0.5 font-semibold">{usd(hero.faceValueUsd)}</div>
                   </div>
                   <div>
@@ -211,7 +211,7 @@ export default function CollateralPage() {
                     <div className="mono mt-0.5 font-semibold">{usd(hero.financingRequestedUsd)}</div>
                   </div>
                   <div>
-                    <Eyebrow>Haircut</Eyebrow>
+                    <Eyebrow>Safety Margin</Eyebrow>
                     <div className="mono mt-0.5 font-semibold">{hero.haircutPct}% buffer</div>
                   </div>
                 </div>
@@ -288,7 +288,7 @@ export default function CollateralPage() {
                       cards meant opening both. */}
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5">
                     <div>
-                      <Eyebrow>Senior coupon</Eyebrow>
+                      <Eyebrow>Senior interest</Eyebrow>
                       <div className="mono text-xl font-bold" style={{ color: "var(--rank-senior)" }}>
                         {c.terms ? pct(c.terms.seniorRatePct) : pct(c.targetRatePct)}
                       </div>
@@ -334,8 +334,7 @@ export default function CollateralPage() {
                   <button
                     onClick={() => openRace(c)}
                     disabled={launching !== null}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold disabled:opacity-50"
-                    style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                    className="btn-ghost flex w-full items-center justify-center gap-2 py-2 text-xs font-semibold"
                   >
                     {launching === c.id ? <Loader2 className="animate-spin" size={13} /> : <TrendingUp size={13} />}
                     Scripted race

@@ -65,7 +65,7 @@ export default function RegistryPage() {
             acts on, not only in the nav. */}
         <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <Eyebrow>Self-Populating Encumbrance Registry · Creditcoin CC3</Eyebrow>
+            <Eyebrow>Self-Populating Lien Registry · Creditcoin CC3</Eyebrow>
             <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight">
               The <span className="text-gradient">Registry</span>
             </h1>
@@ -75,8 +75,7 @@ export default function RegistryPage() {
           </div>
           <Link
             href="/registry/new"
-            className="shrink-0 rounded-lg px-3.5 py-2 text-xs font-semibold"
-            style={{ background: "var(--accent)", color: "var(--on-accent)" }}
+            className="btn-primary shrink-0 px-3.5 py-2 text-xs font-semibold"
           >
             Register collateral
           </Link>
@@ -132,7 +131,7 @@ export default function RegistryPage() {
                       <div className="mono text-sm font-semibold">{usd(r.totalCapitalUsd)}</div>
                     </div>
                     <div className="text-right">
-                      <Eyebrow>Senior Lien</Eyebrow>
+                      <Eyebrow>First Claim</Eyebrow>
                       <div className="mono text-sm font-semibold capitalize" style={{ color: "var(--rank-senior)" }}>
                         {r.seniorFinancier ?? "Pending"}
                       </div>

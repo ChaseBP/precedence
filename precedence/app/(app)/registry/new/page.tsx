@@ -77,6 +77,32 @@ const EMPTY: Form = {
   subordinateRatePct: String(SUGGESTED_RATES.SUBORDINATE),
 };
 const n = (v: string) => (v.trim() === "" ? Number.NaN : Number(v));
+
+/**
+ * A complete, valid worked example.
+ *
+ * @remarks A first-time visitor faced a large empty form with no idea what a plausible entry looks
+ * like. This fills every field with a coherent set — caps that sum to the advance, rates in the
+ * right order — so the mechanics can be read before anything has to be invented. Editable like
+ * anything else; it is a starting point, not a submission.
+ */
+const EXAMPLE: Form = {
+  assetType: "warehouse-receipt",
+  title: "Santos Arabica Coffee Warehouse Receipt #8802",
+  obligor: "Atlas Coffee Importers LLC",
+  custodian: "Santos Port Terminal #4 Vaults",
+  custodianLocation: "Santos, Brazil",
+  docIdentifier: "WR-8802",
+  faceValueUsd: "10000",
+  haircutPct: "15",
+  termDays: "90",
+  seniorCapUsd: "5100",
+  juniorCapUsd: "2550",
+  subordinateCapUsd: "850",
+  seniorRatePct: "5",
+  juniorRatePct: "10",
+  subordinateRatePct: "18",
+};
 export default function RegisterCollateralPage() {
   const router = useRouter();
   const { address, status } = useWallet();
@@ -228,8 +254,7 @@ export default function RegisterCollateralPage() {
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Link
               href="/collateral"
-              className="rounded-lg px-4 py-2 text-xs font-semibold"
-              style={{ background: "var(--accent)", color: "var(--on-accent)" }}
+              className="btn-primary px-4 py-2 text-xs font-semibold"
             >
               See it on the marketplace
             </Link>
@@ -258,9 +283,38 @@ export default function RegisterCollateralPage() {
             Register <span className="text-gradient">collateral</span>
           </h1>
           <p className="mt-2 max-w-xl text-sm" style={{ color: "var(--text-muted)" }}>
-            Describe the asset, then publish the terms lenders bid into. You set the price of each
-            tranche; the race only decides who takes it.
+            Describe what you are borrowing against, then set your terms. You choose how much each
+            repayment tier can lend and what it earns; the race only decides which lender gets which
+            tier.
           </p>
+
+          {/* A form this size with nothing in it gives a first-time visitor no idea what a
+              plausible entry looks like. One click fills a coherent example — caps that sum to the
+              advance, rates in the right order — so the mechanics can be read before anything has
+              to be invented. */}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => {
+                setF(EXAMPLE);
+                setAttempted(false);
+              }}
+              className="btn-primary inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold"
+            >
+              <Sparkles size={13} /> Fill in an example
+            </button>
+            <button
+              onClick={() => {
+                setF(EMPTY);
+                setAttempted(false);
+              }}
+              className="btn-ghost rounded-lg px-3 py-2 text-xs"
+            >
+              Clear the form
+            </button>
+            <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+              New here? Start with the example and change what you like.
+            </span>
+          </div>
         </header>
       </FadeUp>
       {/* One shared prompt rather than three hand-rolled branches. The previous version
@@ -343,7 +397,7 @@ export default function RegisterCollateralPage() {
       {/* ── the asset ── */}
       <section className="mt-5">
         <Card>
-          <h2 className="text-sm font-semibold">The asset</h2>
+          <h2 className="text-sm font-semibold">What you are borrowing against</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Field label="Asset type" full>
               <div className="flex flex-wrap gap-2">
@@ -368,25 +422,25 @@ export default function RegisterCollateralPage() {
               <Input field="title" value={f.title} onChange={(v) => set("title", v)}
                 placeholder="Santos Arabica Coffee Warehouse Receipt #8802" />
             </Field>
-            <Field label="Obligor (your legal name)">
+            <Field label="Borrower (your legal name)">
               <Input field="obligor" value={f.obligor} onChange={(v) => set("obligor", v)} placeholder="Atlas Coffee Importers LLC" />
             </Field>
-            <Field label="Document identifier" hint="Receipt or invoice number">
+            <Field label="Receipt or invoice number">
               <Input field="docIdentifier" value={f.docIdentifier} onChange={(v) => set("docIdentifier", v)} placeholder="WR-8802" />
             </Field>
-            <Field label="Custodian" hint="Institution name only">
+            <Field label="Who is holding the asset" hint="The warehouse, terminal or custodian. Institution name only.">
               <Input field="custodian" value={f.custodian} onChange={(v) => set("custodian", v)} placeholder="Santos Port Terminal #4 Vaults" />
             </Field>
-            <Field label="Custodian location">
+            <Field label="Where it is held">
               <Input field="custodianLocation" value={f.custodianLocation} onChange={(v) => set("custodianLocation", v)} placeholder="Santos, Brazil" />
             </Field>
-            <Field label="Face value (USD)">
+            <Field label="Asset value (USD)">
               <Input field="faceValueUsd" value={f.faceValueUsd} onChange={(v) => set("faceValueUsd", v)} placeholder="10000" numeric />
             </Field>
-            <Field label="Haircut (%)" hint="Higher protects lenders and lowers your advance">
+            <Field label="Safety margin (%)" hint="Trade finance calls this the haircut. Higher protects lenders and lowers what you can borrow.">
               <Input field="haircutPct" value={f.haircutPct} onChange={(v) => set("haircutPct", v)} numeric />
             </Field>
-            <Field label="Term (days)">
+            <Field label="Loan length (days)">
               <Input field="termDays" value={f.termDays} onChange={(v) => set("termDays", v)} numeric />
             </Field>
           </div>
@@ -405,7 +459,7 @@ export default function RegisterCollateralPage() {
           {/* gap-y so the preset button does not sit flush against the heading when it wraps
               below it at 360px. */}
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2.5">
-            <h2 className="text-sm font-semibold">Facility terms you are posting</h2>
+            <h2 className="text-sm font-semibold">Your terms: how much, at what rate</h2>
             <button onClick={suggestCaps} disabled={!Number.isFinite(money.advance) || money.advance <= 0}
               className="btn-ghost rounded-lg px-2.5 py-1 text-[11px] disabled:opacity-50">
               Split 60 / 30 / 10
@@ -427,10 +481,10 @@ export default function RegisterCollateralPage() {
                   {name}
                 </div>
                 <div className="mt-2 flex flex-col gap-2">
-                  <Field label="Cap (USD)">
+                  <Field label="Max amount (USD)">
                     <Input field={capKey} value={f[capKey]} onChange={(v) => set(capKey, v)} numeric placeholder="0" />
                   </Field>
-                  <Field label="Coupon (%)">
+                  <Field label="Interest rate (%)">
                     <Input field={rateKey} value={f[rateKey]} onChange={(v) => set(rateKey, v)} numeric />
                   </Field>
                 </div>
@@ -476,8 +530,7 @@ export default function RegisterCollateralPage() {
         <button
           onClick={submit}
           disabled={submitting || disconnected}
-          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold disabled:opacity-50"
-          style={{ background: "var(--accent)", color: "var(--on-accent)" }}
+          className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold"
         >
           {submitting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
           {submitting ? "Registering…" : "Register collateral and post terms"}
