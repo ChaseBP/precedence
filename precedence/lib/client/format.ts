@@ -92,3 +92,14 @@ export const dateOf = (iso: string): string => {
     return iso;
   }
 };
+
+/**
+ * Collapse the long-form precompile addresses for display.
+ *
+ * @remarks The constants stay canonical — `0x0000…0FD2` IS the address, and a stored value must
+ * not be lossy. But printed in full inside a log line it swamps the sentence around it, and every
+ * reader already knows it as 0x0FD2. Display-only, applied at render.
+ */
+export function shortenPrecompiles(text: string): string {
+  return text.replace(/0x0{30,}([0-9a-fA-F]{4})/g, (_, tail) => `0x${tail.toUpperCase()}`);
+}

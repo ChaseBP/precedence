@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, Check, X, Terminal, Cpu } from "lucide-react";
 import type { ProverCallRecord, SkillCallRecord } from "@/lib/precedence/types";
+import { shortenPrecompiles } from "@/lib/client/format";
 import { Badge } from "@/components/ui";
 import { CopyHash } from "@/components/CopyHash";
 
@@ -36,7 +37,7 @@ export function ProverCall({
       >
         <Cpu size={12} className="shrink-0" style={{ color: "var(--accent)" }} />
         <span className="mono min-w-0 flex-1 truncate text-[0.68rem]" title={call.command} style={{ color: "var(--text-muted)" }}>
-          {call.command}
+          {shortenPrecompiles(call.command)}
         </span>
         <Badge color={kindColor}>{call.kind}</Badge>
         {!dense ? (

@@ -32,22 +32,55 @@ export function CapitalFlowGraph({
     cx = W / 2,
     cy = H / 2 + 10;
 
-  // Derive tranches
-  const senior = members.find((m) => ("tranche" in m ? m.tranche === "SENIOR" : m.agentId === "meridian")) ?? members[0];
-  const junior = members.find((m) => ("tranche" in m ? m.tranche === "JUNIOR" : m.agentId === "vector")) ?? members[1];
-  const subordinate = members.find((m) => ("tranche" in m ? m.tranche === "SUBORDINATE" : m.agentId === "novum")) ?? members[2];
+  // Derive tranches.
+  //
+  // No positional fallback. `?? members[0]` used to fill an empty SENIOR slot with whoever
+  // happened to be first, so a JUNIOR bidder appeared in BOTH the senior and junior nodes of the
+  // waterfall — the diagram showed one financier holding two ranks it did not hold. A tranche
+  // nobody took is a real outcome and the diagram should say so.
+  const holderOf = (t: Tranche) =>
+    members.find((m) => ("tranche" in m ? m.tranche === t : false));
+  const senior = holderOf("SENIOR");
+  const junior = holderOf("JUNIOR");
+  const subordinate = holderOf("SUBORDINATE");
 
   const tiers = [
-    { label: "SENIOR (1st)", member: senior, color: "var(--rank-senior)", x: 70, y: 50, rank: 1 },
-    { label: "JUNIOR (2nd)", member: junior, color: "var(--rank-junior)", x: 190, y: 40, rank: 2 },
-    { label: "SUBORDINATE (3rd)", member: subordinate, color: "var(--rank-subordinate)", x: 310, y: 50, rank: 3 },
+    { label: "SENIOR · 1st", member: senior, color: "var(--rank-senior)", x: 70, y: 50, rank: 1 },
+    { label: "JUNIOR · 2nd", member: junior, color: "var(--rank-junior)", x: 190, y: 40, rank: 2 },
+    { label: "SUB · 3rd", member: subordinate, color: "var(--rank-subordinate)", x: 310, y: 50, rank: 3 },
   ];
 
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: "block" }}>
       {/* Waterfall connectors */}
       {tiers.map((t, idx) => {
-        if (!t.member) return null;
+        // An unfilled tranche is drawn dimmed rather than omitted. Omitting it left a gap that
+        // read as a rendering failure, when "nobody took this rank" is a real settlement outcome.
+        if (!t.member) {
+          return (
+            <g key={t.rank} opacity={0.4}>
+              <rect
+                x={t.x - 54}
+                y={t.y - 18}
+                width={108}
+                height={38}
+                rx={8}
+                fill="none"
+                stroke="var(--border-strong)"
+                strokeWidth={1}
+                strokeDasharray="4 3"
+              />
+              <text x={t.x} y={t.y - 4} textAnchor="middle" fontSize="9" fill="var(--text-faint)"
+                fontFamily="var(--font-mono)" fontWeight="bold">
+                {t.label}
+              </text>
+              <text x={t.x} y={t.y + 8} textAnchor="middle" fontSize="9" fill="var(--text-faint)"
+                fontFamily="var(--font-mono)">
+                unfilled
+              </text>
+            </g>
+          );
+        }
         return (
           <g key={t.rank}>
             <path
@@ -70,9 +103,9 @@ export function CapitalFlowGraph({
 
             {/* Financier Node */}
             <rect
-              x={t.x - 48}
+              x={t.x - 54}
               y={t.y - 18}
-              width={96}
+              width={108}
               height={38}
               rx={8}
               fill="var(--panel-heavy)"
@@ -83,7 +116,7 @@ export function CapitalFlowGraph({
               x={t.x}
               y={t.y - 4}
               textAnchor="middle"
-              fontSize="9"
+              fontSize="10"
               fill={t.color}
               fontFamily="var(--font-mono)"
               fontWeight="bold"
@@ -94,7 +127,7 @@ export function CapitalFlowGraph({
               x={t.x}
               y={t.y + 8}
               textAnchor="middle"
-              fontSize="10"
+              fontSize="11"
               fill="var(--text)"
               fontFamily="var(--font-mono)"
               className="capitalize"
