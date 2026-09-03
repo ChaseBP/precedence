@@ -53,7 +53,7 @@ interface ConfigShape {
 }
 
 export function ServiceFacility({ collateral }: { collateral: CollateralAsset }) {
-  const { address, chainKey, walletClient } = useWallet();
+  const { address, chainKey } = useWallet();
   const [cfg, setCfg] = useState<ConfigShape | null>(null);
   const [race, setRace] = useState<VaultRaceState | null>(null);
   const [abandoned, setAbandoned] = useState(false);
@@ -209,14 +209,12 @@ export function ServiceFacility({ collateral }: { collateral: CollateralAsset })
               />
               <button
                 onClick={() =>
-                  walletClient &&
                   run("draw", () =>
-                    drawCapital(walletClient, addrs.PriorityVault, collateral.docHash as Hex, Number(drawAmount)),
+                    drawCapital(addrs.PriorityVault, collateral.docHash as Hex, Number(drawAmount)),
                   )
                 }
-                disabled={!onSepolia || !walletClient || busy !== null || !(Number(drawAmount) > 0)}
-                className="rounded-lg px-2.5 py-1 text-[11px] font-semibold disabled:opacity-50"
-                style={{ background: "var(--accent)", color: "var(--on-accent)" }}
+                disabled={!onSepolia || busy !== null || !(Number(drawAmount) > 0)}
+                className="btn-primary px-2.5 py-1 text-[11px] font-semibold"
               >
                 {busy === "draw" ? "Drawing…" : "Draw"}
               </button>
@@ -243,13 +241,12 @@ export function ServiceFacility({ collateral }: { collateral: CollateralAsset })
               />
               <button
                 onClick={() =>
-                  walletClient &&
                   run("repay", () =>
-                    repayFacility(walletClient, addrs, collateral.docHash as Hex, Number(repayAmount), () => {}),
+                    repayFacility(addrs, collateral.docHash as Hex, Number(repayAmount), () => {}),
                   )
                 }
-                disabled={!onSepolia || !walletClient || busy !== null || !(Number(repayAmount) > 0)}
-                className="rounded-lg px-2.5 py-1 text-[11px] font-semibold disabled:opacity-50"
+                disabled={!onSepolia || busy !== null || !(Number(repayAmount) > 0)}
+                className="btn-primary px-2.5 py-1 text-[11px] font-semibold"
                 style={{ background: "var(--proof-verified)", color: "var(--on-accent)" }}
               >
                 {busy === "repay" ? "Repaying…" : "Repay"}
@@ -280,14 +277,12 @@ export function ServiceFacility({ collateral }: { collateral: CollateralAsset })
                 </div>
                 <button
                   onClick={() =>
-                    walletClient &&
                     run(`refund-${l.index}`, () =>
-                      refundLock(walletClient, addrs.PriorityVault, collateral.docHash as Hex, l.index),
+                      refundLock(addrs.PriorityVault, collateral.docHash as Hex, l.index),
                     )
                   }
-                  disabled={!onSepolia || !walletClient || busy !== null}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold disabled:opacity-50"
-                  style={{ background: "var(--warn)", color: "var(--on-accent)" }}
+                  disabled={!onSepolia || busy !== null}
+                  className="btn-primary btn-primary--warn inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold"
                 >
                   {busy === `refund-${l.index}` ? (
                     <Loader2 size={11} className="animate-spin" />

@@ -12,9 +12,11 @@
  * must not be: the whole claim is that a financier's rank comes from where *their* transaction
  * landed, which is only true if they sent it.
  */
-import { createPublicClient, custom, http, type Address, type Hex, type WalletClient } from "viem";
-import { sepolia } from "viem/chains";
+import type { Address, Hex } from "viem";
+import { getAccount, readContract, waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import { PriorityVault_ABI, PUSD_ABI } from "@/lib/precedence/adapters/generated/abis";
+import { sepolia } from "./chains";
+import { wagmiConfig } from "./wagmi";
 
 export interface VaultAddresses {
   PUSD: Address;
@@ -50,22 +52,25 @@ const toUsd = (v: bigint) => Number(v) / 1e6;
 const toUnits = (usd: number) => BigInt(Math.round(usd * 1e6));
 
 /**
- * A read-only client for Sepolia.
+ * Reads and writes both go through the wagmi config.
  *
- * @remarks Uses the injected wallet's own transport when there is one, so reads go through the
- * provider the user already trusts and we ship no RPC key to the browser. Falls back to a public
- * endpoint purely so the race state is visible before anyone connects.
+ * @remarks The important consequence is that every write carries `chainId`, so wagmi prompts the
+ * network switch AS PART OF SIGNING. Previously these used a raw viem wallet client, which simply
+ * throws on the wrong chain — which is why the UI had to grow "switch network" buttons and make
+ * the user satisfy a precondition before it would let them act.
  */
-function publicClient() {
-  const eth = typeof window !== "undefined" ? window.ethereum : undefined;
-  return createPublicClient({
-    chain: sepolia,
-    transport: eth ? custom(eth) : http("https://ethereum-sepolia-rpc.publicnode.com"),
-  });
+const SEPOLIA = sepolia.id;
+
+/** The connected address, or a readable failure instead of a confusing ABI error. */
+function requireAccount(): Address {
+  const { address } = getAccount(wagmiConfig);
+  if (!address) throw new Error("No wallet is connected.");
+  return address;
 }
 
 export async function readRaceState(vault: Address, collateralId: Hex): Promise<VaultRaceState> {
-  const c = (await publicClient().readContract({
+  const c = (await readContract(wagmiConfig, {
+    chainId: SEPOLIA,
     address: vault,
     abi: PriorityVault_ABI,
     functionName: "getCollateral",
@@ -129,11 +134,11 @@ export async function readMyLocks(
   who: Address,
   abandoned: boolean,
 ): Promise<MyLock[]> {
-  const pc = publicClient();
   const out: MyLock[] = [];
 
   for (let i = 0; i < lockCount; i++) {
-    const l = (await pc.readContract({
+    const l = (await readContract(wagmiConfig, {
+      chainId: SEPOLIA,
       address: vault,
       abi: PriorityVault_ABI,
       functionName: "lockAtRace",
@@ -144,7 +149,8 @@ export async function readMyLocks(
 
     const allocated = abandoned
       ? 0n
-      : ((await pc.readContract({
+      : ((await readContract(wagmiConfig, {
+          chainId: SEPOLIA,
           address: vault,
           abi: PriorityVault_ABI,
           functionName: "allocatedAmount",
@@ -173,7 +179,8 @@ export async function readMyLocks(
  */
 export async function readTotalAllocated(vault: Address, collateralId: Hex): Promise<number> {
   return toUsd(
-    (await publicClient().readContract({
+    (await readContract(wagmiConfig, {
+      chainId: SEPOLIA,
       address: vault,
       abi: PriorityVault_ABI,
       functionName: "totalAllocated",
@@ -183,7 +190,8 @@ export async function readTotalAllocated(vault: Address, collateralId: Hex): Pro
 }
 
 export async function readIsAbandoned(vault: Address, collateralId: Hex): Promise<boolean> {
-  return (await publicClient().readContract({
+  return (await readContract(wagmiConfig, {
+    chainId: SEPOLIA,
     address: vault,
     abi: PriorityVault_ABI,
     functionName: "isAbandoned",
@@ -193,22 +201,18 @@ export async function readIsAbandoned(vault: Address, collateralId: Hex): Promis
 
 /** Draw allocated capital. Obligor only, and only once the race has closed. */
 export async function drawCapital(
-  wallet: WalletClient,
   vault: Address,
   collateralId: Hex,
   amountUsd: number,
 ): Promise<Hex> {
-  const account = wallet.account;
-  if (!account) throw new Error("wallet has no account");
-  const hash = await wallet.writeContract({
+  const hash = await writeContract(wagmiConfig, {
+    chainId: SEPOLIA,
     address: vault,
     abi: PriorityVault_ABI,
     functionName: "draw",
     args: [collateralId, toUnits(amountUsd)],
-    account,
-    chain: sepolia,
   });
-  const r = await publicClient().waitForTransactionReceipt({ hash });
+  const r = await waitForTransactionReceipt(wagmiConfig, { chainId: SEPOLIA, hash });
   if (r.status !== "success") throw new Error(`draw reverted: ${hash}`);
   return hash;
 }
@@ -221,70 +225,62 @@ export async function drawCapital(
  * no adjuster to trust. This call only moves the tokens and emits the event a proof will read.
  */
 export async function repayFacility(
-  wallet: WalletClient,
   addrs: VaultAddresses,
   collateralId: Hex,
   amountUsd: number,
   onStage: (s: "approving" | "repaying") => void,
 ): Promise<Hex> {
-  const account = wallet.account;
-  if (!account) throw new Error("wallet has no account");
-  const pc = publicClient();
   const amount = toUnits(amountUsd);
+  const owner = requireAccount();
 
-  const allowance = (await pc.readContract({
+  const allowance = (await readContract(wagmiConfig, {
+    chainId: SEPOLIA,
     address: addrs.PUSD,
     abi: PUSD_ABI,
     functionName: "allowance",
-    args: [account.address, addrs.PriorityVault],
+    args: [owner, addrs.PriorityVault],
   })) as bigint;
 
   if (allowance < amount) {
     onStage("approving");
-    const a = await wallet.writeContract({
+    const a = await writeContract(wagmiConfig, {
+      chainId: SEPOLIA,
       address: addrs.PUSD,
       abi: PUSD_ABI,
       functionName: "approve",
       args: [addrs.PriorityVault, amount],
-      account,
-      chain: sepolia,
     });
-    const ar = await pc.waitForTransactionReceipt({ hash: a });
+    const ar = await waitForTransactionReceipt(wagmiConfig, { chainId: SEPOLIA, hash: a });
     if (ar.status !== "success") throw new Error(`approval reverted: ${a}`);
   }
 
   onStage("repaying");
-  const hash = await wallet.writeContract({
+  const hash = await writeContract(wagmiConfig, {
+    chainId: SEPOLIA,
     address: addrs.PriorityVault,
     abi: PriorityVault_ABI,
     functionName: "repay",
     args: [collateralId, amount],
-    account,
-    chain: sepolia,
   });
-  const r = await pc.waitForTransactionReceipt({ hash });
+  const r = await waitForTransactionReceipt(wagmiConfig, { chainId: SEPOLIA, hash });
   if (r.status !== "success") throw new Error(`repay reverted: ${hash}`);
   return hash;
 }
 
 /** Reclaim capital that was never allocated — or all of it, if the facility was abandoned. */
 export async function refundLock(
-  wallet: WalletClient,
   vault: Address,
   collateralId: Hex,
   index: number,
 ): Promise<Hex> {
-  const account = wallet.account;
-  if (!account) throw new Error("wallet has no account");
-  const hash = await wallet.writeContract({
+  const hash = await writeContract(wagmiConfig, {
+    chainId: SEPOLIA,
     address: vault,
     abi: PriorityVault_ABI,
     functionName: "refund",
     args: [collateralId, BigInt(index)],
-    account,
-    chain: sepolia,
   });
-  const r = await publicClient().waitForTransactionReceipt({ hash });
+  const r = await waitForTransactionReceipt(wagmiConfig, { chainId: SEPOLIA, hash });
   if (r.status !== "success") throw new Error(`refund reverted: ${hash}`);
   return hash;
 }
@@ -293,18 +289,16 @@ export async function readLenderPosition(
   addrs: VaultAddresses,
   who: Address,
 ): Promise<LenderPosition> {
-  const pc = publicClient();
-  const [bal, allow, eth] = await Promise.all([
-    pc.readContract({ address: addrs.PUSD, abi: PUSD_ABI, functionName: "balanceOf", args: [who] }) as Promise<bigint>,
-    pc.readContract({
-      address: addrs.PUSD,
-      abi: PUSD_ABI,
-      functionName: "allowance",
+  const [bal, allow] = await Promise.all([
+    readContract(wagmiConfig, {
+      chainId: SEPOLIA, address: addrs.PUSD, abi: PUSD_ABI, functionName: "balanceOf", args: [who],
+    }) as Promise<bigint>,
+    readContract(wagmiConfig, {
+      chainId: SEPOLIA, address: addrs.PUSD, abi: PUSD_ABI, functionName: "allowance",
       args: [who, addrs.PriorityVault],
     }) as Promise<bigint>,
-    pc.getBalance({ address: who }),
   ]);
-  return { pusdUsd: toUsd(bal), allowanceUsd: toUsd(allow), ethWei: eth };
+  return { pusdUsd: toUsd(bal), allowanceUsd: toUsd(allow), ethWei: 0n };
 }
 
 export type LockStage = "approving" | "approved" | "locking" | "locked";
@@ -318,7 +312,6 @@ export type LockStage = "approving" | "approved" | "locking" | "locked";
  * the thing being proven, so it must be its own transaction.
  */
 export async function approveAndLock(
-  wallet: WalletClient,
   addrs: VaultAddresses,
   collateralId: Hex,
   trancheOrdinal: 0 | 1 | 2,
@@ -332,29 +325,27 @@ export async function approveAndLock(
   allowDemotion: boolean,
   onStage: (s: LockStage, detail?: string) => void,
 ): Promise<{ lockTxHash: Hex; blockNumber: number; txIndex: number }> {
-  const account = wallet.account;
-  if (!account) throw new Error("wallet has no account");
-  const pc = publicClient();
   const amount = toUnits(amountUsd);
+  const owner = requireAccount();
 
-  const allowance = (await pc.readContract({
+  const allowance = (await readContract(wagmiConfig, {
+    chainId: SEPOLIA,
     address: addrs.PUSD,
     abi: PUSD_ABI,
     functionName: "allowance",
-    args: [account.address, addrs.PriorityVault],
+    args: [owner, addrs.PriorityVault],
   })) as bigint;
 
   if (allowance < amount) {
     onStage("approving", "approve pUSD to the vault");
-    const approveHash = await wallet.writeContract({
+    const approveHash = await writeContract(wagmiConfig, {
+      chainId: SEPOLIA,
       address: addrs.PUSD,
       abi: PUSD_ABI,
       functionName: "approve",
       args: [addrs.PriorityVault, amount],
-      account,
-      chain: sepolia,
     });
-    const r = await pc.waitForTransactionReceipt({ hash: approveHash });
+    const r = await waitForTransactionReceipt(wagmiConfig, { chainId: SEPOLIA, hash: approveHash });
     if (r.status !== "success") throw new Error(`approval reverted: ${approveHash}`);
     onStage("approved", approveHash);
   } else {
@@ -362,15 +353,14 @@ export async function approveAndLock(
   }
 
   onStage("locking", "lock capital into the tranche");
-  const lockHash = await wallet.writeContract({
+  const lockHash = await writeContract(wagmiConfig, {
+    chainId: SEPOLIA,
     address: addrs.PriorityVault,
     abi: PriorityVault_ABI,
     functionName: "lock",
     args: [collateralId, trancheOrdinal, amount, allowDemotion],
-    account,
-    chain: sepolia,
   });
-  const receipt = await pc.waitForTransactionReceipt({ hash: lockHash });
+  const receipt = await waitForTransactionReceipt(wagmiConfig, { chainId: SEPOLIA, hash: lockHash });
   if (receipt.status !== "success") throw new Error(`lock reverted: ${lockHash}`);
 
   onStage("locked", lockHash);

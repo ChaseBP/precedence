@@ -29,7 +29,8 @@ import {
 } from "lucide-react";
 import type { Address, Hex } from "viem";
 import { Badge, Card, Why } from "@/components/ui";
-import { CHAINS, useWallet } from "@/lib/client/wallet";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useWallet } from "@/lib/client/wallet";
 import {
   approveAndLock,
   readLenderPosition,
@@ -54,7 +55,7 @@ interface ConfigShape {
 }
 
 export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
-  const { address, status, chainKey, connect, switchChain, walletClient } = useWallet();
+  const { address, status, chainKey } = useWallet();
   const [cfg, setCfg] = useState<ConfigShape | null>(null);
   const [race, setRace] = useState<VaultRaceState | null>(null);
   const [raceErr, setRaceErr] = useState<string | null>(null);
@@ -164,13 +165,12 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
   }, [amt, pos, tranche, capFor]);
 
   async function doLock() {
-    if (!walletClient || !addrs) return;
+    if (!addrs) return;
     setError(null);
     setResult(null);
     try {
       const t = TRANCHES.find((x) => x.name === tranche)!;
       const r = await approveAndLock(
-        walletClient,
         addrs,
         collateral.docHash as Hex,
         t.ordinal,
@@ -312,7 +312,7 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
               </div>
               <div className="mono mt-1 text-[12px] font-semibold">{pct(rateFor(name))}</div>
               <div className="text-[10.5px]" style={{ color: "var(--text-faint)" }}>
-                cap {usd(capFor(name))}
+                up to {usd(capFor(name))}
               </div>
             </button>
           );
@@ -393,19 +393,13 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
       {/* ── wallet gate ── */}
       <div className="mt-4">
         {status !== "connected" ? (
-          <button onClick={connect} className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold"
-            style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
-            <Wallet size={13} /> Connect a wallet to bid
-          </button>
-        ) : !onSepolia ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <button onClick={() => switchChain("sepolia")}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold"
-              style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
-              Switch to {CHAINS.sepolia.name}
-            </button>
+          // RainbowKit owns the picker, so this is a button that opens it rather than a bespoke
+          // connect flow. And there is no longer a "wrong chain" branch: the write below carries
+          // chainId, so the wallet is asked to move to Sepolia as part of signing.
+          <div className="flex flex-wrap items-center gap-3">
+            <ConnectButton showBalance={false} chainStatus="none" label="Connect a wallet to bid" />
             <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-              Capital locks on Sepolia — that is the chain being proven.
+              Capital locks on Sepolia; your wallet will be asked to switch when you sign.
             </span>
           </div>
         ) : race && !race.registered ? (
@@ -427,8 +421,7 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
           <button
             onClick={doLock}
             disabled={Boolean(stage && stage !== "locked") || !Number.isFinite(amt) || amt <= 0}
-            className="inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold disabled:opacity-50"
-            style={{ background: "var(--accent)", color: "var(--on-accent)" }}
+            className="btn-primary inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold"
           >
             {stage && stage !== "locked" ? <Loader2 size={13} className="animate-spin" /> : <Lock size={13} />}
             {stage === "approving"

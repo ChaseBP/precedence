@@ -9,12 +9,15 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.2.11",
+    "@tanstack/react-query": "^5.102.8",
     "lucide-react": "^1.17.0",
     "motion": "^12.40.0",
     "next": "16.2.7",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "viem": "^2.52.2",
+    "wagmi": "^2.16.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -22,6 +25,9 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@x402/core": "^2.24.0",
+    "@x402/evm": "^2.24.0",
+    "@x402/svm": "^2.24.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",
@@ -34,5 +40,6 @@
   "trustedDependencies": [
     "sharp",
     "unrs-resolver"
-  ]
+  ],
+  "//x402": "@x402/core, @x402/evm and @x402/svm are here only to satisfy optional peerDependencies of @coinbase/cdp-sdk, which is reached through RainbowKit's static baseAccount import (RainbowKit -> @wagmi/connectors -> @base-org/account -> @coinbase/cdp-sdk). Nothing in this app uses x402, but Turbopack AND webpack both treat the unresolvable specifiers as hard build errors. Broke via cdp-sdk 1.53.0 on 2026-07-16 with no change to our own deps. See rainbow-me/rainbowkit#2617."
 }
