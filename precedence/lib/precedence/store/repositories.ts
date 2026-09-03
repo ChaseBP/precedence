@@ -39,6 +39,24 @@ export async function getCollateral(id: string): Promise<CollateralAsset | undef
   return getDb().collateral.find((c) => c.id === id || c.symbol === id);
 }
 
+/**
+ * Add a newly registered asset.
+ *
+ * @remarks Prepended so the thing someone just registered is the first thing they see, rather
+ * than buried under the fixtures. Rejects a duplicate id instead of silently overwriting: two
+ * registrations of one asset is precisely the condition this protocol exists to make detectable,
+ * so quietly merging them here would be the wrong instinct.
+ */
+export async function addCollateral(asset: CollateralAsset): Promise<CollateralAsset> {
+  const db = getDb();
+  if (db.collateral.some((c) => c.id === asset.id || c.docHash === asset.docHash)) {
+    throw new Error(`collateral ${asset.id} is already registered`);
+  }
+  db.collateral.unshift(asset);
+  persist();
+  return asset;
+}
+
 export async function updateCollateral(id: string, mutate: (c: CollateralAsset) => void): Promise<CollateralAsset | undefined> {
   const col = getDb().collateral.find((c) => c.id === id);
   if (col) {

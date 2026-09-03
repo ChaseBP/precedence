@@ -4,14 +4,15 @@ import { PROTOCOL_STATES } from "../precedence/types";
 import type {
   Agent,
   Attestation,
-  CollateralAsset,
   CollateralAnalysis,
+  CollateralAsset,
   Hex,
   LifecycleEvent,
   LifecyclePhase,
   PriorityRace,
   RaceSummary,
   RefinanceOpportunity,
+  RegistrationProposal,
 } from "../precedence/types";
 
 async function jget<T>(url: string): Promise<T> {
@@ -135,6 +136,19 @@ export const api = {
 
   /** One wallet's book, on both sides. Role is derived from position, never declared. */
   portfolio: (address: string) => jget<Portfolio>(`/api/portfolio?address=${address}`),
+
+  /** Pre-fill only. Nothing returned is verified and nothing is registered by this call. */
+  parseDocument: (documentText: string) =>
+    jpost<{ ok: boolean; available: boolean; reason?: string; proposal?: RegistrationProposal; advisory?: string }>(
+      "/api/collateral/parse",
+      { documentText },
+    ),
+
+  registerCollateral: (body: unknown) =>
+    jpost<{ ok: boolean; problems?: string[]; error?: string; collateral?: CollateralAsset; chain?: boolean; txHash?: string | null; note?: string }>(
+      "/api/collateral/register",
+      body,
+    ),
 
   // Refinance & top opportunities
   refinance: (collateralId: string) =>
