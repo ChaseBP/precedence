@@ -130,8 +130,12 @@ export default function FacilityPage() {
                 so racing decides who takes a rank — never what that rank pays. Senior is repaid
                 first and sits behind the tranches below it, which is why it is the cheapest.
               </Why>
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full min-w-[420px] text-left text-[11.5px]">
+              {/* min-w-[420px] forced a horizontal scroll on a 360px screen for a four-column
+                  table whose content is short — the scroll hid the "first loss" column, which is
+                  the single most important thing a lender needs to read. Dropped the floor so the
+                  table fits; the scroll container stays for genuinely narrow cases. */}
+              <div className="mt-3 -mx-1 overflow-x-auto px-1">
+                <table className="w-full min-w-[300px] text-left text-[11.5px]">
                   <thead>
                     <tr style={{ color: "var(--text-faint)" }}>
                       <th className="pb-1.5 font-normal">Tranche</th>
@@ -152,7 +156,7 @@ export default function FacilityPage() {
                         <td className="py-2 font-semibold" style={{ color: trancheColor(name) }}>{name}</td>
                         <td className="mono py-2">{usd(cap)}</td>
                         <td className="mono py-2">{pct(rate)}</td>
-                        <td className="py-2" style={{ color: "var(--text-muted)" }}>{order}</td>
+                        <td className="py-2 leading-tight" style={{ color: "var(--text-muted)" }}>{order}</td>
                       </tr>
                     ))}
                   </tbody>

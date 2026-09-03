@@ -158,9 +158,13 @@ export default function CollateralPage() {
           </p>
         </Card>
       ) : (
-        <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {/* Protagonist Hero Card: Atlas Coffee Receipt #8802 */}
-          <Item className="h-full sm:col-span-2">
+        <Stagger className="flex flex-col gap-4">
+          {/* The hero used to live INSIDE the card grid, spanning two columns. Being much taller
+              than a normal card, it stretched whatever sat beside it to match, leaving a tall card
+              with a large empty gap in the middle — the grid was equalising heights across two
+              things that are not the same kind of thing. The hero is now its own block and the
+              grid below holds only comparable cards. */}
+          <Item>
             <Card glow className="flex h-full flex-col gap-4 p-6">
               {/* Wraps as a whole at narrow widths: two nowrap badges plus a long title cannot
                   share a 360px row, and `shrink-0` on the badge group only guaranteed the overflow
@@ -236,14 +240,22 @@ export default function CollateralPage() {
 
               <div className="flex items-center justify-between gap-3 text-[0.68rem]" style={{ color: "var(--text-faint)" }}>
                 <span className="mono min-w-0 truncate" title={hero.id}>
-                  NFT Token #{hero.nftTokenId} · Registry {hero.registryAddress?.slice(0, 16)}…
+                  {/* A store-only facility has no registry address, and slicing the zero address
+                      printed "Registry 0x00000000000000…" as though it meant something. Say what
+                      is true instead. */}
+                  NFT Token #{hero.nftTokenId} ·{" "}
+                  {hero.registryAddress && !/^0x0+$/.test(hero.registryAddress)
+                    ? `Registry ${hero.registryAddress.slice(0, 16)}…`
+                    : "not yet on the Creditcoin registry"}
                 </span>
                 <span className="mono shrink-0">verified {timeOf(hero.fetchedAt)}</span>
               </div>
             </Card>
           </Item>
 
-          {/* Additional Collateral Cards */}
+          {/* Additional Collateral Cards — all the same shape, so equal heights read as alignment
+              rather than as padding. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {rest.map((c) => (
             <Item key={c.id}>
               <Card className="flex h-full flex-col justify-between gap-3 p-5">
@@ -255,16 +267,41 @@ export default function CollateralPage() {
                     </Badge>
                   </div>
                   <div className="eyebrow mt-1">{c.obligor}</div>
-                  <div className="mt-3 flex items-baseline justify-between">
+                  {/* A lender choosing between facilities needs more than a headline rate: the
+                      senior coupon they would actually receive, the term they are committing for,
+                      and whether the facility can be bid into at all. Without those, comparing two
+                      cards meant opening both. */}
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5">
                     <div>
-                      <Eyebrow>Rate</Eyebrow>
-                      <div className="mono text-xl font-bold">{pct(c.targetRatePct)}</div>
+                      <Eyebrow>Senior coupon</Eyebrow>
+                      <div className="mono text-xl font-bold" style={{ color: "var(--rank-senior)" }}>
+                        {c.terms ? pct(c.terms.seniorRatePct) : pct(c.targetRatePct)}
+                      </div>
                     </div>
                     <div className="text-right">
-                      <Eyebrow>Funding</Eyebrow>
+                      <Eyebrow>Facility</Eyebrow>
                       <div className="mono font-semibold">{usd(c.financingRequestedUsd)}</div>
                     </div>
+                    <div>
+                      <Eyebrow>Term</Eyebrow>
+                      <div className="mono text-[12px]">{c.termDays}d</div>
+                    </div>
+                    <div className="text-right">
+                      <Eyebrow>Open to bids</Eyebrow>
+                      <div className="text-[12px] font-semibold" style={{
+                        color: c.status === "CLEAR" && c.terms ? "var(--proof-verified)" : "var(--text-faint)",
+                      }}>
+                        {c.status !== "CLEAR" ? "no · " + c.status.toLowerCase() : c.terms ? "yes" : "no terms yet"}
+                      </div>
+                    </div>
                   </div>
+                  {c.terms ? (
+                    <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[10.5px]" style={{ color: "var(--text-faint)" }}>
+                      <span>Senior {usd(c.terms.seniorCapUsd)}</span>
+                      <span>Junior {usd(c.terms.juniorCapUsd)} @ {pct(c.terms.juniorRatePct)}</span>
+                      <span>Sub {usd(c.terms.subordinateCapUsd)} @ {pct(c.terms.subordinateRatePct)}</span>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-col gap-2 border-t pt-3" style={{ borderColor: "var(--border)" }}>
@@ -287,6 +324,7 @@ export default function CollateralPage() {
               </Card>
             </Item>
           ))}
+          </div>
         </Stagger>
       )}
     </div>
