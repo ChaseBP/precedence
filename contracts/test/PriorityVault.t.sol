@@ -37,9 +37,16 @@ contract PriorityVaultTest is Test {
         vault.registerCollateral(COL);
     }
 
+    /// @dev Caps default to the seeded 60/30/10 split so existing cases read unchanged.
     function _openRace(uint256 facilityDollars) internal {
+        uint256 senior = (facilityDollars * 60) / 100;
+        uint256 junior = (facilityDollars * 30) / 100;
+        _openRaceWithCaps(facilityDollars, senior, junior, facilityDollars - senior - junior);
+    }
+
+    function _openRaceWithCaps(uint256 facilityDollars, uint256 s_, uint256 j_, uint256 sub_) internal {
         vm.prank(obligor);
-        vault.openRace(COL, facilityDollars * D, 10 minutes);
+        vault.openRace(COL, facilityDollars * D, [s_ * D, j_ * D, sub_ * D], 10 minutes);
     }
 
     function _lock(address who, PriorityVault.Tranche t, uint256 dollars) internal {
@@ -130,20 +137,35 @@ contract PriorityVaultTest is Test {
 
     /// @dev Locks fill the facility in seq order. The lock crossing the boundary is partially
     /// allocated; everything after it is fully refundable.
-    function test_allocationFillsFacilityInSeqOrder() public {
-        _openRace(8_500);
-        _lock(meridian, PriorityVault.Tranche.SENIOR, 5_000); // fully allocated
-        _lock(vector, PriorityVault.Tranche.JUNIOR, 4_000); // 3,500 allocated, 500 refundable
-        _lock(novum, PriorityVault.Tranche.SUBORDINATE, 2_000); // entirely refundable
+    /// @dev Allocation is per-TRANCHE, not a single running total. A lock is seated against its
+    /// own declared tranche's cap, so one tranche can go unfilled while another overflows — which
+    /// a facility-wide counter cannot express, and got wrong in production.
+    function test_allocationIsPerTrancheNotFacilityWide() public {
+        _openRaceWithCaps(8_500, 5_100, 2_550, 850);
+        _lock(meridian, PriorityVault.Tranche.SENIOR, 5_000); // fits under the 5,100 senior cap
+        _lock(vector, PriorityVault.Tranche.JUNIOR, 4_000); // 2,550 fits, 1,450 refundable
+        _lock(novum, PriorityVault.Tranche.SUBORDINATE, 2_000); // 850 fits, 1,150 refundable
 
-        assertEq(vault.allocatedAmount(COL, 0), 5_000 * D);
-        assertEq(vault.allocatedAmount(COL, 1), 3_500 * D, "partial at the boundary");
-        assertEq(vault.allocatedAmount(COL, 2), 0, "outpaced entirely");
-        assertEq(vault.totalAllocated(COL), 8_500 * D);
+        assertEq(vault.allocatedAmount(COL, 0), 5_000 * D, "under its own cap");
+        assertEq(vault.allocatedAmount(COL, 1), 2_550 * D, "capped by JUNIOR, not by facility headroom");
+        assertEq(vault.allocatedAmount(COL, 2), 850 * D, "SUBORDINATE still fills - it has its own cap");
+        // 8,400, not 8,500: the senior tranche keeps 100 unfilled. A facility-wide rule would have
+        // handed that 100 to a junior bid that has no claim on it.
+        assertEq(vault.totalAllocated(COL), 8_400 * D);
+    }
+
+    /// @dev The rule that a later lock cannot take capacity an earlier one already holds.
+    function test_earlierLockInTheSameTrancheWins() public {
+        _openRaceWithCaps(8_500, 5_100, 2_550, 850);
+        _lock(meridian, PriorityVault.Tranche.SENIOR, 5_100); // takes the whole senior cap
+        _lock(vector, PriorityVault.Tranche.SENIOR, 5_100); // arrives second, gets nothing
+
+        assertEq(vault.allocatedAmount(COL, 0), 5_100 * D);
+        assertEq(vault.allocatedAmount(COL, 1), 0, "outpaced in its own tranche, refunded not demoted");
     }
 
     function test_refundReturnsOnlyTheUnallocatedPortion() public {
-        _openRace(8_500);
+        _openRaceWithCaps(8_500, 5_100, 2_550, 850);
         _lock(meridian, PriorityVault.Tranche.SENIOR, 5_000);
         _lock(vector, PriorityVault.Tranche.JUNIOR, 4_000);
         _lock(novum, PriorityVault.Tranche.SUBORDINATE, 2_000);
@@ -154,12 +176,12 @@ contract PriorityVaultTest is Test {
         uint256 before = pusd.balanceOf(vector);
         vm.prank(vector);
         vault.refund(COL, 1);
-        assertEq(pusd.balanceOf(vector) - before, 500 * D, "only the excess comes back");
+        assertEq(pusd.balanceOf(vector) - before, 1_450 * D, "the excess over the JUNIOR cap comes back");
 
         before = pusd.balanceOf(novum);
         vm.prank(novum);
         vault.refund(COL, 2);
-        assertEq(pusd.balanceOf(novum) - before, 2_000 * D, "outpaced capital fully returned");
+        assertEq(pusd.balanceOf(novum) - before, 1_150 * D, "the excess over the SUBORDINATE cap comes back");
 
         // The winner has nothing to reclaim.
         vm.prank(meridian);
@@ -204,14 +226,14 @@ contract PriorityVaultTest is Test {
     function test_revert_strangerCannotOpenRace() public {
         vm.prank(stranger);
         vm.expectRevert(PriorityVault.NotObligor.selector);
-        vault.openRace(COL, 8_500 * D, 10 minutes);
+        vault.openRace(COL, 8_500 * D, [5_100 * D, 2_550 * D, 850 * D], 10 minutes);
     }
 
     function test_revert_twoOpenRacesOnOneCollateral() public {
         _openRace(8_500);
         vm.prank(obligor);
         vm.expectRevert(PriorityVault.RaceAlreadyOpen.selector);
-        vault.openRace(COL, 1_000 * D, 10 minutes);
+        vault.openRace(COL, 1_000 * D, [600 * D, 300 * D, 100 * D], 10 minutes);
     }
 
     function test_revert_refundWhileRaceOpen() public {
@@ -268,7 +290,7 @@ contract PriorityVaultTest is Test {
     function test_revert_raceWindowTooShort() public {
         vm.prank(obligor);
         vm.expectRevert(PriorityVault.WindowTooShort.selector);
-        vault.openRace(COL, 8_500 * D, 30 seconds);
+        vault.openRace(COL, 8_500 * D, [5_100 * D, 2_550 * D, 850 * D], 30 seconds);
     }
 
     function test_revert_doubleRegistration() public {
@@ -282,7 +304,9 @@ contract PriorityVaultTest is Test {
     /// @dev A silent obligor must not be able to strand UNALLOCATED capital. Anyone may close a
     /// stale race once the deadline passes, which unlocks the refund path.
     function test_anyoneMayCloseAStaleRaceSoUnallocatedCapitalIsFreed() public {
-        _openRace(1_000);
+        // A single-tranche facility, so this stays a test about LIVENESS rather than about how
+        // caps divide a facility -- which is what the allocation tests above are for.
+        _openRaceWithCaps(1_000, 1_000, 0, 0);
         _lock(meridian, PriorityVault.Tranche.SENIOR, 5_000);
 
         vm.warp(block.timestamp + 11 minutes);

@@ -59,6 +59,10 @@ contract PriorityVault is ReentrancyGuard {
         uint64 raceNonce;
         uint64 lockCount; // locks in the CURRENT race; also the seq high-water mark
         uint256 facilitySize; // how much the obligor asked for
+        // Per-tranche caps for the CURRENT race, indexed by Tranche. The vault needs these to
+        // reach the same allocation the Creditcoin engine does; without them it could only fill
+        // by arrival order, which disagrees with a tranche-aware waterfall on the same locks.
+        uint256[3] caps;
         uint256 raceDeadline; // after this anyone may close the race
         uint256 drawDeadline; // set on close; after this an undrawn facility is abandoned
         // accounting
@@ -122,6 +126,7 @@ contract PriorityVault is ReentrancyGuard {
     error NothingToRefund();
     error OverDraw();
     error NotLockOwner();
+    error CapsMustSumToFacility();
 
     constructor(IERC20 token) {
         require(address(token) != address(0), "vault: zero token");
@@ -151,7 +156,15 @@ contract PriorityVault is ReentrancyGuard {
     /// @dev A collateral is either clear or encumbered, so only one race may be open at a time.
     /// Bumping `raceNonce` here is what lets the gate require `seq` to start at 1 without that
     /// requirement breaking on a second financing round.
-    function openRace(bytes32 collateralId, uint256 facilitySize, uint256 window)
+    /// @notice Open a race. `caps` are the borrower's posted per-tranche sizes, indexed by
+    /// `Tranche`, and must sum to `facilitySize`.
+    ///
+    /// @dev The caps are required, not optional. The Creditcoin engine allocates tranche-aware
+    /// against these same caps in proven order; a vault that knew only the total could only fill
+    /// by arrival order, and the two would disagree about who is owed what on the very same locks.
+    /// They did disagree, in production, on three of four locks — see
+    /// `analysis/allocation-divergence.md`.
+    function openRace(bytes32 collateralId, uint256 facilitySize, uint256[3] calldata caps, uint256 window)
         external
         onlyObligor(collateralId)
     {
@@ -160,16 +173,23 @@ contract PriorityVault is ReentrancyGuard {
         if (c.raceOpen) revert RaceAlreadyOpen();
         if (facilitySize == 0) revert ZeroAmount();
         if (window < MIN_RACE_WINDOW) revert WindowTooShort();
+        if (caps[0] + caps[1] + caps[2] != facilitySize) revert CapsMustSumToFacility();
 
         c.raceNonce += 1;
         c.raceOpen = true;
         c.lockCount = 0;
         c.facilitySize = facilitySize;
+        c.caps = caps;
         c.raceDeadline = block.timestamp + window;
         c.totalLocked = 0;
         c.totalDrawn = 0;
 
         emit RaceOpened(collateralId, c.raceNonce, facilitySize, c.raceDeadline);
+    }
+
+    /// @notice The posted per-tranche caps for the current race, indexed by `Tranche`.
+    function capsOf(bytes32 collateralId) external view returns (uint256[3] memory) {
+        return collateral[collateralId].caps;
     }
 
     /// @notice Escrow capital against collateral, declaring a tranche preference.
@@ -231,19 +251,31 @@ contract PriorityVault is ReentrancyGuard {
     /// crosses the boundary is partially allocated, and everything after it is fully refundable.
     /// Creditcoin applies this same rule to the same data, which is how both chains agree on the
     /// allocated set with no message passing between them.
+    /// @notice How much of lock `index` this facility actually took.
+    ///
+    /// @dev Deliberately identical in outcome to `AllocationLib.allocate` on the Creditcoin side:
+    /// walk the locks in order, seat each one in its DECLARED tranche against that tranche's
+    /// remaining cap, and leave the rest refundable. Lock order is the proven order — locks are
+    /// appended in execution order, which is exactly `(block, txIndex)` order — so both chains
+    /// consume identical inputs and reach identical allocations.
+    ///
+    /// No demotion is assumed here. A financier who bid SENIOR did not consent to subordinate
+    /// risk, so the conservative reading is the correct default, and it matches what the prover
+    /// submits unless a financier opted in.
     function allocatedAmount(bytes32 collateralId, uint256 index) public view returns (uint256) {
         Collateral storage c = collateral[collateralId];
         Lock[] storage ls = _locks[collateralId][c.raceNonce];
         if (index >= ls.length) return 0;
 
-        uint256 cumulative;
-        for (uint256 i = 0; i < index; ++i) {
-            cumulative += ls[i].amount;
-        }
-        if (cumulative >= c.facilitySize) return 0;
+        uint256[3] memory remaining = c.caps;
 
-        uint256 headroom = c.facilitySize - cumulative;
-        return headroom >= ls[index].amount ? ls[index].amount : headroom;
+        for (uint256 i = 0; i <= index; ++i) {
+            uint8 t = uint8(ls[i].tranche);
+            uint256 take = ls[i].amount <= remaining[t] ? ls[i].amount : remaining[t];
+            if (i == index) return take;
+            remaining[t] -= take;
+        }
+        return 0;
     }
 
     /// @notice Total capital actually allocated to the facility, i.e. the obligor's draw ceiling.
