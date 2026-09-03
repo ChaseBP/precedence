@@ -1,6 +1,15 @@
 import type { ReactNode } from "react";
 import { Info } from "lucide-react";
 
+/**
+ * A panel.
+ *
+ * @remarks Padding is DEFAULTED here, not left to each call site. It used to be neither: `Card`
+ * applied none, so 18 places that wrote a bare `<Card>` rendered their contents flush against the
+ * border, and the places that did pass padding had drifted to eight different values (p-3 through
+ * p-10) — so panels sitting side by side were spaced differently. A `p-*` in `className` still
+ * wins, because Tailwind's later utility takes precedence; this only supplies a floor.
+ */
 export function Card({
   children,
   className = "",
@@ -12,9 +21,10 @@ export function Card({
   glow?: boolean;
   rounded?: string;
 }) {
+  const hasPadding = /(^|\s)p-/.test(className);
   return (
     <div
-      className={`glass ${rounded} ${className}`}
+      className={`glass ${rounded} ${hasPadding ? "" : "p-5"} ${className}`}
       style={glow ? { boxShadow: "0 0 36px -8px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.05)" } : undefined}
     >
       {children}

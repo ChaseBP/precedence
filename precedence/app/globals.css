@@ -314,10 +314,59 @@ h1, h2, h3, h4 {
   opacity: 0.9;
 }
 
+/* .btn-primary is the SOLID call-to-action in the same cut-corner language.
+   It exists because a dozen call sites had grown their own inline
+   `background: var(--accent); border-radius: 0.5rem` buttons — round-cornered,
+   body-font, no hairline — sitting inches from the clipped mono ones. Two
+   button languages on one screen reads as two different apps. */
+.btn-primary {
+  --cut: 10px;
+  --btn-edge: color-mix(in srgb, white 55%, transparent);
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 1px solid var(--accent);
+}
+.btn-primary:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+  filter: drop-shadow(0 0 12px var(--accent-glow));
+}
+.btn-primary:disabled,
+.btn-accent:disabled,
+.btn-ghost:disabled {
+  opacity: 0.5;
+  filter: none;
+  cursor: not-allowed;
+}
+/* Same shape, different semantic fill: a confirm and a reclaim. */
+.btn-primary--go {
+  background: var(--proof-verified);
+  border-color: var(--proof-verified);
+}
+.btn-primary--go:hover {
+  background: color-mix(in srgb, var(--proof-verified) 85%, black);
+  border-color: color-mix(in srgb, var(--proof-verified) 85%, black);
+}
+.btn-primary--warn {
+  background: var(--warn);
+  border-color: var(--warn);
+}
+.btn-primary--warn:hover {
+  background: color-mix(in srgb, var(--warn) 85%, black);
+  border-color: color-mix(in srgb, var(--warn) 85%, black);
+}
+
+.btn-primary:focus-visible {
+  outline: none;
+  filter: drop-shadow(0 0 0.5px var(--on-accent)) drop-shadow(0 0 3px var(--accent))
+    drop-shadow(0 0 8px var(--accent-glow));
+}
+
 /* ── Buttons — terminal cut-corner language. One clipped corner, hairline
    edge, mono caps; primary glows red on hover with a sheen sweep. ── */
 .btn-accent,
-.btn-ghost {
+.btn-ghost,
+.btn-primary {
   position: relative;
   overflow: hidden;
   font-family: var(--font-mono);
@@ -328,7 +377,8 @@ h1, h2, h3, h4 {
 }
 /* the diagonal hairline along the clipped corner */
 .btn-accent::after,
-.btn-ghost::after {
+.btn-ghost::after,
+.btn-primary::after {
   content: "";
   position: absolute;
   top: calc(var(--cut) * 0.5 - 0.5px);
