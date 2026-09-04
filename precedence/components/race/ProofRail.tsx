@@ -74,14 +74,31 @@ function ProofStepRow({
           ) : null}
         </div>
       </div>
-      {isVerified && href ? (
+      {/* A fabricated hash must never become a link. `mock` used to change only the LABEL to
+          "sample" while still rendering the href, so a scripted run offered Etherscan links to
+          transactions that do not exist — the exact dead-link failure that ends a submission. */}
+      {isVerified && mock ? (
+        // Where the verify link would be. A scripted run has a fabricated hash, so there is
+        // nothing to open — say that in the slot the link occupies rather than leaving a gap the
+        // eye reads as a missing feature.
+        <span
+          className="mono shrink-0 rounded px-1.5 py-0.5 text-[9.5px] uppercase tracking-wider"
+          style={{
+            color: "var(--warn)",
+            border: "1px solid color-mix(in srgb, var(--warn) 35%, transparent)",
+          }}
+          title="Scripted walkthrough — this hash is simulated, so there is no transaction to open."
+        >
+          sample
+        </span>
+      ) : isVerified && href ? (
         <a
           href={href}
           target="_blank"
           rel="noreferrer"
           className="btn-ghost flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[0.68rem]"
         >
-          <ExternalLink size={10} /> {mock ? "sample" : "verify"}
+          <ExternalLink size={10} /> verify
         </a>
       ) : null}
     </div>
@@ -103,8 +120,10 @@ export function ProofRail({
   identityRegistry?: Hex | "";
 }) {
   const p = race.proofRecord;
-  const att = race.attestation;
   // Settled once the priority stack exists — everything downstream of PRIORITY_SETTLED.
+  // Keyed off the RACE, not adapter liveness. Creditcoin reads can be live while the scripted
+  // race that produced these hashes is simulated, and it was the latter that mattered.
+  const simulated = race.simulated === true;
   const isSettled = !!race.settlement;
   const hasLocks = race.locks.length > 0;
 
@@ -131,7 +150,7 @@ export function ProofRail({
           detail={firstLock ? `${race.locks.length} locks anchored · Block #${firstLock.lockBlockNumber}` : "PriorityVault.sol · pending"}
           href={firstLock?.sepoliaTxHash ? `https://sepolia.etherscan.io/tx/${firstLock.sepoliaTxHash}` : undefined}
           status={hasLocks ? "verified" : "waiting"}
-          mock={!creditcoinLive}
+          mock={simulated || !creditcoinLive}
         />
         <ProofStepRow
           label="2. Attestation Proof (0x0FD3)"
@@ -139,14 +158,14 @@ export function ProofRail({
           // sawtooths because attestation advances in batches, so only a range is truthful.
           detail={hasLocks ? "6.5-9.3m measured attestation window · batch proof ready" : "waitUntilHeightAttested · waiting"}
           status={isSettled ? "verified" : hasLocks ? "available" : "waiting"}
-          mock={!creditcoinLive}
+          mock={simulated || !creditcoinLive}
         />
         <ProofStepRow
           label="3. Precompile Verify (0x0FD2)"
           detail={isSettled ? `batch verifyAndEmit() TRUE · settled in 1 CC3 block` : "AttestationGate · pending"}
           href={explorerUrl}
           status={isSettled ? "verified" : "waiting"}
-          mock={!creditcoinLive}
+          mock={simulated || !creditcoinLive}
         />
       </div>
     </Card>

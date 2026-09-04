@@ -43,6 +43,10 @@ export async function createRace(params: CreateRaceParams): Promise<PriorityRace
 
   const race: PriorityRace = {
     id,
+    // A scripted race always runs on simulated adapters, so everything it produces — including
+    // its transaction hashes — is fabricated. Recording that on the race is what lets the UI
+    // refuse to present those hashes as explorer links.
+    simulated: true,
     status: "COLLATERAL_REGISTERED",
     track: "PERFORMING",
     scenario: params.scenario ?? "performing",

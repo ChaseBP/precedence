@@ -659,6 +659,15 @@ export interface LifecycleEvent {
 
 export interface PriorityRace {
   id: RaceId;
+  /**
+   * True for a scripted walkthrough.
+   *
+   * @remarks Set at creation, because the orchestrator always runs on simulated adapters — a real
+   * settlement needs a proven Sepolia lock and minutes of attestation, so it cannot be what a
+   * button produces. Everything hanging off a simulated race is fabricated, including its
+   * transaction hashes, which is why the UI must not offer them as explorer links.
+   */
+  simulated?: boolean;
   status: LifecyclePhase;
   track: RaceTrack;
   scenario: RaceScenario;
