@@ -17,6 +17,7 @@ import { Badge, Card, Eyebrow, Stat, Why } from "@/components/ui";
 import { FadeUp } from "@/components/motion/Reveal";
 import { LoadError } from "@/components/LoadError";
 import { LockCapital } from "@/components/LockCapital";
+import { OpenRace } from "@/components/OpenRace";
 import { ServiceFacility } from "@/components/ServiceFacility";
 import type { CollateralAsset, Tranche } from "@/lib/precedence/types";
 
@@ -179,6 +180,12 @@ export default function FacilityPage() {
       </section>
 
       {/* ── actions, whichever side of the book you are on ── */}
+      {/* Shown only to the wallet that can act, and only while there is no race open — so the
+          obligor sees the one step that was previously CLI-only, and a lender never sees it. */}
+      <section className="mt-5">
+        <OpenRace collateral={c as CollateralAsset} />
+      </section>
+
       <section className="mt-5">
         <LockCapital collateral={c as CollateralAsset} />
       </section>

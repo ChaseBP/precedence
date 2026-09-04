@@ -33,6 +33,7 @@ import { ConnectWallet } from "@/components/ConnectWallet";
 import { useWallet } from "@/lib/client/wallet";
 import {
   approveAndLock,
+  mintTestUsd,
   readLenderPosition,
   readRaceState,
   type LenderPosition,
@@ -67,6 +68,7 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
   const [stageNote, setStageNote] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ lockTxHash: Hex; blockNumber: number; txIndex: number } | null>(null);
+  const [minting, setMinting] = useState(false);
 
   const addrs = cfg?.addresses?.sepolia;
   // A fixture's docHash is a visible placeholder like 0xSAMPLE_DOC_HASH_..., not a bytes32. The
@@ -341,8 +343,32 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
             Fill the cap
           </button>
           {pos ? (
-            <span className="text-[10.5px]" style={{ color: "var(--text-faint)" }}>
+            <span className="flex items-center gap-2 text-[10.5px]" style={{ color: "var(--text-faint)" }}>
               you hold {usd(pos.pusdUsd)} pUSD
+              {/* The faucet is permissionless, and without it in the UI a fresh wallet holds
+                  nothing — which makes the entire live path unreachable however correct it is. */}
+              <button
+                onClick={async () => {
+                  if (!addrs) return;
+                  setError(null);
+                  setMinting(true);
+                  try {
+                    await mintTestUsd(addrs.PUSD, 25_000);
+                    const p = await readLenderPosition(addrs, address as Address);
+                    setPos(p);
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setMinting(false);
+                  }
+                }}
+                disabled={minting || !addrs || !address}
+                className="btn-ghost inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] disabled:opacity-50"
+                title="Mint 25,000 PRECEDENCE Test USD to this wallet on Sepolia"
+              >
+                {minting ? <Loader2 size={10} className="animate-spin" /> : null}
+                get test pUSD
+              </button>
             </span>
           ) : null}
         </div>

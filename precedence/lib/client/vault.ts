@@ -49,6 +49,8 @@ export interface LenderPosition {
 }
 
 const D = 1_000_000n;
+/** Mirrors `PriorityVault.MIN_RACE_WINDOW`. Rejecting a short window here saves a revert. */
+export const MIN_RACE_WINDOW_S = 120;
 const toUsd = (v: bigint) => Number(v) / 1e6;
 const toUnits = (usd: number) => BigInt(Math.round(usd * 1e6));
 
@@ -376,6 +378,113 @@ export async function approveAndLock(
     blockNumber: Number(receipt.blockNumber),
     txIndex: receipt.transactionIndex,
   };
+}
+
+export type OpenRaceStage = "switching" | "registering" | "opening" | "open";
+
+/**
+ * Register the collateral on the vault if it is not there yet, then open the financing race.
+ *
+ * @remarks This is the step that was missing from the UI entirely, and its absence is why the
+ * only race anyone could watch was a scripted one. {@link approveAndLock} needs a race to bid
+ * into; nothing in the app opened one, so the live path dead-ended at "no race open" and the CLI
+ * was the only way through.
+ *
+ * `registerCollateral` is permissionless and records `msg.sender` as the obligor, so whoever
+ * registers becomes the obligor of record on the vault — and `openRace` is obligor-only. The two
+ * therefore have to be sent by the same wallet, which is the wallet in front of us.
+ *
+ * Caps must sum to the facility size or the vault reverts with `CapsMustSumToFacility`. They are
+ * summed here from the caller's own three values rather than taking a separate total, because a
+ * total that disagrees with its parts is a revert the user cannot diagnose.
+ */
+export async function openRaceOnVault(
+  vault: Address,
+  collateralId: Hex,
+  capsUsd: { senior: number; junior: number; subordinate: number },
+  windowSeconds: number,
+  onStage: (s: OpenRaceStage, detail?: string) => void,
+): Promise<{ registerTxHash?: Hex; openTxHash: Hex; deadline: number }> {
+  onStage("switching", "Sepolia");
+  await ensureChain(SEPOLIA);
+  const obligor = requireAccount();
+
+  if (windowSeconds < MIN_RACE_WINDOW_S) {
+    throw new Error(`The race window must be at least ${MIN_RACE_WINDOW_S} seconds.`);
+  }
+
+  const caps: [bigint, bigint, bigint] = [
+    toUnits(capsUsd.senior),
+    toUnits(capsUsd.junior),
+    toUnits(capsUsd.subordinate),
+  ];
+  const facilitySize = caps[0] + caps[1] + caps[2];
+  if (facilitySize === 0n) throw new Error("The facility caps are all zero — there is nothing to finance.");
+
+  // Via getCollateral, not the public mapping: the struct carries a `uint256[3]`, and Solidity's
+  // auto-getter silently omits array members, so the mapping would decode to a shorter tuple than
+  // the field names suggest.
+  const existing = await readRaceState(vault, collateralId);
+
+  let registerTxHash: Hex | undefined;
+  if (!existing.registered) {
+    onStage("registering", "claim the collateral on the vault");
+    registerTxHash = await writeContract(wagmiConfig, {
+      chainId: SEPOLIA,
+      address: vault,
+      abi: PriorityVault_ABI,
+      functionName: "registerCollateral",
+      args: [collateralId],
+    });
+    const r = await waitForTransactionReceipt(wagmiConfig, { chainId: SEPOLIA, hash: registerTxHash });
+    if (r.status !== "success") throw new Error(`registerCollateral reverted: ${registerTxHash}`);
+  } else if (existing.obligor.toLowerCase() !== obligor.toLowerCase()) {
+    // Said plainly, because the revert reason alone reads like a bug in the app.
+    throw new Error(
+      `This collateral is already registered on the vault to ${existing.obligor}. Only that wallet can open a race on it.`,
+    );
+  } else if (existing.raceOpen) {
+    throw new Error("A race is already open on this collateral. Close or let it expire before opening another.");
+  }
+
+  onStage("opening", `${capsUsd.senior + capsUsd.junior + capsUsd.subordinate} across three tranches`);
+  const openTxHash = await writeContract(wagmiConfig, {
+    chainId: SEPOLIA,
+    address: vault,
+    abi: PriorityVault_ABI,
+    functionName: "openRace",
+    args: [collateralId, facilitySize, caps, BigInt(windowSeconds)],
+  });
+  const receipt = await waitForTransactionReceipt(wagmiConfig, { chainId: SEPOLIA, hash: openTxHash });
+  if (receipt.status !== "success") throw new Error(`openRace reverted: ${openTxHash}`);
+
+  onStage("open", openTxHash);
+  return { registerTxHash, openTxHash, deadline: Math.floor(Date.now() / 1000) + windowSeconds };
+}
+
+/**
+ * Mint test dollars to the connected wallet.
+ *
+ * @remarks pUSD's faucet is permissionless on purpose — a demo where the deployer must hand out
+ * balances is a demo that only the deployer can run. Without this button in the UI a fresh wallet
+ * holds nothing, so the live lock is unreachable no matter how correct the rest of the path is.
+ *
+ * This is test scrip on a testnet and is named "PRECEDENCE Test USD" everywhere it appears; it is
+ * never presented as a stablecoin.
+ */
+export async function mintTestUsd(pusd: Address, dollars: number): Promise<Hex> {
+  await ensureChain(SEPOLIA);
+  const to = requireAccount();
+  const hash = await writeContract(wagmiConfig, {
+    chainId: SEPOLIA,
+    address: pusd,
+    abi: PUSD_ABI,
+    functionName: "mintDollars",
+    args: [to, BigInt(Math.max(1, Math.round(dollars)))],
+  });
+  const r = await waitForTransactionReceipt(wagmiConfig, { chainId: SEPOLIA, hash });
+  if (r.status !== "success") throw new Error(`mint reverted: ${hash}`);
+  return hash;
 }
 
 export const usdUnits = { toUsd, toUnits, D };
