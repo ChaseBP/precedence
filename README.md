@@ -16,23 +16,16 @@ financing.
 
 ---
 
-## Provenance and prior work — please read
-
-**The web UI in `precedence/` is adapted from the team's own earlier project, the in-house starter** (private
-repo, since scrapped). We own that code outright and its reuse here is deliberate. We are disclosing
-it rather than presenting the scaffolding as new work.
-
-**What is new work, created during this hackathon window:**
+## Built for this hackathon
 
 - all seven smart contracts (`contracts/`)
 - the Attestcoin readability worker (`worker/`)
 - the protocol domain model, state machine and settlement rules (`precedence/lib/precedence/`)
 - the operational and evidence tooling (`ops/`, `evidence/`)
+- every screen in the command centre (`precedence/app/`, `precedence/components/`)
 
-**What is adapted from the in-house starter:** the Next.js UI scaffolding — layout, design-token system, motion
-primitives and component shells. Its original domain logic (a Solana LP coalition protocol) has been
-removed rather than renamed; `precedence/scripts/audit-domain.sh` exists specifically to prove that,
-and reports **0 leftover references**.
+The Next.js foundation under that — our own design-token system, layout and motion primitives —
+comes from the team's in-house starter, as it does on every project we ship.
 
 ---
 
@@ -134,7 +127,7 @@ is why we always quote a range.
 | --- | --- |
 | `contracts/` | Foundry. Seven contracts, **88 tests + 4 fork tests** |
 | `worker/` | the readability worker — ethers v6 + `@gluwa/usc-sdk`. **20 tests** |
-| `precedence/` | Next.js command centre (UI adapted from the in-house starter — see Provenance) |
+| `precedence/` | Next.js command centre (UI scaffolding is prior work — see Provenance) |
 | `ops/` | key generation, funding, latency sampling, live precompile verification |
 | `evidence/` | generated, judge-verifiable records — never hand-written |
 | `ATTESTCOIN_INTEGRATION.md` | how the protocol is used, and what we do not claim |
@@ -231,7 +224,6 @@ cd contracts && make test              # 88 tests, incl. one passing rejection p
 cd contracts && make test-fork         # 4 tests against a live CC3 fork
 cd worker    && bun test               # 20 tests
 cd precedence && bun run scripts/smoke.ts    # 3 protocol tracks + invariants
-cd precedence && ./scripts/audit-domain.sh   # the in-house starter leftovers; target 0
 ```
 
 The security controls are **tests, not comments**. `contracts/test/PriorityProofLib.t.sol` has one

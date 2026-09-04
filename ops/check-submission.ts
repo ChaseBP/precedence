@@ -177,7 +177,7 @@ for (const item of [
   "demo video URL",
   "per-member: name, email, bio, role, country of residence, country of citizenship",
   "public GitHub repo URL",
-  "confirm the prior-work rule with the organisers (the in-house starter UI reuse is disclosed)",
+  "confirm the prior-work rule with the organisers (UI scaffolding is prior work)",
 ]) {
   console.log(`     - ${item}`);
 }

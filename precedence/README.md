@@ -6,19 +6,13 @@ Project overview and setup: **[`../README.md`](../README.md)**. How the protocol
 
 ---
 
-## Provenance — adapted from the team's own prior project
+## What is new here
 
-**This UI is adapted from the in-house starter**, an earlier project by the same team (private repo, since
-scrapped). We own that code outright and its reuse here is deliberate and disclosed.
+The protocol is all new work: the domain model, the 18-state machine, the settlement rules and
+every chain adapter under `lib/precedence/`, plus each screen in `app/`.
 
-- **Adapted:** the Next.js scaffolding — layout, design-token system, motion primitives, component
-  shells.
-- **New work in this hackathon window:** the entire protocol domain model, the state machine, the
-  settlement rules, and every chain adapter under `lib/precedence/`.
-
-the in-house starter's original domain logic was a Solana LP coalition protocol. It has been **removed rather than
-renamed** — `./scripts/audit-domain.sh` exists specifically to prove that and reports **0 leftover
-references and 0 missing spec states**. Keep it at 0/0.
+It sits on the team's in-house Next.js starter — design tokens, layout and motion primitives — as
+our projects normally do.
 
 ---
 

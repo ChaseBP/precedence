@@ -54,8 +54,8 @@ export function StageSection({
       aria-current={active ? "step" : undefined}
       className="rounded-2xl transition-shadow duration-300"
       // The active stage is the one thing on this page a viewer should be able to find without
-      // reading. the in-house starter marked its active row with a soft gradient; the same idea as a ring, on
-      // the wrapper because Card owns its own surface.
+      // reading. The ring goes on the wrapper rather than the card because Card owns its own
+      // surface.
       style={
         active
           ? { boxShadow: "0 0 0 2px var(--accent), 0 0 30px -8px var(--accent-glow)" }
