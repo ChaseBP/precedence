@@ -14,7 +14,7 @@ compile in a person's head, which is exactly why they would have cost days. Corr
 The sections below were written from the docs and the `gluwa/attestcoin-protocol-examples` repo. A
 later pass **pinned the published packages** (`@gluwa/usc-sdk@0.18.0`, `@gluwa/usc-contracts@0.2.0`),
 read their actual Solidity and `.d.ts`, and **probed the deployed CC3 testnet precompiles**. Five
-claims below are wrong. Corrections here win; full write-up in `IMPLEMENTATION_PLAN.md` §1.
+claims below are wrong. Corrections here win.
 
 | Claim below | Correction |
 | --- | --- |

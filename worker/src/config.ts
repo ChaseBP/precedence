@@ -45,7 +45,7 @@ export const env = { ...parseEnvFile(resolve(ROOT, ".env.local")), ...process.en
 
 function required(key: string): string {
   const v = env[key];
-  if (!v) throw new Error(`Missing ${key}. See PREREQUISITES.md §4.`);
+  if (!v) throw new Error(`Missing ${key}. See the Setup section of the root README.`);
   return v;
 }
 
@@ -94,7 +94,7 @@ export function sepoliaProvider(): ethers.JsonRpcProvider {
   if (/rpc\.sepolia\.org/.test(rpc)) {
     // The worker polls event logs continuously; public endpoints rate-limit exactly that and drop
     // `eth_getLogs` under load. A dropped Lock during a demo looks like a protocol failure.
-    console.warn("WARNING: SEPOLIA_RPC is a public endpoint. Use a dedicated one — see PREREQUISITES.md §3.");
+    console.warn("WARNING: SEPOLIA_RPC is a public endpoint. Use a dedicated one.");
   }
   return new ethers.JsonRpcProvider(rpc, SEPOLIA_CHAIN_ID, { staticNetwork: true });
 }

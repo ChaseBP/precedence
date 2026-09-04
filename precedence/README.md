@@ -30,7 +30,6 @@ bun run build
 bun run scripts/smoke.ts    # 3 protocol tracks + the invariants; must print ALL CHECKS PASSED
 bunx tsc --noEmit           # clean
 bun run build               # clean
-./scripts/audit-domain.sh   # 0 and 0
 ```
 
 `scripts/smoke.ts` is the one that matters. It drives all three storylines end to end and asserts

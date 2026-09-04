@@ -137,8 +137,9 @@ is why we always quote a range.
 
 ## Setup
 
-Prerequisites: **bun**, **Foundry**, a dedicated Sepolia RPC, and funded testnet keys.
-Full list with where to get each: **[`PREREQUISITES.md`](./PREREQUISITES.md)**.
+Prerequisites: **bun** (`curl -fsSL https://bun.sh/install | bash`), **Foundry**
+(`curl -L https://foundry.paradigm.xyz | bash && foundryup`), a dedicated Sepolia RPC endpoint,
+and funded testnet keys on both Sepolia and Creditcoin CC3.
 
 ```bash
 # 1. secrets — generates throwaway role keys; prints addresses only, never private keys

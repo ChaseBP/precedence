@@ -598,7 +598,7 @@ export interface Attestation {
 // ───────────────────────────── Lifecycle ─────────────────────────────
 
 /**
- * The PRECEDENCE protocol state machine (`rohan-plan.md` §10 + `GAP.md` §1.2).
+ * The PRECEDENCE protocol state machine.
  *
  * Three tracks share one union:
  *  - PERFORMING: registration → race → proven settlement → draw → servicing → release → closed

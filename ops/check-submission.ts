@@ -20,8 +20,6 @@ const ROOT = resolve(import.meta.dir, "..");
 const DOCS = [
   "README.md",
   "ATTESTCOIN_INTEGRATION.md",
-  "PREREQUISITES.md",
-  "IMPLEMENTATION_PLAN.md",
   "precedence/README.md",
   "worker/README.md",
 ];
@@ -170,7 +168,7 @@ for (const f of REQUIRED_FILES) {
 }
 
 // Things only a human can supply. Reported, never failed.
-console.log("\n   Still needs a human (see PREREQUISITES.md §7):");
+console.log("\n   Still needs a human:");
 for (const item of [
   "project logo (PNG/SVG)",
   "whitepaper/deck as a hosted PDF URL",
