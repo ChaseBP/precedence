@@ -34,7 +34,7 @@ export function LifecycleTimeline({
         </div>
       ) : null}
       {/* Labels used to `truncate` inside this `overflow-x-auto` rail, so five of seven stages
-          read "Registration & Haircut Analy…" instead of the rail simply scrolling — the exact
+          read a truncated stage title instead of the rail simply scrolling — the exact
           pattern the project's own rules forbid. The short `kicker` fits without truncation, the
           full title is the tooltip, and the line above carries the position. */}
       <div className="no-scrollbar flex items-stretch gap-1.5 overflow-x-auto pb-1">

@@ -32,7 +32,7 @@ export function analyzeCollateral(collateral: CollateralAsset, requestedUsd?: nu
   const subordinateUsd = Math.max(0, effectiveFunding - seniorUsd - juniorUsd);
 
   const notes = [
-    `15% collateral haircut applied ($${Math.round(collateral.faceValueUsd * 0.15).toLocaleString()} buffer)`,
+    `15% safety margin held back ($${Math.round(collateral.faceValueUsd * 0.15).toLocaleString()} buffer for lenders)`,
     collateral.verifiedClearTitle ? "Verified clear title — zero prior liens on Creditcoin CC3" : "Existing encumbrance detected",
     `Custodian verified: ${collateral.custodian} (${collateral.custodianLocation})`,
   ];

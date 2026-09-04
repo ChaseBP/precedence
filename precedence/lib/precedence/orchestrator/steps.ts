@@ -128,8 +128,8 @@ export async function runCollateralRegistered(ctx: PhaseCtx): Promise<StepOutcom
     "query",
     true,
     85,
-    `Haircut ${usd(analysis.haircutUsd)} (${col.haircutPct}%) · max draw ${usd(analysis.maxDrawUsd)} · ` +
-      `advance rate ${analysis.advanceRatePct}%`,
+    `Safety margin ${usd(analysis.haircutUsd)} (${col.haircutPct}%) · max loan ${usd(analysis.maxDrawUsd)} · ` +
+      `lends up to ${analysis.advanceRatePct}% of value`,
     {
       seniorTranche: usd(sizing.seniorUsd),
       juniorTranche: usd(sizing.juniorUsd),

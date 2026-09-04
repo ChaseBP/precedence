@@ -76,7 +76,7 @@ export function SummaryHeader({
           accent={!!senior}
           color={senior ? "var(--rank-senior)" : undefined}
         />
-        <KPI label="Haircut Buffer" value={pct(currentRace.collateral.haircutPct, 0)} />
+        <KPI label="Safety Margin" value={pct(currentRace.collateral.haircutPct, 0)} />
       </div>
     </div>
   );

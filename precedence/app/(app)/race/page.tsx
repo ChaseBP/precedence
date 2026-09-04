@@ -50,13 +50,13 @@ export default function RacePage() {
 }
 
 const STAGES: { id: string; phases: LifecyclePhase[]; kicker: string; title: string }[] = [
-  { id: "registered", phases: ["COLLATERAL_REGISTERED"], kicker: "COLLATERAL", title: "Registration & Haircut Analysis" },
+  { id: "registered", phases: ["COLLATERAL_REGISTERED"], kicker: "COLLATERAL", title: "Asset Registered & Safety Margin Set" },
   { id: "race", phases: ["RACE_OPEN"], kicker: "RACE", title: "Competing Bids & Sepolia Locks" },
   { id: "settled", phases: ["PRIORITY_SETTLED"], kicker: "PROOF", title: "Attestcoin 0x0FD2 · Priority Settled" },
   { id: "drawn", phases: ["CAPITAL_DRAWN", "ENCUMBERED"], kicker: "FACILITY", title: "Capital Drawn & Encumbered" },
   { id: "refi", phases: ["REFI_DISCOVERED", "ATOMIC_REFINANCE"], kicker: "REFINANCE", title: "Atomic Refinance" },
-  { id: "repaid", phases: ["REPAYMENT_PROOF", "LIEN_RELEASED"], kicker: "WATERFALL", title: "Proven Repayment & Seniority Waterfall" },
-  { id: "distress", phases: ["FROZEN_DRAW", "PCR_STABILIZATION", "GRACE_PERIOD", "DUTCH_LIQUIDATION", "TERMINATED_DEFAULT", "BREACHED"], kicker: "UNWIND", title: "Deterministic Failure Branch" },
+  { id: "repaid", phases: ["REPAYMENT_PROOF", "LIEN_RELEASED"], kicker: "WATERFALL", title: "Proven Repayment & Payout Order" },
+  { id: "distress", phases: ["FROZEN_DRAW", "PCR_STABILIZATION", "GRACE_PERIOD", "DUTCH_LIQUIDATION", "TERMINATED_DEFAULT", "BREACHED"], kicker: "UNWIND", title: "Settlement Record & Failure Branch" },
 ];
 
 const DWELL_MS: Record<string, number> = {
@@ -120,7 +120,7 @@ function stageSummary(id: string, r: PriorityRace): string {
   switch (id) {
     case "registered":
       return r.analysis
-        ? `Haircut ${usd(r.analysis.haircutUsd)} · max draw ${usd(r.analysis.maxDrawUsd)}`
+        ? `Safety margin ${usd(r.analysis.haircutUsd)} · max loan ${usd(r.analysis.maxDrawUsd)}`
         : "analyzing…";
     case "race":
       return r.locks.length
@@ -404,10 +404,10 @@ function RaceInner() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         {/* Left: Progressive Disclosure Stages */}
         <div className="flex min-w-0 flex-col gap-3.5">
-          {/* Stage 1: Collateral & Haircut Analysis */}
+          {/* Stage 1: the asset and its safety margin */}
           <StageSection
             kicker="STAGE 1"
-            title="Collateral Registered &amp; Haircut Analysis"
+            title="Asset Registered &amp; Safety Margin Set"
             statusLine={stageSummary("registered", race)}
             active={race.status === "COLLATERAL_REGISTERED"}
             defaultOpen={hasData("registered", race)}
@@ -423,7 +423,7 @@ function RaceInner() {
                   <div className="mono mt-0.5 font-semibold">{usd(race.collateral.faceValueUsd)}</div>
                 </div>
                 <div>
-                  <Eyebrow>Haircut Buffer</Eyebrow>
+                  <Eyebrow>Safety Margin</Eyebrow>
                   <div className="mono mt-0.5 font-semibold" style={{ color: "var(--success)" }}>
                     15% ({usd(race.collateral.faceValueUsd * 0.15)})
                   </div>
