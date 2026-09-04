@@ -39,15 +39,26 @@ export function ConnectWallet() {
           );
         }
 
+        // "Wrong network" on its own is a dead end — especially when the wallet is showing a
+        // network whose NAME looks right. Naming the id the wallet reported, and the one the app
+        // wants, is what makes a stale wallet entry diagnosable instead of baffling.
         if (chain.unsupported) {
+          const looksLikeStaleCc3 = chain.id !== 11155111 && chain.id !== 102031;
           return (
             <button
               onClick={openChainModal}
+              title={
+                `Your wallet reports chain id ${chain.id}, which this app does not use. It expects ` +
+                `Sepolia (11155111) or Creditcoin CC3 (102031).` +
+                (looksLikeStaleCc3
+                  ? ` If your wallet lists a "Creditcoin CC3 Testnet" network, it may be an old entry with the wrong id (101935) — remove it and let this app add the correct one.`
+                  : "")
+              }
               className="btn-ghost flex h-8 shrink-0 items-center gap-1.5 px-2.5 text-[11px] font-semibold"
               style={{ color: "var(--warn)", borderColor: "var(--warn)" }}
             >
               <AlertTriangle size={13} />
-              Wrong network
+              Chain {chain.id}?
             </button>
           );
         }
