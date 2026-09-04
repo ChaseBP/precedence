@@ -8,22 +8,7 @@ keystore/
 contracts/cache/
 contracts/broadcast/
 
-# ── the team's OTHER private project ───────────────────────────────────────
-# the in-house starter is a separate, never-published project. The PRECEDENCE UI is adapted from it and that
-# reuse is disclosed in the README, but the in-house starter's own source must NOT be published here.
-reference/
 
-# ── ideation history for rejected/alternative concepts, not part of this submission ──
-ideation/
-palette/
-velofactor-3d/
-alt-plan.md
-initial-plan.md
-BUIDL_CTC_2026_*.md
-OBLIGA_*.docx
-OBLIGA_*.docx:Zone.Identifier
-VELOFACTOR.html
-*-prompt.md
 *.log
 
 # ── deps / build ───────────────────────────────────────────────────────────
@@ -51,8 +36,4 @@ evidence/latency-exp*.log
 evidence/.active-collateral-id
 evidence/stage-race.log
 evidence/prove-race-*.log
-analysis/ui/shots/
-analysis/ui/logs/
-analysis/ux/shots/
-analysis/ux/logs/
 evidence/.ux-store.json

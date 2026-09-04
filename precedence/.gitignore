@@ -36,7 +36,7 @@ yarn-error.log*
 # vercel
 .vercel
 
-# the in-house starter file-backed store
+# file-backed store
 /data/
 
 # foundry (contracts/)
