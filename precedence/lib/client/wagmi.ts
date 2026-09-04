@@ -12,11 +12,14 @@ import { creditcoinCc3, sepolia } from "./chains";
  * disconnects, reconnection across refreshes, and network switching. Its disconnect did not work
  * and its account popover rendered behind other UI.
  *
- * The behavioural win is network switching. `writeContract` takes a `chainId` and wagmi prompts
- * the switch itself as part of the transaction, so a user never hunts for a "switch network"
- * button: they press "Register collateral", approve the network change, and sign. The two-chain
- * design stays because it IS the product — Attestcoin proves foreign-chain transactions, so
- * capital has to lock somewhere foreign — but the manual switching goes.
+ * The behavioural win is network switching, but not in the way it first appears. `writeContract`
+ * takes a `chainId` and **throws** on a mismatch rather than switching — that guard is worth
+ * having, and it is not a switch. Every write therefore calls `ensureChain` first, which requests
+ * the switch, adds the chain when the wallet has never seen it, and waits for the connector to
+ * report the change. Declaring both chains here is what makes that possible.
+ *
+ * The two-chain design stays because it IS the product — Attestcoin proves foreign-chain
+ * transactions, so capital has to lock somewhere foreign — but hunting for a switch button goes.
  *
  * @remarks Connectors are declared here rather than via `@rainbow-me/rainbowkit/wallets` because
  * this app only needs injected wallets plus optional WalletConnect, and a shorter list is easier

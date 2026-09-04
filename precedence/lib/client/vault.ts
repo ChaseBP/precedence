@@ -16,6 +16,7 @@ import type { Address, Hex } from "viem";
 import { getAccount, readContract, waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import { PriorityVault_ABI, PUSD_ABI } from "@/lib/precedence/adapters/generated/abis";
 import { sepolia } from "./chains";
+import { ensureChain } from "./ensure-chain";
 import { wagmiConfig } from "./wagmi";
 
 export interface VaultAddresses {
@@ -205,6 +206,7 @@ export async function drawCapital(
   collateralId: Hex,
   amountUsd: number,
 ): Promise<Hex> {
+  await ensureChain(SEPOLIA);
   const hash = await writeContract(wagmiConfig, {
     chainId: SEPOLIA,
     address: vault,
@@ -230,6 +232,7 @@ export async function repayFacility(
   amountUsd: number,
   onStage: (s: "approving" | "repaying") => void,
 ): Promise<Hex> {
+  await ensureChain(SEPOLIA);
   const amount = toUnits(amountUsd);
   const owner = requireAccount();
 
@@ -273,6 +276,7 @@ export async function refundLock(
   collateralId: Hex,
   index: number,
 ): Promise<Hex> {
+  await ensureChain(SEPOLIA);
   const hash = await writeContract(wagmiConfig, {
     chainId: SEPOLIA,
     address: vault,
@@ -325,6 +329,7 @@ export async function approveAndLock(
   allowDemotion: boolean,
   onStage: (s: LockStage, detail?: string) => void,
 ): Promise<{ lockTxHash: Hex; blockNumber: number; txIndex: number }> {
+  await ensureChain(SEPOLIA);
   const amount = toUnits(amountUsd);
   const owner = requireAccount();
 

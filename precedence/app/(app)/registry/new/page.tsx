@@ -234,7 +234,8 @@ export default function RegisterCollateralPage() {
       // registry live. Signing is the point: the transaction's msg.sender becomes the obligor of
       // record, which is a thing only the borrower can establish.
       //
-      // wagmi carries chainId, so the wallet is asked to move to Creditcoin as part of signing.
+      // The switch is requested explicitly by this flow. wagmi throws on a chain mismatch rather
+      // than switching, so passing chainId alone would only produce the mismatch error.
       let onChain: { docHash: string; txHash: string; registryAddress: string; vaultAddress: string } | undefined;
       const registry = addresses?.creditcoin?.CollateralRegistry;
       const vault = addresses?.sepolia?.PriorityVault;
@@ -606,9 +607,9 @@ export default function RegisterCollateralPage() {
           {addresses.creditcoin?.CollateralRegistry && addresses.sepolia?.PriorityVault ? (
             status === "connected" ? (
               <span>
-                This registers on Creditcoin CC3 for real — two signatures, one to record the asset
-                and one to post your terms. Your wallet will be asked to switch networks as part of
-                signing.
+                This registers on Creditcoin CC3 for real. Three wallet prompts: switch to CC3,
+                record the asset, then post your terms. CC3 is in no wallet by default, so the
+                first prompt may offer to add the network.
               </span>
             ) : (
               <span>Connect a wallet to register on Creditcoin CC3. Without one this is only stored locally.</span>
@@ -631,7 +632,9 @@ export default function RegisterCollateralPage() {
           {submitting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
           {/* Two signatures, so say which one is waiting. "Registering…" for twenty seconds with
               a wallet popup in between tells a borrower nothing about what they are approving. */}
-          {chainStage === "registering"
+          {chainStage === "switching"
+            ? "Approve the network switch to Creditcoin CC3…"
+            : chainStage === "registering"
             ? "Approve 1 of 2: register the asset…"
             : chainStage === "posting-terms"
               ? "Approve 2 of 2: post your terms…"

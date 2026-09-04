@@ -8,14 +8,16 @@
  * capital has to lock somewhere foreign — Sepolia — for there to be anything worth proving. The
  * lien registry itself lives next to the precompile, on Creditcoin.
  *
- * What WAS an accident was making the user perform the switch. `writeContract` carries `chainId`,
- * so wagmi asks the wallet to move to CC3 as part of signing, and adds the chain if the wallet has
- * never seen it. The user presses "Register collateral" and approves; they never look for a button.
+ * What WAS an accident was making the user hunt for a switch button. This flow requests the switch
+ * itself — see `ensureChain`, which also adds CC3 if the wallet has never seen it. Note that
+ * `writeContract({ chainId })` does NOT switch: it throws on a mismatch. The `chainId` is a guard
+ * against signing on the wrong chain, not the thing that gets you onto the right one.
  */
 import { keccak256, stringToHex, type Address, type Hex } from "viem";
 import { readContract, waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import { CollateralRegistry_ABI } from "@/lib/precedence/adapters/generated/abis";
 import { creditcoinCc3 } from "./chains";
+import { ensureChain } from "./ensure-chain";
 import { wagmiConfig } from "./wagmi";
 
 const CC3 = creditcoinCc3.id;
@@ -68,7 +70,7 @@ export function docHashFor(a: Pick<RegisterOnChainArgs, "assetType" | "docIdenti
   );
 }
 
-export type RegisterStage = "registering" | "posting-terms" | "done";
+export type RegisterStage = "switching" | "registering" | "posting-terms" | "done";
 
 /**
  * Two transactions: register, then post the terms.
@@ -82,6 +84,10 @@ export async function registerCollateralOnChain(
   onStage: (s: RegisterStage, txHash?: Hex) => void,
 ): Promise<{ docHash: Hex; registerTx: Hex; termsTx: Hex }> {
   const docHash = docHashFor(a);
+
+  // Explicit, and before anything else. wagmi throws on a chain mismatch rather than switching.
+  onStage("switching");
+  await ensureChain(CC3);
 
   const already = (await readContract(wagmiConfig, {
     chainId: CC3,
