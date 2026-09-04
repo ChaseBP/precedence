@@ -631,11 +631,18 @@ function RaceInner() {
           </StageSection>
 
           {/* Stage 7: Creditcoin Priority Settlement */}
+          {/* SETTLED_CLOSED is the TERMINAL state, so marking this stage active there left the
+              final step spinning forever after the race had finished — the one moment a viewer
+              most needs to see that it is done. Active only while the race is genuinely in a
+              distress phase; a closed race shows a check.
+              The heading also followed the STAGES entry and read "Deterministic Failure Branch"
+              over an Attestation Gate Record on a race that succeeded. It now says what it is
+              showing. */}
           <StageSection
             kicker="STAGE 7"
-            title="Deterministic Failure Branch"
+            title={race.track === "DISTRESSED" ? "Deterministic Failure Branch" : "Settlement Record"}
             statusLine={stageSummary("distress", race)}
-            active={race.status === "SETTLED_CLOSED"}
+            active={race.track === "DISTRESSED" && !isTerminalPhase(race.status)}
             defaultOpen={hasData("distress", race)}
           >
             <div className="flex flex-col gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
