@@ -25,6 +25,19 @@ import { wagmiConfig } from "./wagmi";
 /** Only the two chains this app declares, so a typo cannot ask for one wagmi cannot add. */
 export type AppChainId = typeof sepolia.id | typeof creditcoinCc3.id;
 
+/**
+ * The wrong Creditcoin id an earlier build of this app wrote into people's wallets.
+ *
+ * @remarks 0x18e2f instead of 0x18e8f — one character. Kept as a named constant purely so the
+ * error message can point at it.
+ *
+ * Do NOT "fix" this by adding it to the accepted chains. The RPC reports 102031 and the contracts
+ * are deployed there, so a wallet that believes it is on 101935 would sign with that chain id and
+ * the node would reject the transaction under EIP-155 replay protection. Accepting it would move
+ * the failure from a clear message here to an opaque revert later.
+ */
+const STALE_CC3_ID = 101935;
+
 export async function ensureChain(chainId: AppChainId): Promise<void> {
   const label = CHAIN_LABEL[chainId] ?? `chain ${chainId}`;
   const current = getAccount(wagmiConfig).chainId;
@@ -44,10 +57,10 @@ export async function ensureChain(chainId: AppChainId): Promise<void> {
     // Since the two cannot be distinguished honestly, the message covers both and leads with the
     // fact that IS known: which chain the wallet is on versus the one required.
     throw new Error(
-      `The switch to ${label} (id ${chainId}) did not complete — your wallet is on ` +
-        `${describeChain(getAccount(wagmiConfig).chainId ?? current)}. ` +
-        `If you cancelled the prompt, try again. ${staleNetworkHint(chainId)} ` +
-        `Wallet said: ${deepestMessage(e)}`,
+      `${staleNetworkHint(chainId)} ` +
+        `(The switch to ${label} (id ${chainId}) did not complete; your wallet is on ` +
+        `${describeChain(getAccount(wagmiConfig).chainId ?? current)}. If you simply cancelled the ` +
+        `prompt, just try again. Wallet said: ${deepestMessage(e)})`,
     );
   }
 
@@ -111,9 +124,10 @@ function describeChain(id: number | undefined): string {
 function staleNetworkHint(chainId: AppChainId): string {
   if (chainId !== creditcoinCc3.id) return "Switch to it manually and try again.";
   return (
-    `If your wallet already lists a "Creditcoin CC3 Testnet" network, it may be an old entry with ` +
-    `the wrong chain id (101935 instead of ${creditcoinCc3.id}) added by an earlier version of ` +
-    `this app. Remove it in your wallet's network settings, then try again — this app will add the ` +
-    `correct one.`
+    `FIX: open your wallet's network settings, delete the existing "Creditcoin CC3 Testnet" ` +
+    `entry (it has the wrong chain id ${STALE_CC3_ID}), then try again — this app will add the ` +
+    `correct one. In MetaMask: the network dropdown, then the three dots beside that network, ` +
+    `then Delete. The chain's own RPC reports ${creditcoinCc3.id}, which is the id the deployed ` +
+    `contracts live on, so ${STALE_CC3_ID} cannot be made to work.`
   );
 }
