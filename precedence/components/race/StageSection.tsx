@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { Card, Eyebrow } from "@/components/ui";
@@ -32,7 +32,36 @@ export function StageSection({
   }
   const expanded = active || open;
 
+  // Bring the running stage into view when it becomes active.
+  //
+  // The race advances every ~600ms, which is paced enough to watch but only if the viewer is
+  // looking at the right part of a page taller than the window. Without this the sequence
+  // completes somewhere off-screen and the whole run reads as "something happened". Honours
+  // prefers-reduced-motion, and never fights a user who has scrolled elsewhere deliberately —
+  // it fires once per activation, not continuously.
+  const ref = useRef<HTMLDivElement>(null);
+  const announced = useRef(false);
+  useEffect(() => {
+    if (!active || announced.current) return;
+    announced.current = true;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    ref.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+  }, [active]);
+
   return (
+    <div
+      ref={ref}
+      aria-current={active ? "step" : undefined}
+      className="rounded-2xl transition-shadow duration-300"
+      // The active stage is the one thing on this page a viewer should be able to find without
+      // reading. the in-house starter marked its active row with a soft gradient; the same idea as a ring, on
+      // the wrapper because Card owns its own surface.
+      style={
+        active
+          ? { boxShadow: "0 0 0 2px var(--accent), 0 0 30px -8px var(--accent-glow)" }
+          : undefined
+      }
+    >
     <Card glow={hero} className="overflow-hidden p-0">
       <button
         type="button"
@@ -83,5 +112,6 @@ export function StageSection({
         ) : null}
       </AnimatePresence>
     </Card>
+    </div>
   );
 }
