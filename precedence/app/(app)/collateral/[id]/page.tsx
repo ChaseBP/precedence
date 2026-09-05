@@ -53,7 +53,29 @@ export default function FacilityPage() {
     };
   }, [id]);
 
-  if (err) return <LoadError what="this facility" detail={err} onRetry={load} />;
+  // A missing facility is not a failed request, and offering Retry for one is a loop. The API
+  // surfaces its status in the error text, so a 404 gets an ending rather than a retry button.
+  if (err) {
+    const missing = /\b404\b|not found/i.test(err);
+    if (missing) {
+      return (
+        <Card className="mx-auto mt-10 max-w-md p-8 text-center">
+          <Eyebrow>Facility</Eyebrow>
+          <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-semibold">
+            No facility with that id
+          </h2>
+          <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
+            <span className="mono">{id}</span> is not in the registry. It may have been reset, or
+            the link may be mistyped.
+          </p>
+          <Link href="/collateral" className="btn-accent mt-5 inline-block px-4 py-2 text-xs font-semibold">
+            Browse facilities
+          </Link>
+        </Card>
+      );
+    }
+    return <LoadError what="this facility" detail={err} onRetry={load} />;
+  }
   if (!data) {
     return (
       <div className="flex items-center gap-2 py-20 text-sm" style={{ color: "var(--text-muted)" }}>

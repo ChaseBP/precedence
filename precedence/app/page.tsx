@@ -57,10 +57,10 @@ function SettlementRecord() {
             href={EXPLORER.sepoliaBlock(SETTLEMENT.block)}
             target="_blank"
             rel="noreferrer"
-            className="mono underline-offset-4 hover:underline"
+            className="mono underline decoration-dotted underline-offset-4 hover:decoration-solid"
             style={{ color: "var(--text)" }}
           >
-            {SETTLEMENT.block.toLocaleString()}
+            {SETTLEMENT.block}
           </a>
         </div>
       </div>
@@ -119,10 +119,10 @@ function SettlementRecord() {
             href={EXPLORER.creditcoinBlock(SETTLEMENT.settledOn.block)}
             target="_blank"
             rel="noreferrer"
-            className="mono underline-offset-4 hover:underline"
+            className="mono underline decoration-dotted underline-offset-4 hover:decoration-solid"
             style={{ color: "var(--text-muted)" }}
           >
-            {SETTLEMENT.settledOn.block.toLocaleString()}
+            {SETTLEMENT.settledOn.block}
           </a>
           . {SETTLEMENT.refunded} later locks were returned in full.
         </span>
@@ -146,7 +146,7 @@ function Section({
 }) {
   return (
     <section
-      className="border-t px-6 py-16 sm:py-20"
+      className="border-t px-6 py-12 sm:py-16"
       style={{ borderColor: "var(--border)", background: tint ? "var(--bg-1)" : "transparent" }}
     >
       <div className="mx-auto w-full max-w-5xl">
@@ -171,17 +171,25 @@ function Mechanism() {
         {
           h: "How it works today",
           body: "A lender files a lien with a registry and hopes the clerk timestamps it before anyone else's. Priority is an administrative outcome, argued after the fact, and the record lives somewhere neither party controls.",
-          tone: "var(--text-muted)",
+          mark: false,
         },
         {
           h: "How it works here",
           body: "A lender sends a transaction. Its block and its index inside that block are facts the chain already committed to, and the precompile re-derives them from the proof itself. There is nothing left to argue about.",
-          tone: "var(--text)",
+          mark: true,
         },
       ].map((c) => (
-        <div key={c.h} className="p-6" style={{ background: "var(--bg-1)" }}>
+        <div
+          key={c.h}
+          className="p-6"
+          style={{
+            background: "var(--bg-1)",
+            // The side that is this product gets a rule, not brighter text.
+            boxShadow: c.mark ? "inset 3px 0 0 var(--accent)" : undefined,
+          }}
+        >
           <h3 className="text-sm font-semibold">{c.h}</h3>
-          <p className="mt-2 max-w-[52ch] text-sm leading-relaxed" style={{ color: c.tone }}>
+          <p className="mt-2 max-w-[52ch] text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
             {c.body}
           </p>
         </div>
@@ -325,7 +333,10 @@ export default function Landing() {
           <Link href="/collateral" className="underline-offset-4 hover:underline" style={{ color: "var(--text-muted)" }}>
             Facilities
           </Link>
-          <Link href="/registry" className="underline-offset-4 hover:underline" style={{ color: "var(--text-muted)" }}>
+          <Link href="/race" className="underline-offset-4 hover:underline" style={{ color: "var(--text-muted)" }}>
+            Priority settlement
+          </Link>
+          <Link href="/registry" className="hidden underline-offset-4 hover:underline sm:inline" style={{ color: "var(--text-muted)" }}>
             Registry
           </Link>
           <ConnectWallet />
@@ -406,10 +417,11 @@ export default function Landing() {
             {[
               { href: "/collateral", label: "Facilities" },
               { href: "/registry/new", label: "Register collateral" },
+              { href: "/race", label: "Priority settlement" },
               { href: "/registry", label: "Registry" },
               { href: "/dashboard", label: "Telemetry" },
             ].map((l) => (
-              <Link key={l.href} href={l.href} className="underline-offset-4 hover:underline" style={{ color: "var(--text-muted)" }}>
+              <Link key={l.href} href={l.href} className="inline-flex min-h-[40px] items-center px-1 underline-offset-4 hover:underline" style={{ color: "var(--text-muted)" }}>
                 {l.label}
               </Link>
             ))}

@@ -133,7 +133,7 @@ export default function RegistryPage() {
                     <div className="text-right">
                       <Eyebrow>First Claim</Eyebrow>
                       <div className="mono text-sm font-semibold capitalize" style={{ color: "var(--rank-senior)" }}>
-                        {r.seniorFinancier ?? "Pending"}
+                        {r.seniorFinancier || "Pending"}
                       </div>
                     </div>
                     <Badge

@@ -712,6 +712,8 @@ function RaceInner() {
   // "Stage 7 of 7 · Settlement Record" with all seven segments already checked while the card
   // below it showed stage 1 — the orientation strip pointing somewhere other than the thing it
   // was orienting you to. Once the playhead catches up the two are the same value again.
+  // Which lane position the proof actually lands at, so the rank badge can follow the replay.
+  const proofStageIndex = Math.max(0, stagesShown.findIndex((st) => st.sid === "settled"));
   const tlStatus: LifecyclePhase = lagging ? stagesShown[ph]?.phases[0] ?? race.status : race.status;
   const shown = stagesShown.slice(0, ph + 1);
   // Space activates whatever button has focus, so a transport control left focused would fire
@@ -836,7 +838,10 @@ function RaceInner() {
           {/* Above the proof pipeline on purpose. The pipeline explains what is still happening;
               this says the answer is already known, which is what a viewer staring at
               PENDING_EVIDENCE for seven minutes actually needs to be told. */}
-          <ProvenOrder race={race} settled={proven} />
+          {/* Follows the replay playhead. Stepping back to stage 1 kept showing PROVEN, which
+              is the one badge on this screen that must never be shown early — the proof does not
+              exist at that point in the story being replayed. */}
+          <ProvenOrder race={race} settled={proven && ph >= proofStageIndex} />
           <ProofRail race={race} creditcoinLive={creditcoinLive} />
 
           <Card>

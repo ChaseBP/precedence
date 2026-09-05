@@ -304,9 +304,18 @@ export default function CollateralPage() {
                     <div className="text-right">
                       <Eyebrow>Open to bids</Eyebrow>
                       <div className="text-[12px] font-semibold" style={{
-                        color: c.status === "CLEAR" && c.terms ? "var(--proof-verified)" : "var(--text-faint)",
+                        color:
+                          c.status === "RACE_OPEN" || (c.status === "CLEAR" && c.terms)
+                            ? "var(--proof-verified)"
+                            : "var(--text-faint)",
                       }}>
-                        {c.status !== "CLEAR" ? "no · " + c.status.toLowerCase() : c.terms ? "yes" : "no terms yet"}
+                        {c.status === "RACE_OPEN"
+                          ? "yes · race open"
+                          : c.status !== "CLEAR"
+                            ? "no · " + c.status.toLowerCase()
+                            : c.terms
+                              ? "yes"
+                              : "no terms yet"}
                       </div>
                     </div>
                   </div>

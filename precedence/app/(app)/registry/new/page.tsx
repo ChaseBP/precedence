@@ -520,7 +520,7 @@ export default function RegisterCollateralPage() {
           </div>
           {Number.isFinite(money.advance) && money.advance > 0 ? (
             <p className="mt-3 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
-              A {f.haircutPct}% haircut on {usd(money.face)} leaves a maximum advance of{" "}
+              A {f.haircutPct}% safety margin on {usd(money.face)} leaves a maximum advance of{" "}
               <strong style={{ color: "var(--text)" }}>{usd(money.advance)}</strong>. Your tranche
               caps cannot exceed it.
             </p>
@@ -649,7 +649,7 @@ export default function RegisterCollateralPage() {
                 ? "Registering…"
                 : "Register collateral and post terms"}
         </button>
-        <button onClick={() => router.push("/collateral")} className="btn-ghost rounded-lg px-3.5 py-2 text-xs">
+        <button onClick={() => router.back()} className="btn-ghost rounded-lg px-3.5 py-2 text-xs">
           Cancel
         </button>
         {disconnected ? (

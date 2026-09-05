@@ -42,7 +42,7 @@ import {
   type VaultRaceState,
 } from "@/lib/client/vault";
 import { usd, pct, trancheColor } from "@/lib/client/format";
-import type { CollateralAsset, Tranche } from "@/lib/precedence/types";
+import type { CollateralAsset, CollateralState, Tranche } from "@/lib/precedence/types";
 
 const TRANCHES: { name: Tranche; ordinal: 0 | 1 | 2 }[] = [
   { name: "SENIOR", ordinal: 0 },
@@ -195,9 +195,14 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
   //
   // A facility page could show a settled or REPAID status in its header and still render an
   // active, pre-filled bid form below it. A judge cannot tell whether the thing is finished or
-  // taking money, and either reading makes the app look wrong. Only a CLEAR facility can take a
-  // bid; everything else says what state it is in instead.
-  if (collateral.status !== "CLEAR") {
+  // taking money, and either reading makes the app look wrong.
+  //
+  // But the guard was `status !== "CLEAR"`, which excluded RACE_OPEN — the one state in which a
+  // facility is definitely taking bids. Opening a race therefore turned the bid panel off and
+  // replaced it with "this facility is not taking new capital", directly under a RACE_OPEN badge.
+  // Both states are biddable; the vault's own `raceOpen` decides the rest below.
+  const BIDDABLE: CollateralState[] = ["CLEAR", "RACE_OPEN"];
+  if (!BIDDABLE.includes(collateral.status)) {
     return (
       <Card>
         <div className="flex items-start gap-2.5">
