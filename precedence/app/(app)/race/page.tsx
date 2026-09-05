@@ -882,7 +882,7 @@ function RaceInner() {
       <AnimatePresence>
         {spot && heroStage ? (
           <motion.div
-            className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
+            className="fixed inset-0 z-[9995] flex items-end justify-center sm:items-center sm:p-6"
             style={{ background: "rgba(0,0,0,0.55)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

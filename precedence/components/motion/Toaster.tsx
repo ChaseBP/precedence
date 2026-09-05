@@ -40,7 +40,7 @@ export function Toaster({ children }: { children: ReactNode }) {
       <MotionConfig reducedMotion="user">{children}</MotionConfig>
       {mounted &&
         createPortal(
-          <div className="pointer-events-none fixed bottom-5 right-5 z-[9999] flex w-[min(360px,90vw)] flex-col gap-2">
+          <div className="toast-lane pointer-events-none fixed bottom-5 right-5 z-[9991] flex w-[min(360px,90vw)] flex-col gap-2">
             <AnimatePresence>
               {toasts.map((t) => {
                 const Icon = ICON[t.level];

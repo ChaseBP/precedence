@@ -348,7 +348,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {open && (
           <>
             <motion.div
-              className="fixed inset-0 z-40 bg-black/55"
+              className="fixed inset-0 z-[10000] bg-black/55"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -356,7 +356,7 @@ export function Shell({ children }: { children: ReactNode }) {
               onClick={() => setOpen(false)}
             />
             <motion.aside
-              className="glass-heavy fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col justify-between border-r p-5"
+              className="glass-heavy fixed inset-y-0 left-0 z-[10001] flex w-[260px] flex-col justify-between border-r p-5"
               style={{ borderColor: "var(--border)" }}
               initial={{ x: -280 }}
               animate={{ x: 0 }}

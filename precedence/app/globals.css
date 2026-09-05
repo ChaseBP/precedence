@@ -546,3 +546,22 @@ select:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
+
+/* One overlay lane at the bottom of the viewport. The wave banner and the toast stack both
+   anchored there and overlapped into an unreadable pile on a 360px screen, covering the cards
+   underneath; at 640px they still intersected. WaveAlert sets `.wave-open` on the root while it is
+   showing, and the toast stack steps above it, so the two cannot collide at any width. */
+.wave-open .toast-lane {
+  bottom: 6.25rem;
+}
+
+/* The nav rail is `overflow-hidden` so its links can be trimmed rather than wrap, and an
+   `outline` on a child of an overflow-hidden box is clipped away with everything else — the ring
+   was 2px wide and entirely invisible on the first links a keyboard user reaches. An inset
+   box-shadow is painted inside the element's own box, so nothing clips it. Same failure as the
+   clip-path'd buttons above, different cause. */
+header nav a:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
+  border-radius: 6px;
+}
