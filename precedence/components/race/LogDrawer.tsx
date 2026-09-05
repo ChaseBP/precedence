@@ -17,7 +17,7 @@ export function LogDrawer({ events }: { events: LifecycleEvent[] }) {
     <>
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <Eyebrow>Judge Mode · Live Trace</Eyebrow>
+          <Eyebrow>Verification log · Live Trace</Eyebrow>
           <span className="mono text-[0.68rem]" style={{ color: "var(--text-faint)" }}>
             {events.length} events
           </span>
@@ -49,7 +49,7 @@ export function LogDrawer({ events }: { events: LifecycleEvent[] }) {
           className="btn-ghost flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs"
         >
           <Scale size={13} style={{ color: "var(--accent)" }} />
-          Inspect Judge Mode Log ({events.length})
+          Inspect Verification log Log ({events.length})
         </button>
       </div>
 
@@ -76,7 +76,7 @@ export function LogDrawer({ events }: { events: LifecycleEvent[] }) {
                 <div className="flex items-center gap-2">
                   <Scale size={16} color="var(--accent)" />
                   <span className="font-[family-name:var(--font-display)] font-semibold">
-                    Judge Mode — Forensic Trace
+                    Verification log — Forensic Trace
                   </span>
                 </div>
                 <button

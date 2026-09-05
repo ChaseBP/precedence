@@ -27,10 +27,10 @@ import { ConnectWallet } from "@/components/ConnectWallet";
  * steps.
  */
 const NAV = [
-  { href: "/registry/new", label: "Register asset" },
+  { href: "/registry/new", label: "Register collateral" },
   { href: "/collateral", label: "Facilities" },
-  { href: "/race", label: "Priority race" },
-  { href: "/registry", label: "Liens" },
+  { href: "/race", label: "Priority settlement" },
+  { href: "/registry", label: "Lien registry" },
   { href: "/portfolio", label: "Positions" },
   { href: "/financiers", label: "Lenders" },
   { href: "/dashboard", label: "Telemetry" },

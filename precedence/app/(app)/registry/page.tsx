@@ -67,7 +67,7 @@ export default function RegistryPage() {
           <div className="min-w-0">
             <Eyebrow>Self-Populating Lien Registry · Creditcoin CC3</Eyebrow>
             <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight">
-              The <span className="text-gradient">Registry</span>
+              Lien registry
             </h1>
             <p className="mt-2 max-w-xl text-sm" style={{ color: "var(--text-muted)" }}>
               The registry nobody had to join. Every proof-ordered financing race automatically writes its lien structure to Creditcoin CC3 — double-pledging stops being possible to commit.

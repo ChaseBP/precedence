@@ -54,7 +54,7 @@ export default function FinanciersPage() {
         <header className="mb-6">
           <Eyebrow>Autonomous Capital Fleet · Creditcoin CC3 &amp; Sepolia</Eyebrow>
           <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight">
-            Financier <span className="text-gradient">Fleet</span>
+            Lenders
           </h1>
           <p className="mt-2 max-w-xl text-sm" style={{ color: "var(--text-muted)" }}>
             Autonomous capital providers with distinct risk mandates, locking capital on Sepolia and holding tradeable ERC-1155 priority claim tokens on Creditcoin CC3.

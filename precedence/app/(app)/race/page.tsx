@@ -335,7 +335,7 @@ function RaceInner() {
       });
     } else if (race.status === "ABORTED") {
       notified.current = race.id + race.status;
-      toast({ level: "warn", title: "Priority Race Aborted", body: race.aborted?.reason });
+      toast({ level: "warn", title: "Priority settlement aborted", body: race.aborted?.reason });
     }
   }, [race, toast]);
 
@@ -774,7 +774,7 @@ function RaceInner() {
             <button onClick={stepNext} disabled={ph >= lastIdx} aria-label="Next stage" className="btn-ghost rounded-lg px-2 py-1.5 text-xs disabled:opacity-40"><ChevronRight size={13} /></button>
             {settled ? (
               <button onClick={replayAll} className="btn-ghost inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs">
-                <RotateCcw size={12} /> Replay run
+                <RotateCcw size={12} /> Replay settlement
               </button>
             ) : null}
           </span>
@@ -806,7 +806,7 @@ function RaceInner() {
           ))}
         </div>
 
-        {/* Right Sidebar: Visual telemetry & Judge Mode */}
+        {/* Right Sidebar: Visual telemetry & Verification log */}
         <div className="flex min-w-0 flex-col gap-4">
           {/* The per-phase stepper. `PhaseStepper` existed and was imported here but never
               rendered, so the console showed only a compressed horizontal rail — a viewer could
@@ -871,7 +871,7 @@ function RaceInner() {
                 onClick={() => router.push("/collateral")}
                 className="btn-ghost rounded-lg px-3 py-1 text-xs"
               >
-                Scan Next
+                Next facility
               </button>
             </Card>
           )}

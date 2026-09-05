@@ -354,7 +354,7 @@ export default function RegisterCollateralPage() {
           </Link>
           <Eyebrow>Borrower · Creditcoin CC3 registry</Eyebrow>
           <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight">
-            Register <span className="text-gradient">collateral</span>
+            Register collateral
           </h1>
           <p className="mt-2 max-w-xl text-sm" style={{ color: "var(--text-muted)" }}>
             Describe what you are borrowing against, then set your terms. You choose how much each

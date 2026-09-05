@@ -70,7 +70,7 @@ export default function DashboardPage() {
         <header className="mb-6">
           <Eyebrow>Protocol Telemetry · Creditcoin CC3 &amp; Attestcoin 0x0FD2</Eyebrow>
           <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight">
-            Protocol <span className="text-gradient">Benchmark</span>
+            Protocol telemetry
           </h1>
           <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
             Cryptographic settlement telemetry for proof-ordered capital priority.

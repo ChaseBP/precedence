@@ -99,7 +99,7 @@ export default function PortfolioPage() {
           <div className="mb-5 text-center">
             <Wallet size={28} className="mx-auto mb-3" style={{ color: "var(--text-faint)" }} />
             <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight tracking-tight">
-              Connect a wallet to see <span className="text-gradient">your book</span>
+              Connect a wallet to see your positions
             </h1>
             <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--text-muted)" }}>
               PRECEDENCE has no accounts and no passwords. Your positions are whatever your address
@@ -125,7 +125,7 @@ export default function PortfolioPage() {
           <Eyebrow>Positions derived from on-chain history</Eyebrow>
           <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight">
-              Your <span className="text-gradient">Book</span>
+              Your positions
             </h1>
             {address ? (
               <span className="mono text-[11px]" style={{ color: "var(--text-faint)" }}>

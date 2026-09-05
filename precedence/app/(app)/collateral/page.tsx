@@ -120,7 +120,7 @@ export default function CollateralPage() {
         <header className="mb-6">
           <Eyebrow>Live · Lien Registry · Creditcoin CC3</Eyebrow>
           <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight">
-            Collateral <span className="text-gradient">Scanner</span>
+            Credit facilities
           </h1>
           <p className="mt-2 max-w-xl text-sm" style={{ color: "var(--text-muted)" }}>
             Real-world collateral assets financed by proof-ordered priority claims. The financing mechanism itself populates the registry.
@@ -229,7 +229,7 @@ export default function CollateralPage() {
                   Doc hash: <span className="mono">{hero.docHash.slice(0, 14)}…</span> · Hash-unique on Creditcoin CC3
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
-                  {/* The facility page is where a lender actually bids; the scripted race is the
+                  {/* The facility page is where a lender actually bids; the simulated run is the
                       guided walkthrough. Both are reachable so neither is the only way in. */}
                   <Link
                     href={`/collateral/${hero.id}`}
@@ -244,7 +244,7 @@ export default function CollateralPage() {
                     className="btn-accent flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold disabled:opacity-50"
                   >
                     {launching === hero.id ? <Loader2 className="animate-spin" size={15} /> : <TrendingUp size={15} />}
-                    Open Priority Race
+                    Open settlement
                   </button>
                 </div>
               </div>
@@ -337,7 +337,7 @@ export default function CollateralPage() {
                     className="btn-ghost flex w-full items-center justify-center gap-2 py-2 text-xs font-semibold"
                   >
                     {launching === c.id ? <Loader2 className="animate-spin" size={13} /> : <TrendingUp size={13} />}
-                    Scripted race
+                    Simulated run
                   </button>
                 </div>
               </Card>

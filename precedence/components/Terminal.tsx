@@ -6,7 +6,7 @@ import type { LifecycleEvent } from "@/lib/precedence/types";
 import { levelColor, timeOf } from "@/lib/client/format";
 import { LogLine } from "@/components/LogLine";
 
-/** Forensic live log of hashes, blocks, and state transitions (Judge Mode). */
+/** Forensic live log of hashes, blocks, and state transitions (Verification log). */
 export function Terminal({ events }: { events: LifecycleEvent[] }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
