@@ -280,7 +280,7 @@ function RaceInner() {
           if (isTerminalPhase(r.race.status)) {
             // Already settled on first load: open at the result, not at a replay nobody asked for.
             setPlayhead(Number.MAX_SAFE_INTEGER);
-          } else if (!reduced) {
+          } else {
             setSpot(true); // in flight: each stage spotlights as it lands
           }
         } else {
@@ -409,11 +409,11 @@ function RaceInner() {
       const last = stagesShown.length - 1;
       if (e.key === "ArrowRight") {
         setPaused(true);
-        if (!reduced) setSpot(true);
+        setSpot(true);
         setPlayhead((i) => Math.min(Math.min(i, last) + 1, last));
       } else if (e.key === "ArrowLeft") {
         setPaused(true);
-        if (!reduced) setSpot(true);
+        setSpot(true);
         setPlayhead((i) => Math.max(0, Math.min(i, last) - 1));
       } else if (e.key === " ") {
         e.preventDefault();
@@ -715,10 +715,10 @@ function RaceInner() {
   // twice on one keypress — once as the button, once as "pause". Releasing focus after a click
   // hands the keys back to the presenter remote.
   const drop = () => (document.activeElement as HTMLElement | null)?.blur();
-  const stepPrev = () => { drop(); setPaused(true); if (!reduced) setSpot(true); setPlayhead(Math.max(0, ph - 1)); };
-  const stepNext = () => { drop(); setPaused(true); if (!reduced) setSpot(true); setPlayhead(Math.min(lastIdx, ph + 1)); };
+  const stepPrev = () => { drop(); setPaused(true); setSpot(true); setPlayhead(Math.max(0, ph - 1)); };
+  const stepNext = () => { drop(); setPaused(true); setSpot(true); setPlayhead(Math.min(lastIdx, ph + 1)); };
   const skipAll = () => { drop(); setSpot(false); setPaused(false); setPlayhead(Number.MAX_SAFE_INTEGER); };
-  const replayAll = () => { drop(); if (!reduced) setSpot(true); setPaused(false); setPlayhead(0); };
+  const replayAll = () => { drop(); setSpot(true); setPaused(false); setPlayhead(0); };
   // Catch-up: opening a race mid-run leaves a deep backlog, which skims rather than dwelling.
   const dwellMs = lastIdx - ph >= 3 ? 1200 : DWELL_MS[heroStage?.id ?? ""] ?? 4500;
   const advance = () => {
@@ -899,10 +899,12 @@ function RaceInner() {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={heroStage.id}
-                  initial={{ opacity: 0, scale: 0.92, y: 36 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.6, x: -320, y: -80 }}
-                  transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                  // Reduced motion means do not ANIMATE, not do not show. The card still pops and
+                  // docks; it simply arrives without the spring and the travel.
+                  initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 36 }}
+                  animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                  exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.6, x: -320, y: -80 }}
+                  transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 350, damping: 28 }}
                 >
                   {/* Solid, not glass: a translucent panel lets the page bleed through and the
                       mono hashes stop being readable, which is the whole point of the card. */}
