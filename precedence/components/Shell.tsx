@@ -244,7 +244,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       {/* ── Desktop: persistent top navbar ── */}
       <header
-        className="glass-chrome sticky top-0 z-30 hidden h-16 items-center gap-4 overflow-hidden border-b px-5 md:flex"
+        className="glass-chrome sticky top-0 z-30 hidden h-16 items-center gap-4 overflow-hidden border-b px-5 lg:flex"
         style={{ borderColor: "var(--border)" }}
       >
         <Link href="/collateral" className="flex min-w-0 shrink items-center gap-2.5">
@@ -324,7 +324,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
       {/* ── Mobile: top bar with hamburger ── */}
       <header
-        className="glass-chrome sticky top-0 z-30 flex items-center gap-2.5 overflow-hidden border-b px-3 py-2.5 md:hidden"
+        className="glass-chrome sticky top-0 z-30 flex items-center gap-2.5 overflow-hidden border-b px-3 py-2.5 lg:hidden"
         style={{ borderColor: "var(--border)" }}
       >
         <button
@@ -407,6 +407,10 @@ export function Shell({ children }: { children: ReactNode }) {
 
               <div className="flex flex-col gap-3">
                 <StatusCluster agents={agents} truth={truth} />
+                {/* Connecting was reachable only from the desktop header, so on a phone the wallet
+                    could be connected from an empty-state page or not at all. Moving the rail to
+                    `lg:` widened that gap to every tablet, which is what surfaced it. */}
+                <ConnectWallet />
                 <div className="flex items-center gap-2">
                   <ThemeToggle />
                   {adminUnlocked ? (
