@@ -39,6 +39,7 @@ import { LogDrawer } from "@/components/race/LogDrawer";
 import { ProverCall } from "@/components/race/ProverCall";
 import { ProverChainPanel } from "@/components/race/ProverChainPanel";
 import { ProofRail } from "@/components/race/ProofRail";
+import { ProvenOrder } from "@/components/race/ProvenOrder";
 import { WaveAlert } from "@/components/motion/WaveAlert";
 
 export default function RacePage() {
@@ -830,6 +831,10 @@ function RaceInner() {
             <CapitalFlowGraph bids={race.bids} active={!settled} />
           </Card>
 
+          {/* Above the proof pipeline on purpose. The pipeline explains what is still happening;
+              this says the answer is already known, which is what a viewer staring at
+              PENDING_EVIDENCE for seven minutes actually needs to be told. */}
+          <ProvenOrder race={race} settled={!!race.proofRecord || !!race.settlement} />
           <ProofRail race={race} creditcoinLive={creditcoinLive} />
 
           <Card>
