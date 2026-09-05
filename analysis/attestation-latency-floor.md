@@ -67,3 +67,69 @@ watches is effectively instant.
 a comment. Nothing reads the *live* frontier, so a fresh lock looks like a hang for seven minutes
 with no sign of progress. A block countdown driven by the real frontier would make it read as a
 known protocol property instead of a stall.
+
+---
+
+## Which side is the bottleneck: Attestcoin or Creditcoin?
+
+Measured 2026-09-05, because "it takes seven minutes" is not the same claim as "our chain is slow".
+
+### Creditcoin is idle the whole time
+
+```
+block time             ~15.0s
+txs in last 12 blocks   26
+gas used / limit        11,480,102 / 900,000,000  = 1.28% full
+```
+
+Watching the frontier advance against both chains' clocks:
+
+```
++10 sepolia blocks after  39s  (=3 CC3 blocks elapsed)  · 32 behind head
++10 sepolia blocks after 135s  (=9 CC3 blocks elapsed)  · 32 behind head
++10 sepolia blocks after 123s  (=8 CC3 blocks elapsed)  · 33 behind head
++10 sepolia blocks after 112s  (=8 CC3 blocks elapsed)  · 32 behind head
+```
+
+Between attestation batches Creditcoin produces eight or nine blocks that are ~99% empty. It has
+900M gas per block and is using 11M. **Creditcoin contributes one block — about 15 seconds — to a
+seven-minute wait, roughly 3%.**
+
+### It is not Ethereum finality either
+
+The docs say attestors monitor for "new finalized blocks", which would put the floor at Ethereum's
+finality gadget. Measured over 62 samples spanning two Sepolia epochs, that is not what happens:
+
+```
+attested - finalized       min +25   max +57   mean +39     (ahead in 62/62 samples)
+attested - safe/justified  min  -6   max +25   mean  +8.3   (ahead in 49/62)
+head - attested            min  32   max  42   mean  37
+frontier advanced 6 times while `safe` advanced 2 times
+```
+
+The frontier moved three times as often as the justified checkpoint. If attestation were gated on
+justification it could only advance when `safe` advances. It is running on its own cadence, ahead
+of both justified and finalized.
+
+**This is worth stating plainly: Attestcoin attests Sepolia blocks that Ethereum has not
+finalized.** The ~32-block depth is a heuristic confirmation margin, not a finality guarantee, so
+a reorg deeper than that margin but shallower than finality would invalidate an attestation. That
+is a property of the system this protocol sits on, and it belongs in the honest-limits list rather
+than in a footnote.
+
+### The decomposition
+
+| Component | Contribution | Whose |
+| --- | --- | --- |
+| ~32-block confirmation margin before a block is attested at all | ~6.4 min | Attestcoin, configured |
+| Waiting for the next 10-source-block attestation batch | 0–2.0 min | Attestcoin, configured |
+| Creditcoin including the attestation | ~0.25 min | Creditcoin |
+
+The 10-block batch is documented: *"if the attestation interval for Ethereum is 10, a new
+attestation is produced on Creditcoin for every 10 blocks on Ethereum"* — a per-chain cost
+optimisation, chosen because "storing attestations for every source chain block would be too
+expensive" and attestors must sign, gossip and submit for each one.
+
+**Answer: Attestcoin, and by configuration rather than by throughput.** It keeps pace exactly —
+ten Sepolia blocks arrive every 120s and it attests ten every ~120s — it simply never closes the
+standing gap. Nothing on our side, and no amount of Creditcoin capacity, changes either parameter.
