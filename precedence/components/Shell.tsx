@@ -366,7 +366,7 @@ export function Shell({ children }: { children: ReactNode }) {
               onClick={() => setOpen(false)}
             />
             <motion.aside
-              className="glass-heavy fixed inset-y-0 left-0 z-[10001] flex w-[260px] flex-col justify-between border-r p-5"
+              className="panel-solid fixed inset-y-0 left-0 z-[10001] flex w-[260px] flex-col justify-between p-5"
               style={{ borderColor: "var(--border)" }}
               initial={{ x: -280 }}
               animate={{ x: 0 }}

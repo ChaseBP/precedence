@@ -162,7 +162,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="py-10 text-sm" style={{ color: "var(--text-faint)" }}>
-              Run priority races from the Collateral Scanner to populate the trend graph.
+              Run priority races from Facilities to populate the trend graph.
             </div>
           )}
         </Card>

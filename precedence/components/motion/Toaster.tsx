@@ -52,7 +52,7 @@ export function Toaster({ children }: { children: ReactNode }) {
                     animate={{ opacity: 1, x: 0, scale: 1 }}
                     exit={{ opacity: 0, x: 40, scale: 0.96 }}
                     transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    className="glass-heavy pointer-events-auto flex items-start gap-2.5 rounded-xl p-3"
+                    className="panel-solid pointer-events-auto flex items-start gap-2.5 rounded-xl p-3"
                     style={{ borderLeft: `2px solid ${COLOR[t.level]}` }}
                   >
                     <Icon size={16} color={COLOR[t.level]} className="mt-0.5 shrink-0" />

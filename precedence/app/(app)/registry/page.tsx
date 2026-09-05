@@ -109,7 +109,7 @@ export default function RegistryPage() {
         </div>
       ) : filtered.length === 0 ? (
         <Card className="p-10 text-center text-sm">
-          <span style={{ color: "var(--text-faint)" }}>No records found. Open a priority race from the Collateral Scanner.</span>
+          <span style={{ color: "var(--text-faint)" }}>No records found. Open a priority race from Facilities.</span>
         </Card>
       ) : (
         <Stagger className="flex flex-col gap-2.5">

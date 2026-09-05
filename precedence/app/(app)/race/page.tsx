@@ -470,7 +470,7 @@ function RaceInner() {
         <Eyebrow>Priority Race</Eyebrow>
         <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-semibold">Race Not Found</h2>
         <p className="mx-auto mt-2 max-w-md text-sm" style={{ color: "var(--text-muted)" }}>
-          The requested priority race does not exist. Open a race from the Collateral Scanner.
+          The requested priority race does not exist. Open one from Facilities.
         </p>
         <div className="mt-5">
           <button onClick={() => router.push("/collateral")} className="btn-accent rounded-lg px-4 py-2 text-sm font-semibold">

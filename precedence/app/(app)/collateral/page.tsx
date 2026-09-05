@@ -149,7 +149,7 @@ export default function CollateralPage() {
         </div>
       ) : collateralList.length === 0 ? (
         <Card className="p-8 text-center">
-          <Eyebrow>Collateral Scanner</Eyebrow>
+          <Eyebrow>Credit facilities</Eyebrow>
           <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-semibold">
             No registered collateral assets
           </h2>

@@ -65,7 +65,7 @@ export function LogDrawer({ events }: { events: LifecycleEvent[] }) {
               onClick={() => setOpen(false)}
             />
             <motion.aside
-              className="glass-heavy fixed inset-y-0 right-0 z-50 flex w-[min(640px,94vw)] flex-col gap-3 border-l p-4"
+              className="panel-solid fixed inset-y-0 right-0 z-[9996] flex w-full flex-col gap-3 p-4 sm:w-[min(640px,94vw)]"
               style={{ borderColor: "var(--border)" }}
               initial={{ x: "100%" }}
               animate={{ x: 0 }}

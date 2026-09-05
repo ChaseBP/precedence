@@ -565,3 +565,12 @@ header nav a:focus-visible {
   box-shadow: inset 0 0 0 2px var(--accent);
   border-radius: 6px;
 }
+
+/* Opaque modal surface. `.glass-heavy` sits at --panel-heavy, which is 0.72 alpha in dark and
+   0.85 in light — fine for a panel floating over a page, and wrong for a drawer or a log, where
+   headings and card text from underneath read straight through the blur. Modals get a solid
+   ground; the glass language stays for everything that is genuinely floating. */
+.panel-solid {
+  background: var(--bg-1);
+  border: 1px solid var(--border-strong);
+}
