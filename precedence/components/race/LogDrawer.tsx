@@ -49,7 +49,7 @@ export function LogDrawer({ events }: { events: LifecycleEvent[] }) {
           className="btn-ghost flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs"
         >
           <Scale size={13} style={{ color: "var(--accent)" }} />
-          Inspect Verification log Log ({events.length})
+          Inspect verification log ({events.length})
         </button>
       </div>
 
@@ -76,7 +76,7 @@ export function LogDrawer({ events }: { events: LifecycleEvent[] }) {
                 <div className="flex items-center gap-2">
                   <Scale size={16} color="var(--accent)" />
                   <span className="font-[family-name:var(--font-display)] font-semibold">
-                    Verification log — Forensic Trace
+                    Verification log
                   </span>
                 </div>
                 <button

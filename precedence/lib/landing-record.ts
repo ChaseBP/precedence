@@ -52,6 +52,7 @@ export const EXPLORER = {
   sepoliaTx: (h: string) => `https://sepolia.etherscan.io/tx/${h}`,
   sepoliaBlock: (n: number) => `https://sepolia.etherscan.io/block/${n}`,
   creditcoinTx: (h: string) => `https://creditcoin-testnet.blockscout.com/tx/${h}`,
+  creditcoinBlock: (n: number) => `https://creditcoin-testnet.blockscout.com/block/${n}`,
   creditcoinAddress: (a: string) => `https://creditcoin-testnet.blockscout.com/address/${a}`,
   sepoliaAddress: (a: string) => `https://sepolia.etherscan.io/address/${a}`,
 };

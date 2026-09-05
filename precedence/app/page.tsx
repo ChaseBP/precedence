@@ -22,6 +22,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ConnectWallet } from "@/components/ConnectWallet";
 import { SETTLEMENT, EXPLORER, DEPLOYED } from "@/lib/landing-record";
 
 const short = (h: string) => `${h.slice(0, 10)}…${h.slice(-6)}`;
@@ -115,7 +116,7 @@ function SettlementRecord() {
           </span>
           , settled on {SETTLEMENT.settledOn.chain} block{" "}
           <a
-            href={EXPLORER.creditcoinTx(SETTLEMENT.settledOn.txHash)}
+            href={EXPLORER.creditcoinBlock(SETTLEMENT.settledOn.block)}
             target="_blank"
             rel="noreferrer"
             className="mono underline-offset-4 hover:underline"
@@ -257,7 +258,12 @@ function Deployed() {
                     className="underline-offset-4 hover:underline"
                     style={{ color: "var(--text-faint)" }}
                   >
-                    {r.address.slice(0, 6)}…{r.address.slice(-4)}
+                    {/* A precompile's address IS its short form. Truncating 0x…0FD2 through the
+                        generic middle-ellipsis produced "0x0000…0FD2", which reads as a mangled
+                        hash rather than the well-known constant it is. */}
+                    {/^0x0{20,}/.test(r.address)
+                      ? `0x${r.address.slice(-4).toUpperCase()}`
+                      : `${r.address.slice(0, 6)}…${r.address.slice(-4)}`}
                   </a>
                 </dd>
               </div>
@@ -307,19 +313,22 @@ export default function Landing() {
       <div className="grain" aria-hidden />
 
       <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-5">
-        <div className="flex items-center gap-2.5">
+        <Link href="/" className="flex items-center gap-2.5 rounded-lg" aria-label="PRECEDENCE home">
           <Logo size={26} />
           <span className="font-[family-name:var(--font-display)] text-sm font-bold tracking-tight">
             PRECEDENCE
           </span>
-        </div>
-        <nav className="flex items-center gap-5 text-[0.8rem]">
-          <Link href="/collateral" className="hidden underline-offset-4 hover:underline sm:inline" style={{ color: "var(--text-muted)" }}>
+        </Link>
+        {/* These were `hidden sm:inline` with no hamburger behind them, so below 640px the landing
+            page had no navigation at all — only a theme toggle. They stay visible and simply wrap. */}
+        <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-[0.8rem]">
+          <Link href="/collateral" className="underline-offset-4 hover:underline" style={{ color: "var(--text-muted)" }}>
             Facilities
           </Link>
-          <Link href="/registry" className="hidden underline-offset-4 hover:underline sm:inline" style={{ color: "var(--text-muted)" }}>
+          <Link href="/registry" className="underline-offset-4 hover:underline" style={{ color: "var(--text-muted)" }}>
             Registry
           </Link>
+          <ConnectWallet />
           <ThemeToggle />
         </nav>
       </header>

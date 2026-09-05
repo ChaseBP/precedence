@@ -32,7 +32,11 @@ export function ProvenOrder({ race, settled }: { race: PriorityRace; settled: bo
   const ordered = [...locks].sort(
     (a, b) => a.lockBlockNumber - b.lockBlockNumber || a.lockTxIndex - b.lockTxIndex,
   );
-  const sameBlock = new Set(ordered.map((l) => l.lockBlockNumber)).size < ordered.length;
+  // How many actually share a height, and which. Saying "two" when three collided was wrong, and
+  // this is the one case the transaction index exists to resolve — worth naming precisely.
+  const byHeight = new Map<number, typeof ordered>();
+  for (const l of ordered) byHeight.set(l.lockBlockNumber, [...(byHeight.get(l.lockBlockNumber) ?? []), l]);
+  const collided = [...byHeight.values()].find((g) => g.length > 1);
 
   return (
     <Card>
@@ -99,10 +103,11 @@ export function ProvenOrder({ race, settled }: { race: PriorityRace; settled: bo
         </Why>
       ) : null}
 
-      {sameBlock ? (
+      {collided ? (
         <p className="mt-2.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
-          Two of these landed in the same block. The transaction index is the only thing separating
-          them.
+          {collided.length} of these landed in block {collided[0].lockBlockNumber} —{" "}
+          {collided.map((l) => l.financier).join(", ")}. The transaction index is the only thing
+          separating them.
         </p>
       ) : null}
     </Card>
