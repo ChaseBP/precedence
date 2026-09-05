@@ -160,8 +160,9 @@ export default function RegisterCollateralPage() {
     const s = n(f.seniorRatePct), j = n(f.juniorRatePct), sub = n(f.subordinateRatePct);
     if (Number.isFinite(money.advance) && money.total > money.advance) {
       out.push(
-        `Caps total ${usd(money.total)}, over the ${usd(money.advance)} advance your ${f.haircutPct}% ` +
-          `haircut leaves. The haircut is the lenders' protection, so the facility cannot exceed it.`,
+        `Caps total ${usd(money.total)}, over the ${usd(money.advance)} your ${f.haircutPct}% ` +
+          `safety margin leaves. That margin is the lenders' protection, so the facility cannot ` +
+          `exceed it.`,
       );
     }
     if ([s, j, sub].every(Number.isFinite) && !(s <= j && j <= sub)) {
@@ -510,7 +511,7 @@ export default function RegisterCollateralPage() {
             <Field label="Asset value (USD)">
               <Input field="faceValueUsd" value={f.faceValueUsd} onChange={(v) => set("faceValueUsd", v)} placeholder="10000" numeric />
             </Field>
-            <Field label="Safety margin (%)" hint="Trade finance calls this the haircut. Higher protects lenders and lowers what you can borrow.">
+            <Field label="Safety margin (%)" hint="Held back as the lenders' buffer. Higher protects them and lowers what you can borrow.">
               <Input field="haircutPct" value={f.haircutPct} onChange={(v) => set("haircutPct", v)} numeric />
             </Field>
             <Field label="Loan length (days)">
@@ -612,7 +613,13 @@ export default function RegisterCollateralPage() {
                 first prompt may offer to add the network.
               </span>
             ) : (
-              <span>Connect a wallet to register on Creditcoin CC3. Without one this is only stored locally.</span>
+              // "Without one this is only stored locally" promised a fallback that does not exist:
+              // the submit button is disabled while disconnected, so a borrower could fill the whole
+              // form, read that it would be saved anyway, and find nothing would submit.
+              <span>
+                Registering writes to Creditcoin CC3, so a wallet is required — there is no
+                local-only version of this. Everything you have typed is kept while you connect.
+              </span>
             )
           ) : (
             <span>

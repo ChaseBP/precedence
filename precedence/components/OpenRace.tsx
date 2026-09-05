@@ -87,6 +87,10 @@ export function OpenRace({ collateral }: { collateral: CollateralAsset }) {
   // those already has its own explanation in LockCapital directly below, so this card stays quiet
   // rather than repeating them.
   if (!isRealDocHash || !terms || !addrs) return null;
+  // And nothing to say to a visitor with no wallet. This is a borrower action, so showing it to
+  // an anonymous reader put administration in front of a lender and offered a button that could
+  // only fail. Whoever the obligor is will connect before they act.
+  if (!address) return null;
 
   const zero = "0x0000000000000000000000000000000000000000";
   const claimed = !!race?.registered && race.obligor.toLowerCase() !== zero;

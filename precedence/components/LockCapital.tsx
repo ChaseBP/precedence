@@ -387,13 +387,19 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
           its cap is refunded in full.
         </p>
       ) : (
-        <label className="mt-3 flex min-h-[44px] cursor-pointer items-start gap-2.5 py-1.5">
+        // Disabled with the rest of the form. The tranche buttons, the amount and "Fill the cap"
+        // all stop responding when bidding closes, and leaving this one live let a lender toggle a
+        // consent that had nothing left to apply to.
+        <label
+          className={`mt-3 flex min-h-[44px] items-start gap-2.5 py-1.5 ${biddingClosed ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+        >
           <input
             data-field="allowDemotion"
             type="checkbox"
             checked={allowDemotion}
+            disabled={biddingClosed}
             onChange={(e) => setAllowDemotion(e.target.checked)}
-            className="mt-0.5 size-4 shrink-0 cursor-pointer"
+            className="mt-0.5 size-4 shrink-0 cursor-pointer disabled:cursor-not-allowed"
           />
           <span className="text-[11.5px]" style={{ color: "var(--text-muted)" }}>
             If {tranche} is already full, seat me lower rather than refunding me.
