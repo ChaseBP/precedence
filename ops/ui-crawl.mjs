@@ -34,7 +34,17 @@ for (const width of WIDTHS) {
     try {
       const r = await page.goto(BASE + route, { waitUntil: "networkidle", timeout: 30000 });
       status = r?.status() ?? 0;
-      await page.waitForTimeout(700);
+      // `networkidle` plus a flat 700ms was not enough, and the consequence was not a slow crawl
+      // but a WRONG one: pages that fetch on the client were measured mid-render and reported as
+      // BLANK, seven times in one run, at some widths and not others — which reads exactly like a
+      // width-dependent layout bug and is not one. Wait for the text length to stop changing.
+      let prev = -1;
+      for (let i = 0; i < 20; i++) {
+        const len = await page.evaluate(() => (document.body.innerText || "").trim().length);
+        if (len === prev && len > 0) break;
+        prev = len;
+        await page.waitForTimeout(400);
+      }
     } catch (e) {
       findings.push({ route, width, kind: "NAV_FAIL", detail: String(e).slice(0, 160) });
       await page.close();
