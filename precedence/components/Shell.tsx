@@ -120,16 +120,24 @@ function StatusCluster({
   compact?: boolean;
 }) {
   if (!truth) return null;
-  const live = truth.creditcoinLive;
+  // BOTH chains, not just Creditcoin. Keyed off `creditcoinLive` alone this showed a confident
+  // green "live" while Sepolia was mocked — and the full "SEPOLIA SIMULATED · CREDITCOIN CC3 LIVE"
+  // chip only renders above 1900px, so at every ordinary demo width the badge overstated what was
+  // real. A mixed stack now reads as mixed.
+  const live = truth.sepoliaLive && truth.creditcoinLive;
+  const none = !truth.sepoliaLive && !truth.creditcoinLive;
   const color = live ? "var(--success)" : "var(--warn)";
+  const shortLabel = live ? "live" : none ? "simulated" : "part simulated";
   return (
     <span
       className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-xs"
       style={{ color: "var(--text-muted)" }}
       title={
         live
-          ? "Reading the deployed contracts on Creditcoin CC3."
-          : "Simulated data. No live registry is connected — see /api/config for why."
+          ? "Reading the deployed contracts on both Sepolia and Creditcoin CC3."
+          : none
+            ? "Simulated data on both chains. See /api/config for why."
+            : `Mixed: Sepolia ${truth.sepoliaLive ? "live" : "simulated"}, Creditcoin CC3 ${truth.creditcoinLive ? "live" : "simulated"}. See /api/config for why.`
       }
     >
       <span
@@ -137,12 +145,14 @@ function StatusCluster({
         style={{ background: color, boxShadow: `0 0 8px ${color}` }}
       />
       {compact ? (
-        <span style={{ color: live ? "var(--success)" : "var(--warn)" }}>
-          {live ? "live" : "simulated"}
-        </span>
+        <span style={{ color }}>{shortLabel}</span>
       ) : (
         <>
-          Creditcoin CC3 · {live ? "live" : "simulated"}
+          {live
+            ? "Both chains · live"
+            : none
+              ? "Both chains · simulated"
+              : `CC3 ${truth.creditcoinLive ? "live" : "simulated"} · Sepolia ${truth.sepoliaLive ? "live" : "simulated"}`}
           {agents !== null ? (
             <span className="mono" style={{ color: "var(--text-faint)" }}>
               · {agents} financiers
