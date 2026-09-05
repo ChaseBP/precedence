@@ -99,9 +99,17 @@ export default function FinanciersPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
                         <div className="font-[family-name:var(--font-display)] text-lg font-semibold">{a.name}</div>
-                        <Badge color={ARCHETYPE_COLOR[a.policy.riskTolerance] ?? "var(--silver)"}>
-                          {a.policy.preferredTranche}
-                        </Badge>
+                        {/* A prover does not bid for a rank, so its `preferredTranche` is an
+                            unused default — and rendering it labelled Kestrel SENIOR, which reads
+                            as an Attestcoin prover competing for a senior lien. Provers earn the
+                            first-valid-proof fee; they hold no priority position. */}
+                        {a.role === "prover" ? (
+                          <Badge color="var(--proof-verified)">PROVER</Badge>
+                        ) : (
+                          <Badge color={ARCHETYPE_COLOR[a.policy.riskTolerance] ?? "var(--silver)"}>
+                            {a.policy.preferredTranche}
+                          </Badge>
+                        )}
                       </div>
                       <div className="eyebrow mt-0.5">{a.mandate}</div>
                     </div>
