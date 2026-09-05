@@ -9,9 +9,18 @@ import { PHASE_LABELS } from "@/lib/precedence/orchestrator/lifecycle";
 export function SummaryHeader({
   race,
   statusLine,
+  proven = true,
 }: {
   race?: PriorityRace;
   statusLine: string;
+  /**
+   * Does the on-chain proof exist yet?
+   *
+   * @remarks `PRIORITY_SETTLED` is the phase reached when the ordering is determined, which is
+   * minutes before the attestation that proves it. Labelling that window "Priority Settled" put
+   * the boldest claim on the screen next to a proof rail still reading PENDING_EVIDENCE.
+   */
+  proven?: boolean;
 }) {
   const currentRace = race;
   if (!currentRace) return null;
@@ -25,7 +34,10 @@ export function SummaryHeader({
     currentRace.settlement?.seniorFinancier && (currentRace.settlement.seniorAmountUsd ?? 0) > 0
       ? currentRace.settlement.seniorFinancier
       : null;
-  const stage = PHASE_LABELS[currentRace.status];
+  const stage =
+    currentRace.status === "PRIORITY_SETTLED" && !proven
+      ? "Attesting"
+      : PHASE_LABELS[currentRace.status];
 
   // Distress and default read as danger; a clean close reads as success.
   const stageColor =

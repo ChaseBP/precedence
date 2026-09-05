@@ -93,7 +93,7 @@ const DWELL_MS: Record<string, number> = {
 const STATUS_LINE: Record<string, string> = {
   COLLATERAL_REGISTERED: "Hash-unique collateral NFT minted · verifying clear title…",
   RACE_OPEN: "Financing window open · competing financiers locking on Sepolia…",
-  PRIORITY_SETTLED: "Locks proven at 0x0FD2 · priority settled by (height, txIndex)",
+  PRIORITY_SETTLED: "Ordering fixed by (height, txIndex) · awaiting attestation of the source block",
   CAPITAL_DRAWN: "Obligor drawing capital from the Sepolia vault…",
   ENCUMBERED: "Facility active · lien recorded on Creditcoin CC3",
   REFI_DISCOVERED: "Priority Agent scanning the registry for rate arbitrage…",
@@ -430,6 +430,8 @@ function RaceInner() {
   }, [id, stagesShown.length, reduced]);
 
   const settled = isTerminalPhase(race?.status);
+  // Whether the PROOF exists, which is a different question from which phase the race is in.
+  const proven = !!race?.proofRecord || !!race?.settlement;
   const statusLine = STATUS_LINE[race?.status ?? "COLLATERAL_REGISTERED"] ?? "Settling priority race…";
 
   const advanceStep = async () => {
@@ -742,7 +744,7 @@ function RaceInner() {
 
       {/* Summary Header & Timeline */}
       <FadeUp>
-        <SummaryHeader race={race} statusLine={statusLine} />
+        <SummaryHeader race={race} statusLine={statusLine} proven={proven} />
       </FadeUp>
 
       <FadeUp delay={0.08}>
@@ -834,7 +836,7 @@ function RaceInner() {
           {/* Above the proof pipeline on purpose. The pipeline explains what is still happening;
               this says the answer is already known, which is what a viewer staring at
               PENDING_EVIDENCE for seven minutes actually needs to be told. */}
-          <ProvenOrder race={race} settled={!!race.proofRecord || !!race.settlement} />
+          <ProvenOrder race={race} settled={proven} />
           <ProofRail race={race} creditcoinLive={creditcoinLive} />
 
           <Card>
