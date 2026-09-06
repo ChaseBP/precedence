@@ -438,7 +438,10 @@ export default function Landing() {
           <div className="flex items-center justify-between gap-4">
             <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="PRECEDENCE home">
               <Logo size={26} />
-              <span className="font-[family-name:var(--font-display)] text-sm font-bold tracking-tight">
+              {/* The wordmark is the one place a gradient is a brand mark rather than decoration.
+                  Static, not `.shimmer-text` — a perpetually animating element on a page whose
+                  whole motion budget is two deliberate moments would be the loudest thing on it. */}
+              <span className="text-gradient font-[family-name:var(--font-display)] text-sm font-bold leading-normal tracking-tight">
                 PRECEDENCE
               </span>
             </Link>
