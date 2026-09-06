@@ -37,3 +37,6 @@ evidence/.active-collateral-id
 evidence/stage-race.log
 evidence/prove-race-*.log
 evidence/.ux-store.json
+# The app's persistent store when PRECEDENCE_STORE_PATH points here. Runtime state, not evidence:
+# it churns on every action and holds whatever the machine was last looking at.
+evidence/.store.json
