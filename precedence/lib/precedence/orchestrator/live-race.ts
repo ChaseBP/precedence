@@ -199,10 +199,10 @@ export async function appendLiveLock(params: AppendLiveLockParams): Promise<Prio
         vaultAddress: reader.vaultAddress,
         collateralId: collateral.docHash,
         obligor: state.obligor,
-        // No opening receipt to point at: this app did not see that transaction. Recorded as the
-        // lock's own hash would be a lie about which transaction opened the race, so it is left
-        // out and the UI shows one fewer link rather than a wrong one.
-        openTxHash: params.lockTxHash,
+        // No opening receipt to point at: this app did not see that transaction. Putting the
+        // lock's own hash here would label a real transaction as something it is not, so the
+        // field is left unset and the UI shows one fewer link rather than a wrong one.
+        openTxHash: undefined,
         openBlockNumber: lock.blockNumber,
         raceNonce: lock.raceNonce,
         raceDeadline: state.raceDeadline,

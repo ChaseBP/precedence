@@ -19,6 +19,7 @@ import {
   Award,
   Layers,
   FileText,
+  Maximize2,
 } from "lucide-react";
 import type { Agent, AgentDecision, PriorityRace, LifecyclePhase, ProverCallRecord } from "@/lib/precedence/types";
 import { api, streamRace } from "@/lib/client/api";
@@ -40,6 +41,7 @@ import { ProverCall } from "@/components/race/ProverCall";
 import { ProverChainPanel } from "@/components/race/ProverChainPanel";
 import { ProofRail } from "@/components/race/ProofRail";
 import { OnChainReceipts } from "@/components/race/OnChainReceipts";
+import { SettlementActivity } from "@/components/race/SettlementActivity";
 import { ProvenOrder } from "@/components/race/ProvenOrder";
 import { WaveAlert } from "@/components/motion/WaveAlert";
 
@@ -810,6 +812,15 @@ function RaceInner() {
   const stepNext = () => { drop(); setPaused(true); setSpot(true); setPlayhead(Math.min(lastIdx, ph + 1)); };
   const skipAll = () => { drop(); setSpot(false); setPaused(false); setPlayhead(Number.MAX_SAFE_INTEGER); };
   const replayAll = () => { drop(); setSpot(true); setPaused(false); setPlayhead(0); };
+  /**
+   * Put the spotlight back.
+   *
+   * @remarks Escape dismisses the overlay and there was no way to bring it back — a keypress, and
+   * the walkthrough's whole presentation was gone for the rest of the visit. It reopens at the
+   * current stage rather than restarting, unless the playhead has already run out, in which case
+   * there is nothing ahead to spotlight and it starts over.
+   */
+  const reopenSpot = () => { drop(); setPaused(false); setSpot(true); if (ph >= lastIdx) setPlayhead(0); };
   // Catch-up: opening a race mid-run leaves a deep backlog, which skims rather than dwelling.
   const dwellMs = lastIdx - ph >= 3 ? 1200 : DWELL_MS[heroStage?.id ?? ""] ?? 4500;
   const advance = () => {
@@ -858,17 +869,30 @@ function RaceInner() {
           <span />
         )}
 
-        {settled || paused ? (
+        {/* The transport. Hidden on a live settlement, which has no stages to step through, and
+            otherwise always reachable — it used to appear only when the race was settled or
+            already paused, so dismissing the spotlight with Escape mid-run left no control on the
+            page at all and no way to get the walkthrough back. */}
+        {live ? null : settled || paused ? (
           <span className="flex items-center gap-1.5">
             <button onClick={stepPrev} disabled={ph === 0} aria-label="Previous stage" className="btn-ghost rounded-lg px-2 py-1.5 text-xs disabled:opacity-40"><ChevronLeft size={13} /></button>
             <button onClick={() => setPaused((p) => !p)} aria-label={paused ? "Play" : "Pause"} className="btn-ghost rounded-lg px-2 py-1.5 text-xs">{paused ? <Play size={13} /> : <Pause size={13} />}</button>
             <button onClick={stepNext} disabled={ph >= lastIdx} aria-label="Next stage" className="btn-ghost rounded-lg px-2 py-1.5 text-xs disabled:opacity-40"><ChevronRight size={13} /></button>
+            {!spot ? (
+              <button onClick={reopenSpot} className="btn-ghost inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs" title="Reopen the stage spotlight (Escape closes it)">
+                <Maximize2 size={12} /> Focus stages
+              </button>
+            ) : null}
             {settled ? (
               <button onClick={replayAll} className="btn-ghost inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs">
                 <RotateCcw size={12} /> Replay settlement
               </button>
             ) : null}
           </span>
+        ) : !spot ? (
+          <button onClick={reopenSpot} className="btn-ghost inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs" title="Reopen the stage spotlight (Escape closes it)">
+            <Maximize2 size={12} /> Focus stages
+          </button>
         ) : null}
       </div>
 
@@ -927,6 +951,11 @@ function RaceInner() {
           {/* Follows the replay playhead. Stepping back to stage 1 kept showing PROVEN, which
               is the one badge on this screen that must never be shown early — the proof does not
               exist at that point in the story being replayed. */}
+          {/* Above the rank card and the rail on purpose. Both of those describe the shape of the
+              settlement; this one answers "is anything still happening", which is the question a
+              viewer has first and the one the page previously could not answer at all. */}
+          {live ? <SettlementActivity race={race} onChanged={() => void refetch(race.id)} /> : null}
+
           <ProvenOrder race={race} settled={proven && ph >= proofStageIndex} />
           <ProofRail race={race} />
           <OnChainReceipts race={race} />

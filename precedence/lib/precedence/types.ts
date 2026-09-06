@@ -695,7 +695,16 @@ export interface RaceOnChain {
   /** The obligor of record ON THE VAULT, not a stored profile. */
   obligor: Hex;
   registerTxHash?: Hex;
-  openTxHash: Hex;
+  /**
+   * The `openRace` transaction, when this app saw it.
+   *
+   * @remarks Optional because a race can be recovered from the vault after the fact — a lender
+   * bidding into a window opened from another browser or from the CLI. In that case no opening
+   * receipt was ever handed to us, and inventing one by reusing the lock's hash would mislabel a
+   * real transaction as something it is not. One fewer link is correct; a wrong link is not.
+   */
+  openTxHash?: Hex;
+  /** The block the race was opened in, or the earliest block this app can attribute to it. */
   openBlockNumber: number;
   raceNonce: number;
   /** Unix seconds. The window closes here whatever the app believes. */
