@@ -147,7 +147,13 @@ async function main() {
       break;
 
     case "prove": {
-      const [collateralId, ...txHashes] = args;
+      // `--json` prints one machine-readable line on the last line of stdout and suppresses the
+      // evidence markdown. It exists so the web app can offer a "submit the proof" button and
+      // still have exactly ONE implementation of proving — this one. Scraping the human output
+      // for a transaction hash would have been the alternative, and a log line is not an API.
+      const json = args.includes("--json");
+      const rest = args.filter((a) => a !== "--json");
+      const [collateralId, ...txHashes] = rest;
       if (!collateralId || txHashes.length === 0) {
         throw new Error("usage: prove <collateralId> <txHash…>  (or `prove <collateralId> --from-vault`)");
       }
@@ -162,7 +168,20 @@ async function main() {
       const r = await settleRace({ collateralId, txHashes: hashes });
       console.log(`\nsettled: ${r.explorerUrl}`);
       console.log(`gas: ${r.gasUsed} · evidence: ${r.evidencePath}`);
-      console.log(`\n${r.markdown}\n`);
+      if (json) {
+        console.log(
+          `PRECEDENCE_RESULT ${JSON.stringify({
+            settleTxHash: r.settleTxHash,
+            blockNumber: r.blockNumber,
+            gasUsed: r.gasUsed.toString(),
+            explorerUrl: r.explorerUrl,
+            evidencePath: r.evidencePath,
+            crossCheckAgrees: r.crossCheckAgrees,
+          })}`,
+        );
+      } else {
+        console.log(`\n${r.markdown}\n`);
+      }
       if (!r.crossCheckAgrees) process.exit(1);
       break;
     }
