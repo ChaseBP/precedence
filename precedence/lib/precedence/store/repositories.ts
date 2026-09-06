@@ -70,6 +70,16 @@ export async function listRaces(): Promise<RaceSummary[]> {
   return getDb().races.map(toRaceSummary);
 }
 
+/**
+ * Every race in full, not summarised.
+ *
+ * @remarks A summary deliberately drops `onchain`, and finding the live race for a facility means
+ * matching on the vault's own `(collateralId, raceNonce)` — which only the full record carries.
+ */
+export async function listRacesFull(): Promise<PriorityRace[]> {
+  return getDb().races;
+}
+
 export async function getRace(id: string): Promise<PriorityRace | undefined> {
   return getDb().races.find((r) => r.id === id);
 }

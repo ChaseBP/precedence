@@ -200,6 +200,24 @@ export interface CollateralAsset {
   verifiedClearTitle: boolean;
   fetchedAt: ISO;
   source: "creditcoin-registry" | "mock";
+  /**
+   * Receipts from the obligor's own on-chain registration, when they signed one.
+   *
+   * @remarks Kept on the asset rather than shown once and forgotten. The registration wizard
+   * displayed these on its success screen and then dropped them, so the two Creditcoin
+   * transactions a borrower had just signed and watched confirm in their wallet existed nowhere in
+   * the app a moment later — the facility page they landed on could not link to either. A receipt
+   * that only exists until the next navigation is not evidence.
+   *
+   * Absent on a simulated registration, which is what keeps this from ever being a fabricated
+   * link: no signature, no hashes, no card.
+   */
+  onChainRefs?: {
+    /** CollateralRegistry.registerCollateral on Creditcoin CC3. */
+    creditcoinRegisterTx?: Hex;
+    /** CollateralRegistry.postFacilityTerms on Creditcoin CC3. */
+    creditcoinTermsTx?: Hex;
+  };
 }
 
 export interface CollateralAnalysis {
@@ -657,6 +675,37 @@ export interface LifecycleEvent {
   seq: number;
 }
 
+/**
+ * Where a live race actually exists on chain.
+ *
+ * @remarks Every field here was read back from an RPC — a receipt fetched by hash, or the vault's
+ * own storage — never taken from the caller that submitted it. See `sepolia-reader.ts` for why
+ * that distinction is the whole of the security model rather than a nicety.
+ *
+ * Its presence is also what the UI keys explorer links off. A race either has this, in which case
+ * its hashes open on a block explorer, or it does not, in which case it is a scripted walkthrough
+ * and its hashes are labelled as samples and are deliberately not clickable.
+ */
+export interface RaceOnChain {
+  chainId: number;
+  /** The vault that emitted these events. Must equal `collateral.vaultAddress`. */
+  vaultAddress: Hex;
+  /** The `bytes32` document hash, which is the vault's own key for the facility. */
+  collateralId: Hex;
+  /** The obligor of record ON THE VAULT, not a stored profile. */
+  obligor: Hex;
+  registerTxHash?: Hex;
+  openTxHash: Hex;
+  openBlockNumber: number;
+  raceNonce: number;
+  /** Unix seconds. The window closes here whatever the app believes. */
+  raceDeadline: number;
+  facilitySizeUsd: number;
+  /** Carried over from the collateral so one page can show both chains' receipts. */
+  creditcoinRegisterTx?: Hex;
+  creditcoinTermsTx?: Hex;
+}
+
 export interface PriorityRace {
   id: RaceId;
   /**
@@ -668,6 +717,15 @@ export interface PriorityRace {
    * transaction hashes, which is why the UI must not offer them as explorer links.
    */
   simulated?: boolean;
+  /**
+   * Chain provenance, present exactly when `simulated` is false.
+   *
+   * @remarks The two are set together and never independently: a race is live *because* its
+   * opening transaction was verified on chain, so there is no state in which one is true and the
+   * other missing. Components should test this rather than negating `simulated`, since it also
+   * carries the hashes they need.
+   */
+  onchain?: RaceOnChain;
   status: LifecyclePhase;
   track: RaceTrack;
   scenario: RaceScenario;
