@@ -546,7 +546,7 @@ export default function Landing() {
       </Band>
 
       <Band as="footer" ground="bg-1" rule="strong" pt="3rem" pb="3rem">
-        <div className="grid gap-8">
+        <div className="grid items-start gap-x-10 gap-y-8 md:grid-cols-[1fr_auto]">
           <div className="min-w-0">
             <div className="flex items-center gap-2.5">
               <Logo size={20} />
@@ -580,7 +580,7 @@ export default function Landing() {
             </dl>
           </div>
 
-          <nav className="-mx-2 flex flex-wrap items-center gap-x-1 gap-y-0 text-[0.8125rem]">
+          <nav className="-mx-2 flex flex-wrap items-center gap-x-1 gap-y-0 text-[0.8125rem] md:-mr-2 md:ml-0 md:justify-end">
             {[
               { href: "/collateral", label: "Facilities" },
               { href: "/registry/new", label: "Register collateral" },
