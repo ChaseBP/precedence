@@ -43,7 +43,17 @@ interface Body {
     subordinateRatePct?: number;
   };
   /** Set only when the caller has already signed the on-chain registration. */
-  onChain?: { docHash?: string; txHash?: string; registryAddress?: string; vaultAddress?: string };
+  onChain?: {
+    docHash?: string;
+    txHash?: string;
+    registryAddress?: string;
+    vaultAddress?: string;
+    /** Both Creditcoin receipts, kept apart: registering the asset and posting its terms are two
+     *  transactions, and collapsing them into one `txHash` meant the app could only ever link to
+     *  the second. */
+    registerTx?: string;
+    termsTx?: string;
+  };
 }
 
 export async function POST(req: Request) {
@@ -154,6 +164,14 @@ export async function POST(req: Request) {
     verifiedClearTitle: true,
     fetchedAt: now,
     source: chain ? "creditcoin-registry" : "mock",
+    // Only on the signed path, so this can never become a fabricated explorer link. A simulated
+    // registration signs nothing and therefore has nothing to point at.
+    onChainRefs: chain
+      ? {
+          creditcoinRegisterTx: (b.onChain?.registerTx ?? undefined) as Hex | undefined,
+          creditcoinTermsTx: (b.onChain?.termsTx ?? b.onChain?.txHash ?? undefined) as Hex | undefined,
+        }
+      : undefined,
   };
 
   try {

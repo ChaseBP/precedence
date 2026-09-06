@@ -327,7 +327,16 @@ export default function RegisterCollateralPage() {
       //
       // The switch is requested explicitly by this flow. wagmi throws on a chain mismatch rather
       // than switching, so passing chainId alone would only produce the mismatch error.
-      let onChain: { docHash: string; txHash: string; registryAddress: string; vaultAddress: string } | undefined;
+      let onChain:
+        | {
+            docHash: string;
+            txHash: string;
+            registryAddress: string;
+            vaultAddress: string;
+            registerTx?: string;
+            termsTx?: string;
+          }
+        | undefined;
       let signed: { registerTx?: string; termsTx?: string } = {};
       const registry = addresses?.creditcoin?.CollateralRegistry;
       const vault = addresses?.sepolia?.PriorityVault;
@@ -362,6 +371,11 @@ export default function RegisterCollateralPage() {
           txHash: res.termsTx,
           registryAddress: registry,
           vaultAddress: vault,
+          // Both receipts, so the facility page can link to each one afterwards. This screen used
+          // to be the only place they existed, which made two confirmed Creditcoin transactions
+          // vanish the moment the borrower navigated away from it.
+          registerTx: res.registerTx,
+          termsTx: res.termsTx,
         };
         signed = { registerTx: res.registerTx, termsTx: res.termsTx };
       }

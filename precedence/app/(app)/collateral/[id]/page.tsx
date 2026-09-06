@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertTriangle, ArrowLeft, ArrowUpRight, Layers, Loader2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowUpRight, ExternalLink, Layers, Loader2, Radio, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { usd, pct, encumbranceColor, riskColor, trancheColor } from "@/lib/client/format";
 import { Badge, Card, Eyebrow, Stat, Why } from "@/components/ui";
@@ -21,11 +21,16 @@ import { OpenRace } from "@/components/OpenRace";
 import { ServiceFacility } from "@/components/ServiceFacility";
 import type { CollateralAsset, Tranche } from "@/lib/precedence/types";
 
+/** The CC3 host that resolves; `explorer.cc3-testnet.creditcoin.network` does not. */
+const CREDITCOIN_EXPLORER = "https://creditcoin-testnet.blockscout.com";
+
 export default function FacilityPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
   const [data, setData] = useState<Awaited<ReturnType<typeof api.facility>> | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  /** The on-chain settlement for this facility, if one has been recorded. */
+  const [liveRaceId, setLiveRaceId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -46,6 +51,14 @@ export default function FacilityPage() {
         if (!cancelled) setData(r);
       } catch (e) {
         if (!cancelled) setErr((e as Error).message);
+      }
+      // Separate and best-effort: whether a live settlement exists is useful, and a failure to
+      // find out must not take the facility page down with it.
+      try {
+        const l = await api.liveRace(id);
+        if (!cancelled) setLiveRaceId(l.id ?? null);
+      } catch {
+        /* no live settlement, or the store cannot say — either way, no link */
       }
     })();
     return () => {
@@ -131,6 +144,57 @@ export default function FacilityPage() {
             Document hash: <span className="mono">{c.docHash}</span>
           </div>
         </div>
+
+        {/* ── the receipts for this registration ──
+            A borrower signs two Creditcoin transactions to get here and watches both confirm in
+            their wallet. Until now the app showed them once, on the wizard's success screen, and
+            then had nowhere to put them — so the facility they landed on could not link to either
+            and the registration looked unrecorded. Present only when it was actually signed. */}
+        {c.onChainRefs?.creditcoinRegisterTx || c.onChainRefs?.creditcoinTermsTx ? (
+          <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+            <Eyebrow>Registered on Creditcoin CC3</Eyebrow>
+            <div className="mt-1.5 flex flex-col gap-1">
+              {(
+                [
+                  ["Asset registered", c.onChainRefs?.creditcoinRegisterTx],
+                  ["Terms posted", c.onChainRefs?.creditcoinTermsTx],
+                ] as [string, string | undefined][]
+              ).map(([label, hash]) =>
+                hash ? (
+                  <a
+                    key={label}
+                    href={`${CREDITCOIN_EXPLORER}/tx/${hash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mono inline-flex items-start gap-1.5 break-all text-[10.5px] underline decoration-dotted underline-offset-4 hover:decoration-solid"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    <span className="shrink-0" style={{ color: "var(--text-faint)" }}>{label} ·</span>
+                    {hash}
+                    <ExternalLink size={9} className="mt-0.5 shrink-0" />
+                  </a>
+                ) : null,
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {/* A settlement that exists on chain for this facility, linked from the facility itself.
+            Without this a lender who locked capital in one session had no route back to the run
+            their position is in. */}
+        {liveRaceId ? (
+          <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+            <Link
+              href={`/race?id=${liveRaceId}`}
+              className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold"
+              style={{ color: "var(--accent)" }}
+            >
+              <Radio size={12} style={{ color: "var(--success)" }} />
+              Open the live settlement for this facility
+              <ArrowUpRight size={12} className="shrink-0" />
+            </Link>
+          </div>
+        ) : null}
         <p className="mt-3 flex items-start gap-1.5 text-[11px]" style={{ color: "var(--text-faint)" }}>
           <ShieldCheck size={12} className="mt-0.5 shrink-0" />
           {c.verifiedClearTitle
@@ -144,7 +208,7 @@ export default function FacilityPage() {
         <Card>
           <div className="flex items-center gap-2">
             <Layers size={15} style={{ color: "var(--accent)" }} />
-            <h2 className="text-sm font-semibold">The borrower's terms</h2>
+            <h2 className="text-sm font-semibold">The borrower&rsquo;s terms</h2>
           </div>
           {c.terms ? (
             <>
