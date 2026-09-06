@@ -32,6 +32,7 @@ import {
   ExternalLink,
   Loader2,
   Radio,
+  ShieldCheck,
   Timer,
 } from "lucide-react";
 import { useAccount } from "wagmi";
@@ -119,6 +120,8 @@ export function SettlementActivity({
   const [closeErr, setCloseErr] = useState<string | null>(null);
   /** Set when the frontier moves, so a batch landing is visible rather than a silent number swap. */
   const [advanced, setAdvanced] = useState<number | null>(null);
+  const [proving, setProving] = useState(false);
+  const [proveErr, setProveErr] = useState<string | null>(null);
   /**
    * The gap this panel first saw, so the attestation bar has a fixed origin.
    *
@@ -238,6 +241,27 @@ export function SettlementActivity({
     };
   }, []);
 
+  /**
+   * Start the prover.
+   *
+   * @remarks Returns as soon as the job has started, not when it finishes. Progress arrives on the
+   * poll this panel already makes, which is also what eventually flips the stage to PROVEN — so
+   * there is nothing to await here and no second source of truth to keep in step.
+   */
+  async function prove() {
+    setProveErr(null);
+    setProving(true);
+    try {
+      const r = await api.proveSettlement(race.id);
+      if (!r.ok) setProveErr(r.error ?? "the prover could not be started");
+      await poll();
+    } catch (e) {
+      setProveErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setProving(false);
+    }
+  }
+
   async function close() {
     if (!race.onchain) return;
     setCloseErr(null);
@@ -293,6 +317,7 @@ export function SettlementActivity({
   const isObligor = !!address && address.toLowerCase() === s.vault.obligor.toLowerCase();
   const mayClose = s.vault.raceOpen && (isObligor || s.vault.closableByAnyone);
   const a = s.attestation;
+  const job = s.prover?.job;
   const secsSinceCheck = checkedAt && nowMs ? Math.max(0, Math.floor((nowMs - checkedAt) / 1000)) : 0;
 
   const HEAD: Record<SettlementStatus["stage"], { title: string; tone: string }> = {
@@ -427,17 +452,79 @@ export function SettlementActivity({
             <CheckCircle2 size={13} className="mt-0.5 shrink-0" style={{ color: "var(--proof-verified)" }} />
             <span>
               Block <span className="mono">{a.targetHeight.toLocaleString()}</span> is inside the
-              attestation frontier, so every input the proof needs now exists. Nothing further
-              happens on its own: building the Merkle and continuity proofs and submitting them
-              needs the worker, which is a process and not a web request.
+              attestation frontier, so every input the proof needs now exists. What remains is one
+              Creditcoin transaction: build the Merkle and continuity proofs, verify every lock at{" "}
+              <span className="mono">0x0FD2</span>, and fix priority in a single block.
             </span>
           </p>
-          <div className="mt-2 rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
-            <Eyebrow>Run this</Eyebrow>
-            <div className="mt-1">
+
+          {job?.state === "running" ? (
+            <div className="mt-2.5 rounded-lg border p-2.5" style={{ borderColor: "var(--proof-available)" }}>
+              <span className="flex items-center gap-2 text-[11.5px] font-semibold" style={{ color: "var(--proof-available)" }}>
+                <Loader2 size={13} className="animate-spin" /> Proving on Creditcoin…
+              </span>
+              <p className="mono mt-1 break-words text-[10.5px]" style={{ color: "var(--text-muted)" }}>
+                {job.stage}
+              </p>
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                onClick={prove}
+                disabled={proving || !s.prover?.available}
+                className="btn-primary inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold disabled:opacity-50"
+              >
+                {proving ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
+                {proving ? "Starting…" : "Submit the proof"}
+              </button>
+              <span className="text-[11px]" style={{ color: "var(--text-faint)" }}>
+                {s.prover?.available
+                  ? "Runs the prover and pays the Creditcoin fee. Anyone may prove a race — this is a convenience, not a permission."
+                  : (s.prover?.unavailableReason ?? "This deployment cannot run the prover.")}
+              </span>
+            </div>
+          )}
+
+          {/* The fresher message wins. A pre-flight refusal explains the same failure better than
+              the prover's own revert does — showing both stacked two error blocks saying
+              overlapping things, and the older one is the less useful of the two. */}
+          {job?.state === "failed" && !proveErr ? (
+            <div className="mt-2 rounded-lg border p-2.5" style={{ borderColor: "var(--danger)" }}>
+              <span className="flex items-start gap-1.5 text-[11px]" style={{ color: "var(--danger)" }}>
+                <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                <span className="min-w-0 break-words">The prover failed: {job.error}</span>
+              </span>
+              {job.log.length ? (
+                <pre
+                  className="mono mt-1.5 max-h-24 overflow-auto whitespace-pre-wrap break-words text-[10px]"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  {job.log.join("\n")}
+                </pre>
+              ) : null}
+            </div>
+          ) : null}
+
+          {proveErr ? (
+            <p className="mt-2 flex items-start gap-1.5 text-[11px]" style={{ color: "var(--danger)" }}>
+              <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+              <span className="min-w-0 break-words">{proveErr}</span>
+            </p>
+          ) : null}
+
+          {/* The command stays, demoted. It is not an instruction to the reader — it is the
+              evidence that proving is permissionless, which the button alone would obscure. */}
+          <details className="mt-2.5 group">
+            <summary className="cursor-pointer list-none text-[10.5px] [&::-webkit-details-marker]:hidden" style={{ color: "var(--text-faint)" }}>
+              <span className="underline decoration-dotted underline-offset-4">
+                or prove it yourself from a terminal
+              </span>
+            </summary>
+            <div className="mt-1.5 rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
               <CopyHash value={s.proverCommand} />
             </div>
-          </div>
+          </details>
+
           <Note>
             Prove promptly. Verification cost grows with proof age because continuity hashes
             accumulate — about 10× more after a day than after ten minutes.
