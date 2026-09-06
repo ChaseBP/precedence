@@ -135,3 +135,11 @@ confirm the on-chain receipts open on Etherscan and Blockscout.
   and `applyProvenSettlement` reads it back to record the settlement.
 - **Do not run two dev servers.** A Turbopack dev server on this project holds ~3.2 GB. For a second
   instance use `bun run build && PORT=3100 bun run start` — about 160 MB.
+- **`vercel` cannot find `node` on this machine.** It is installed under nvm and is not on the
+  default `PATH`, so the CLI dies with `/usr/bin/env: 'node': No such file or directory`. Prefix it:
+
+  ```bash
+  PATH="$HOME/.nvm/versions/node/v24.12.0/bin:$PATH" vercel …
+  ```
+
+  `bun` is on the path normally; only the Vercel CLI needs this.
