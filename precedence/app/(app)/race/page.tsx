@@ -1046,8 +1046,6 @@ function RaceInner() {
             {/* Above the rank card and the rail on purpose. Both of those describe the shape of the
                 settlement; this one answers "is anything still happening", which is the question a
                 viewer has first and the one the page previously could not answer at all. */}
-            {live ? <SettlementActivity race={race} onChanged={() => void refetch(race.id)} /> : null}
-
             <ProvenOrder race={race} settled={proven && ph >= proofStageIndex} />
             <ProofRail race={race} />
             <OnChainReceipts race={race} />
@@ -1056,29 +1054,11 @@ function RaceInner() {
               <LogDrawer events={events} />
             </Card>
 
-            {/* Transport controls, and why a live settlement has none.
+            {/* Transport controls.
                 These call the orchestrator, which runs the SCRIPTED lifecycle against simulated
-                adapters. On a race that exists on Sepolia that would write a fabricated settlement
-                over a real one — the single worst thing this app could do — so the buttons are not
-                merely disabled here, they are replaced by the thing a viewer actually needs: what
-                the settlement is waiting for, and how long that takes. */}
-            {live ? (
-              <Card>
-                <Eyebrow>What happens next</Eyebrow>
-                <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
-                  This settlement is on chain, so it advances when the chains do and not when anyone
-                  presses anything. Attestcoin attests the source block first — 6.5&ndash;9.3 minutes,
-                  measured, in batches — and one Creditcoin transaction then verifies every lock in
-                  the race at{" "}
-                  <span className="mono">0x0FD2</span>, fixing priority in a single block.
-                </p>
-                <p className="mt-2 text-[11px]" style={{ color: "var(--text-faint)" }}>
-                  Until that proof exists the ranking above is our reading of Sepolia, badged
-                  OBSERVED. It becomes PROVEN when{" "}
-                  <span className="mono">calculateTxIndex</span> confirms each position on Creditcoin.
-                </p>
-              </Card>
-            ) : !settled ? (
+                adapters — which is why they exist only here. A live settlement is refused by
+                `POST /api/races/[id]/advance` with a 409 and gets the activity panel instead. */}
+            {!settled ? (
               <Card className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <button

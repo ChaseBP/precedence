@@ -133,6 +133,28 @@ export function SettlementActivity({
   const lastFrontier = useRef<number | null>(null);
   const lastStage = useRef<string | null>(null);
 
+  /**
+   * The callbacks, held in refs so `poll` does not depend on their identity.
+   *
+   * @remarks This is not a micro-optimisation, it is the fix for a request storm. `poll` is a
+   * `useCallback`; the interval effect depends on it and calls it once immediately when it runs.
+   * With the callbacks in the dependency array, a caller passing an inline arrow —
+   * `onChanged={() => refetch(id)}`, which is ordinary React and cannot be forbidden — produced a
+   * new `poll` on every render, so the effect tore down and rebuilt the interval and polled again;
+   * that poll set state, which re-rendered, which made another arrow. An unbounded loop, and each
+   * turn of it costs four chain reads on the server. The one-second clock tick alone guaranteed a
+   * poll per second even without it.
+   *
+   * A polling component has to be immune to how its props are written, so the identity is dropped
+   * here rather than pushed onto every caller to remember.
+   */
+  const onChangedRef = useRef(onChanged);
+  const onStatusRef = useRef(onStatus);
+  useEffect(() => {
+    onChangedRef.current = onChanged;
+    onStatusRef.current = onStatus;
+  });
+
 
   const poll = useCallback(async () => {
     setPolling(true);
@@ -151,17 +173,17 @@ export function SettlementActivity({
       }
       lastFrontier.current = r.attestation.attestedHeight;
       setOriginGap((g) => Math.max(g, r.attestation.blocksToGo));
-      if (lastStage.current !== null && lastStage.current !== r.stage) onChanged?.();
+      if (lastStage.current !== null && lastStage.current !== r.stage) onChangedRef.current?.();
       lastStage.current = r.stage;
       setS(r);
-      onStatus?.(r);
+      onStatusRef.current?.(r);
       setCheckedAt(performance.timeOrigin + performance.now());
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setPolling(false);
     }
-  }, [race.id, onChanged, onStatus]);
+  }, [race.id]);
 
   useEffect(() => {
     let cancelled = false;
