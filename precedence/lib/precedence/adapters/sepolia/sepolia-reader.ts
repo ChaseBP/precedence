@@ -104,6 +104,11 @@ export class SepoliaReader {
     });
   }
 
+  /** The source chain's head, for reporting how far attestation trails it. */
+  async blockNumber(): Promise<number> {
+    return Number(await this.client.getBlockNumber());
+  }
+
   async raceState(collateralId: Hex): Promise<OnChainRaceState> {
     const c = (await this.client.readContract({
       address: this.vaultAddress,
