@@ -5,6 +5,15 @@ import type { LifecycleEvent } from "@/lib/precedence/types";
 
 /**
  * GET /api/races/:id/events — Server-Sent Events stream of lifecycle events.
+ *
+ * @remarks A finished stream must say so before it closes. `EventSource` cannot tell a server that
+ * has nothing left to send from a connection that dropped, so it reconnects — by default about
+ * three seconds later, forever. A settled race with no stored events therefore closed instantly on
+ * every attempt and the browser reopened it indefinitely: measured at six requests per twenty
+ * seconds on the seeded walkthrough, for a race that had been over for days.
+ *
+ * The `done` event is what stops it. The client closes on receipt, so the loop ends on the one
+ * side that can actually end it — calling `close()` here only ever looks like a network failure.
  */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -31,8 +40,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const historical = await getEventsSince(id, lastSeq);
       for (const ev of historical) send(ev);
 
+      /** Tell the client this stream is finished, so it does not treat the close as a drop. */
+      function sendDone() {
+        try {
+          controller.enqueue(enc.encode(`event: done\ndata: {}\n\n`));
+        } catch {
+          // already closed
+        }
+      }
+
       const r = await getRace(id);
       if (r && isTerminal(r.status)) {
+        sendDone();
         try {
           controller.close();
         } catch {}
@@ -43,6 +62,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       unsub = subscribeEvents(id, (ev) => {
         send(ev);
         if (isTerminal(ev.phase)) {
+          sendDone();
           try {
             unsub?.();
             controller.close();

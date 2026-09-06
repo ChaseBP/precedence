@@ -258,6 +258,16 @@ export function streamRace(
   for (const p of PROTOCOL_STATES) {
     es.addEventListener(p, handler as EventListener);
   }
+
+  // The server says `done` when a stream has nothing further to send. Without acting on it the
+  // browser cannot distinguish a finished stream from a dropped connection and reconnects about
+  // every three seconds, indefinitely — which a settled race did, having closed instantly on each
+  // attempt. Closing here is the only place the loop can be stopped.
+  es.addEventListener("done", () => {
+    es.close();
+    onDone?.();
+  });
+
   es.onerror = () => {};
   return () => es.close();
 }
