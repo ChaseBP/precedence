@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertTriangle, ArrowLeft, ArrowUpRight, ExternalLink, Layers, Loader2, Radio, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowUpRight, ExternalLink, Layers, Loader2, Radio, RotateCcw, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { usd, pct, encumbranceColor, riskColor, trancheColor } from "@/lib/client/format";
 import { Badge, Card, Eyebrow, Stat, Why } from "@/components/ui";
@@ -31,6 +31,8 @@ export default function FacilityPage() {
   const [err, setErr] = useState<string | null>(null);
   /** The on-chain settlement for this facility, if one has been recorded. */
   const [liveRaceId, setLiveRaceId] = useState<string | null>(null);
+  const [recovering, setRecovering] = useState(false);
+  const [recoverErr, setRecoverErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -98,6 +100,9 @@ export default function FacilityPage() {
   }
 
   const c = data.collateral;
+  // A fixture's docHash is a visible placeholder, not a bytes32, so the vault cannot be asked
+  // about it and recovery must not be offered.
+  const isRealDoc = /^0x[0-9a-fA-F]{64}$/.test(c.docHash);
   const maxAdvance = Math.round(c.faceValueUsd * (1 - c.haircutPct / 100));
   const simulated = c.source === "mock" || !data.live.creditcoin;
 
@@ -176,6 +181,46 @@ export default function FacilityPage() {
                 ) : null,
               )}
             </div>
+          </div>
+        ) : null}
+
+        {/* Recovery, offered when the vault may hold a settlement this app has no note of.
+            The store is memory-only unless PRECEDENCE_STORE_PATH is set, so a restart or an admin
+            reset loses the record while the chain keeps the locks, the race and the attestation.
+            The only way back used to be redoing the run and waiting out attestation again. */}
+        {!liveRaceId && isRealDoc ? (
+          <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+            <button
+              onClick={async () => {
+                setRecoverErr(null);
+                setRecovering(true);
+                try {
+                  const r = await api.recoverLiveRace(String(id));
+                  if (r.ok && r.id) setLiveRaceId(r.id);
+                  else setRecoverErr(r.error ?? "nothing to recover");
+                } catch (e) {
+                  setRecoverErr(e instanceof Error ? e.message : String(e));
+                } finally {
+                  setRecovering(false);
+                }
+              }}
+              disabled={recovering}
+              className="btn-ghost inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] disabled:opacity-50"
+            >
+              {recovering ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+              {recovering ? "Reading the vault…" : "Recover the settlement from the chain"}
+            </button>
+            <p className="mt-1.5 text-[10.5px]" style={{ color: "var(--text-faint)" }}>
+              Rebuilds this app&rsquo;s record of a race the vault already holds — locks, blocks and
+              transaction indices read back from Sepolia. Nothing on chain changes and no
+              attestation is repeated.
+            </p>
+            {recoverErr ? (
+              <p className="mt-1.5 flex items-start gap-1.5 text-[11px]" style={{ color: "var(--warn)" }}>
+                <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                <span className="min-w-0 break-words">{recoverErr}</span>
+              </p>
+            ) : null}
           </div>
         ) : null}
 

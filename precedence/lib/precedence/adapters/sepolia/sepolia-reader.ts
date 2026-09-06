@@ -22,16 +22,22 @@ import {
   createPublicClient,
   decodeEventLog,
   http,
+  parseAbiItem,
   type Address,
   type Hex as ViemHex,
   type PublicClient,
 } from "viem";
 import { sepolia } from "viem/chains";
 import { getConfig, loadDeployedAddresses } from "../../config";
-import type { Hex, Tranche } from "../../types";
+import type { Hex, SourceLockRecord, Tranche } from "../../types";
 import { PriorityVault_ABI } from "../generated/abis";
 
 const TRANCHE_NAME: Tranche[] = ["SENIOR", "JUNIOR", "SUBORDINATE"];
+
+/** The vault's lock event, as a parsed item so viem can filter logs by its indexed collateralId. */
+const LOCK_EVENT = parseAbiItem(
+  "event Lock_(bytes32 indexed collateralId, address indexed financier, uint8 tranche, uint256 amount, address token, uint64 raceNonce, uint64 seq, uint64 blockNumber, bool allowDemotion)",
+);
 const PUSD_DECIMALS = 6;
 const fromUnits = (v: bigint): number => Number(v) / 10 ** PUSD_DECIMALS;
 
@@ -204,6 +210,105 @@ export class SepoliaReader {
       `Transaction ${txHash} emitted no ${eventName} for this collateral from the vault at ` +
         `${this.vaultAddress}. It is a real transaction but not the one it was submitted as.`,
     );
+  }
+
+  /**
+   * Every lock of a race, reconstructed from the chain alone.
+   *
+   * @remarks Exists so a lost store record never costs anyone a live run. The locks, the race and
+   * the attestation are all on chain; only this app's note of them lives in a file, and that file
+   * is memory-only unless `PRECEDENCE_STORE_PATH` is set. Losing it used to mean redoing a
+   * settlement from scratch, including a 6.5–9.3 minute attestation wait that cannot be shortcut.
+   *
+   * Storage gives the financier, tranche, amount, seq and block of each lock, but not the
+   * transaction hash or the index — and the index is half the priority claim. Those come from the
+   * `Lock_` logs. The trick that makes it affordable is that storage has already told us the exact
+   * block each lock is in, so each query is a ONE-block range: comfortably inside the 10-block
+   * ceiling a free-tier Alchemy key puts on `eth_getLogs`, which an open-ended scan would breach
+   * immediately.
+   *
+   * Matched on `seq`, which is the vault's own per-race counter, so two locks from one wallet in
+   * one block cannot be confused with each other.
+   */
+  async locksFromChain(collateralId: Hex, raceNonce: number): Promise<SourceLockRecord[]> {
+    const count = Number(
+      (await this.client.readContract({
+        address: this.vaultAddress,
+        abi: PriorityVault_ABI,
+        functionName: "lockCountOf",
+        args: [collateralId as ViemHex],
+      })) as bigint,
+    );
+    if (count === 0) return [];
+
+    interface Stored {
+      financier: Address;
+      tranche: number;
+      amount: bigint;
+      refunded: bigint;
+      seq: bigint;
+      blockNumber: bigint;
+    }
+    const stored: Stored[] = [];
+    for (let i = 0; i < count; i++) {
+      stored.push(
+        (await this.client.readContract({
+          address: this.vaultAddress,
+          abi: PriorityVault_ABI,
+          functionName: "lockAtRace",
+          args: [collateralId as ViemHex, BigInt(raceNonce), BigInt(i)],
+        })) as Stored,
+      );
+    }
+
+    // One query per distinct block, so the range is always 1 and the free-tier cap is never near.
+    const bySeq = new Map<number, { txHash: Hex; txIndex: number; token: Address }>();
+    for (const height of new Set(stored.map((l) => Number(l.blockNumber)))) {
+      const logs = await this.client.getLogs({
+        address: this.vaultAddress,
+        event: LOCK_EVENT,
+        args: { collateralId: collateralId as ViemHex },
+        fromBlock: BigInt(height),
+        toBlock: BigInt(height),
+      });
+      for (const log of logs) {
+        const a = log.args as { seq?: bigint; token?: Address; raceNonce?: bigint };
+        if (a.seq === undefined) continue;
+        if (a.raceNonce !== undefined && Number(a.raceNonce) !== raceNonce) continue;
+        bySeq.set(Number(a.seq), {
+          txHash: log.transactionHash as Hex,
+          txIndex: log.transactionIndex,
+          token: (a.token ?? this.vaultAddress) as Address,
+        });
+      }
+    }
+
+    const out: SourceLockRecord[] = [];
+    for (const l of stored) {
+      const found = bySeq.get(Number(l.seq));
+      // A lock whose log could not be found is skipped rather than stored with a placeholder
+      // position. A rank is `(height, txIndex)`, and inventing either half is the one thing this
+      // reader exists to prevent.
+      if (!found) continue;
+      out.push({
+        collateralId,
+        financier: l.financier,
+        financierAddress: l.financier,
+        tranche: TRANCHE_NAME[Number(l.tranche)] ?? "SUBORDINATE",
+        amountUsd: fromUnits(l.amount),
+        lockBlockNumber: Number(l.blockNumber),
+        lockTxIndex: found.txIndex,
+        seq: Number(l.seq),
+        token: found.token,
+        sepoliaTxHash: found.txHash,
+        receiptStatus: 1,
+        emittedBy: this.vaultAddress,
+        timestamp: new Date().toISOString(),
+        refunded: l.refunded > 0n,
+      });
+    }
+    out.sort((a, b) => a.lockBlockNumber - b.lockBlockNumber || a.lockTxIndex - b.lockTxIndex);
+    return out;
   }
 
   async verifyLock(txHash: Hex, collateralId: Hex): Promise<VerifiedLock> {

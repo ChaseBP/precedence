@@ -2,6 +2,7 @@ import {
   NotVerifiableError,
   findLiveRace,
   openLiveRace,
+  recoverLiveRace,
 } from "@/lib/precedence/orchestrator/live-race";
 import { getCollateral } from "@/lib/precedence/store/repositories";
 import type { Hex } from "@/lib/precedence/types";
@@ -36,10 +37,36 @@ export async function POST(req: Request) {
     collateralId?: string;
     openTxHash?: string;
     registerTxHash?: string;
+    /**
+     * Rebuild from the chain instead of recording something just done.
+     *
+     * @remarks No transaction hash needed, because nothing is being claimed — every field comes
+     * from the vault. This is how a settlement survives losing the store: a restart without
+     * `PRECEDENCE_STORE_PATH`, an admin reset, a fresh clone. Without it, the only way back was to
+     * redo the run, including an attestation wait that cannot be shortened.
+     */
+    recover?: boolean;
   };
-  if (!body.collateralId || !body.openTxHash) {
+  if (!body.collateralId) {
+    return Response.json({ ok: false, error: "collateralId is required" }, { status: 400 });
+  }
+
+  if (body.recover) {
+    try {
+      const race = await recoverLiveRace(body.collateralId);
+      return Response.json({ ok: true, id: race.id, race, recovered: true }, { status: 200 });
+    } catch (e) {
+      const answered = e instanceof NotVerifiableError;
+      return Response.json(
+        { ok: false, error: (e as Error).message },
+        { status: answered ? 422 : 502 },
+      );
+    }
+  }
+
+  if (!body.openTxHash) {
     return Response.json(
-      { ok: false, error: "collateralId and openTxHash are required" },
+      { ok: false, error: "openTxHash is required unless recovering from the chain" },
       { status: 400 },
     );
   }

@@ -193,6 +193,19 @@ export const api = {
   recordLiveRace: (body: { collateralId: string; openTxHash: string; registerTxHash?: string }) =>
     jpost<{ ok: boolean; id?: string; race?: PriorityRace; error?: string }>("/api/races/live", body),
 
+  /**
+   * Rebuild a settlement's record from the chain, given only the facility.
+   *
+   * @remarks Needs no transaction hashes: nothing is being claimed, so there is nothing to verify.
+   * This is the way back from a lost store — a restart with no PRECEDENCE_STORE_PATH, an admin
+   * reset — without redoing a run and waiting out attestation a second time.
+   */
+  recoverLiveRace: (collateralId: string) =>
+    jpost<{ ok: boolean; id?: string; race?: PriorityRace; error?: string }>("/api/races/live", {
+      collateralId,
+      recover: true,
+    }),
+
   /** Record a lock the caller has just signed. */
   recordLiveLock: (body: { collateralId: string; lockTxHash: string }) =>
     jpost<{ ok: boolean; id?: string; race?: PriorityRace; error?: string }>(

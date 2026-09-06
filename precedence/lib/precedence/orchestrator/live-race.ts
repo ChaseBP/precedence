@@ -163,6 +163,96 @@ export async function openLiveRace(params: OpenLiveRaceParams): Promise<Priority
   return race;
 }
 
+/**
+ * Rebuild a settlement's record from the chain, given only the facility.
+ *
+ * @remarks The recovery path, and the reason a lost store never has to cost anyone a live run
+ * again. Everything that matters is on chain: the vault holds the race and its locks, and the
+ * attestation of the source block is a fact about Attestcoin, not about us. What is lost when the
+ * store goes — a restart with no `PRECEDENCE_STORE_PATH`, an admin reset, a fresh clone — is only
+ * this app's note of it, and a note can be rewritten.
+ *
+ * Takes no transaction hashes. `openLiveRace` and `appendLiveLock` need them because they are
+ * recording something the caller has *just done*, and a claim by a party has to be verified. Here
+ * the chain is the only source of anything, so there is nothing to distrust and nothing to supply.
+ *
+ * The opening transaction is the one thing that cannot be recovered: the vault does not store it
+ * and finding it would mean scanning for a `RaceOpened` log with no idea which block to look in.
+ * So `openTxHash` is left unset and the receipts card shows one fewer row, which is correct — we
+ * genuinely do not know it.
+ */
+export async function recoverLiveRace(collateralId: string): Promise<PriorityRace> {
+  const collateral = await getCollateral(collateralId);
+  if (!collateral) throw new NotVerifiableError(`No collateral "${collateralId}" is on record.`);
+  if (!/^0x[0-9a-fA-F]{64}$/.test(collateral.docHash)) {
+    throw new NotVerifiableError(
+      "This facility's document hash is a placeholder, not a registered document, so the vault has " +
+        "nothing to recover.",
+    );
+  }
+
+  const got = getSepoliaReader();
+  if (!got.reader) throw new NotVerifiableError(got.why);
+  const reader = got.reader;
+
+  const state = await reader.raceState(collateral.docHash);
+  if (!state.registered) {
+    throw new NotVerifiableError(
+      `The vault at ${reader.vaultAddress} has never seen this document, so there is no settlement ` +
+        `to recover.`,
+    );
+  }
+  if (state.raceNonce === 0) {
+    throw new NotVerifiableError("No race has ever been opened on this facility.");
+  }
+
+  const locks = await reader.locksFromChain(collateral.docHash, state.raceNonce);
+
+  const existing = await findLiveRace(collateral.docHash, state.raceNonce);
+  const now = new Date().toISOString();
+  const base: PriorityRace =
+    existing ??
+    {
+      id: liveId(collateral.docHash, state.raceNonce),
+      simulated: false,
+      onchain: {
+        chainId: SEPOLIA_CHAIN_ID,
+        vaultAddress: reader.vaultAddress,
+        collateralId: collateral.docHash,
+        obligor: state.obligor,
+        // Not knowable from storage. Left unset rather than guessed — see above.
+        openTxHash: undefined,
+        openBlockNumber: locks.length ? Math.min(...locks.map((l) => l.lockBlockNumber)) : 0,
+        raceNonce: state.raceNonce,
+        raceDeadline: state.raceDeadline,
+        facilitySizeUsd: state.facilitySizeUsd,
+        creditcoinRegisterTx: collateral.onChainRefs?.creditcoinRegisterTx,
+        creditcoinTermsTx: collateral.onChainRefs?.creditcoinTermsTx,
+      },
+      status: "RACE_OPEN",
+      track: "PERFORMING",
+      scenario: "performing",
+      obligor: collateral.obligor,
+      collateral,
+      analysis: analyzeCollateral(collateral, state.facilitySizeUsd),
+      requestedTotalUsd: state.facilitySizeUsd,
+      decisions: [],
+      bids: [],
+      locks: [],
+      proverCalls: [],
+      claims: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+  const recovered: PriorityRace = { ...base, locks, updatedAt: now };
+  await saveRace(recovered);
+  await updateCollateral(collateral.id, (c) => {
+    if (c.status === "CLEAR") c.status = "RACE_OPEN";
+  });
+  return recovered;
+}
+
 export interface AppendLiveLockParams {
   collateralId: string;
   /** The `lock` transaction the lender signed from their own wallet. */

@@ -265,6 +265,32 @@ It is waiting for `closeRace`, and after that for attestation.
 > loses the app's record of a settlement whose transactions are still on chain and still cost gas.
 > `PRECEDENCE_STORE_PATH=../evidence/.store.json bun run dev`
 
+### 5.3 If the record is lost, recover it — do not redo the run
+
+A live settlement lives on chain. The vault holds the race and every lock; the attestation of the
+source block is a fact about Attestcoin. Only this app's *note* of it is local.
+
+So a restart without `PRECEDENCE_STORE_PATH`, an admin reset or a fresh clone does not cost you a
+run. On the facility page, **Recover the settlement from the chain** rebuilds the record — every
+lock with its real transaction hash, block and transaction index, read back from Sepolia. Nothing
+on chain changes and no attestation is repeated.
+
+```bash
+# the same thing without the UI
+curl -X POST localhost:3000/api/races/live   -H 'content-type: application/json'   -d '{"collateralId":"col-…","recover":true}'
+```
+
+It needs no transaction hashes, because nothing is being claimed — every field comes from the
+vault. The one thing it cannot recover is the `openRace` hash: storage does not keep it, so that
+row is simply absent rather than guessed.
+
+If Creditcoin has already settled the race, the prover refuses and says so — the proof on chain
+stands whether or not this app knows about it.
+
+> **Running two dev servers on one machine will not work.** A Next 16 Turbopack dev server on this
+> project holds around 3.2GB. Two, plus a headless browser, exhausts an 8GB box. If you need a
+> second instance for testing, use `bun run build && PORT=3100 bun run start` — measured at 157MB.
+
 > **Expect a wait, and do not treat it as a hang.** Attestation of a source block takes **6.5–9.3
 > minutes**, measured over 239 samples. This is Attestcoin's cadence — a standing ~32-block gap
 > behind Sepolia head, advancing ten blocks at a time. It is not your RPC, and Creditcoin is idle
