@@ -23,6 +23,18 @@ export class MockSepoliaClient implements SepoliaClient {
   private seqByCollateral = new Map<string, number>();
   private baseBlock = 6182100;
 
+  /**
+   * A stable per-collateral block offset, so two facilities do not settle at the same height.
+   *
+   * @remarks Deterministic on purpose. Randomising would make a facility's proven position change
+   * between reloads, which is precisely the property this protocol claims is fixed.
+   */
+  private collateralOffset(collateralId: string): number {
+    let h = 0;
+    for (const ch of collateralId) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return (h % 400) * 3;
+  }
+
   isLive(): boolean {
     return false;
   }
@@ -57,8 +69,13 @@ export class MockSepoliaClient implements SepoliaClient {
 
     // Locks 1 and 2 land in the SAME block at different indices — the same-block tie-break case.
     // Lock 3 lands one block later, so the demo exercises both orderings.
+    //
+    // The base is per-collateral. It used to be one constant, so every scripted race settled at
+    // the same two heights and the telemetry list showed four separate proofs all citing
+    // Block #6182101 — a settlement history that looks like a rendering bug. Derived from the id
+    // rather than randomised, so a facility keeps its heights across reloads.
     const blockOffset = seq <= 2 ? 1 : seq - 1;
-    const blockNumber = this.baseBlock + blockOffset;
+    const blockNumber = this.baseBlock + this.collateralOffset(params.collateralId) + blockOffset;
     const txIndex = seq <= 2 ? 17 + (seq - 1) * 5 : 3;
 
     const tx = hashObject({

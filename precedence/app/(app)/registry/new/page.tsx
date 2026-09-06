@@ -532,7 +532,7 @@ export default function RegisterCollateralPage() {
         <Card>
           {/* gap-y so the preset button does not sit flush against the heading when it wraps
               below it at 360px. */}
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 max-[420px]:flex-col max-[420px]:items-start">
             <h2 className="text-sm font-semibold">Your terms: how much, at what rate</h2>
             <button onClick={suggestCaps} disabled={!Number.isFinite(money.advance) || money.advance <= 0}
               className="btn-ghost rounded-lg px-2.5 py-1 text-[11px] disabled:opacity-50">
@@ -578,7 +578,11 @@ export default function RegisterCollateralPage() {
                 {money.headroom < 0 ? "Over advance by " : "Headroom "}
                 <strong>{usd(Math.abs(money.headroom))}</strong>
               </span>
-            ) : null}
+            ) : (
+              <span style={{ color: "var(--text-faint)" }}>
+                Enter an asset value to see the maximum advance these caps have to fit inside.
+              </span>
+            )}
           </div>
         </Card>
       </section>

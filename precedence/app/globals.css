@@ -220,7 +220,11 @@ h1, h2, h3, h4 {
    high-contrast page text underneath bled through the header while scrolling, so headings appeared
    to sit inside the nav. A blur cannot hide text of that contrast; only opacity can. */
 .glass-chrome {
-  background: color-mix(in srgb, var(--bg-0) 94%, transparent);
+  /* Fully opaque. At 94% it depended on `backdrop-filter` to hide what scrolled under it, and
+     that filter is not always applied — measured as `none` in a real browser context, leaving
+     page text ghosting through the sticky header. Chrome that content passes beneath has to be
+     readable without relying on a filter landing. */
+  background: var(--bg-0);
   backdrop-filter: blur(20px) saturate(1.1);
   -webkit-backdrop-filter: blur(20px) saturate(1.1);
 }

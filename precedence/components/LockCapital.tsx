@@ -220,18 +220,12 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
     );
   }
 
-  // ── no terms posted: there is nothing to bid into ──
-  if (!terms) {
-    return (
-      <Card>
-        <h3 className="text-sm font-semibold">Not open for bids</h3>
-        <p className="mt-1 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
-          The borrower has not posted facility terms for this asset yet, so there are no tranche
-          caps or coupons to bid into.
-        </p>
-      </Card>
-    );
-  }
+  // ── no terms posted ──
+  //
+  // The facility page states this directly above, in the terms card itself. Rendering a second
+  // card that says the same thing stacked two warnings on top of each other and made an ordinary
+  // "not ready yet" state look like something had gone wrong. The page owns that message.
+  if (!terms) return null;
 
   // ── a fixture, not a registered document ──
   if (!isRealDocHash) {
