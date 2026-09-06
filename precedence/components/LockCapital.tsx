@@ -19,13 +19,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   Clock,
   ExternalLink,
   Loader2,
   Lock,
   Undo2,
-  Wallet,
 } from "lucide-react";
 import type { Address, Hex } from "viem";
 import { Badge, Card, Why } from "@/components/ui";
@@ -42,6 +42,7 @@ import {
   type VaultRaceState,
 } from "@/lib/client/vault";
 import { usd, pct, trancheColor } from "@/lib/client/format";
+import { api } from "@/lib/client/api";
 import type { CollateralAsset, CollateralState, Tranche } from "@/lib/precedence/types";
 
 const TRANCHES: { name: Tranche; ordinal: 0 | 1 | 2 }[] = [
@@ -70,6 +71,16 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
   const [result, setResult] = useState<{ lockTxHash: Hex; blockNumber: number; txIndex: number } | null>(null);
   const [minting, setMinting] = useState(false);
   const [mintTx, setMintTx] = useState<Hex | null>(null);
+  /**
+   * The settlement this lock now belongs to, or why the app could not attach it to one.
+   *
+   * @remarks Deliberately not folded into `result`. The capital is locked on Sepolia the moment
+   * the receipt comes back; whether this app has indexed that lock is a separate and much less
+   * important fact, and reporting an indexing failure as a locking failure would frighten a lender
+   * about money that is exactly where they put it.
+   */
+  const [recorded, setRecorded] = useState<{ id: string } | { error: string } | null>(null);
+  const [recording, setRecording] = useState(false);
 
   const addrs = cfg?.addresses?.sepolia;
   // A fixture's docHash is a visible placeholder like 0xSAMPLE_DOC_HASH_..., not a bytes32. The
@@ -167,10 +178,35 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
     return out;
   }, [amt, pos, tranche, capFor]);
 
+  /**
+   * Hand the lock's transaction hash to the server, which decodes the position out of the receipt.
+   *
+   * @remarks Only the hash is sent. This browser knows the block and the transaction index — it
+   * read them off the receipt to display them above — but those two numbers ARE the priority
+   * claim, so a lender stating their own is indistinguishable from a lender choosing their own
+   * rank. The server re-derives them from the `Lock_` event, which is what makes the rank shown
+   * on the settlement page evidence rather than a report.
+   */
+  const submitLock = useCallback(
+    async (lockTxHash: Hex) => {
+      setRecording(true);
+      try {
+        const r = await api.recordLiveLock({ collateralId: collateral.id, lockTxHash });
+        setRecorded(r.ok && r.id ? { id: r.id } : { error: r.error ?? "the server could not verify it" });
+      } catch (e) {
+        setRecorded({ error: e instanceof Error ? e.message : String(e) });
+      } finally {
+        setRecording(false);
+      }
+    },
+    [collateral.id],
+  );
+
   async function doLock() {
     if (!addrs) return;
     setError(null);
     setResult(null);
+    setRecorded(null);
     try {
       const t = TRANCHES.find((x) => x.name === tranche)!;
       const r = await approveAndLock(
@@ -186,6 +222,7 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
       );
       setResult(r);
       void refreshRace();
+      await submitLock(r.lockTxHash);
     } catch (e) {
       setError((e as Error).message.slice(0, 260));
       setStage(null);
@@ -513,6 +550,37 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
             Settlement waits for attestation of that block — 6.5&ndash;9.3 minutes, measured — then
             one Creditcoin transaction verifies every lock in the race at once.
           </p>
+          <div className="mt-2 border-t pt-2 text-[11px]" style={{ borderColor: "var(--border)" }}>
+            {recording ? (
+              <span className="flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
+                <Loader2 size={11} className="animate-spin" /> verifying the receipt on the server…
+              </span>
+            ) : recorded && "id" in recorded ? (
+              <a
+                href={`/race?id=${recorded.id}`}
+                className="inline-flex items-center gap-1 font-semibold"
+                style={{ color: "var(--accent)" }}
+              >
+                Follow this settlement <ArrowRight size={11} className="shrink-0" />
+              </a>
+            ) : recorded ? (
+              <div className="flex flex-col gap-1.5">
+                <span className="flex items-start gap-1.5" style={{ color: "var(--warn)" }}>
+                  <AlertTriangle size={11} className="mt-0.5 shrink-0" />
+                  <span className="min-w-0 break-words">
+                    Your capital is locked on Sepolia. This app could not attach it to a settlement
+                    record: {recorded.error}
+                  </span>
+                </span>
+                <button
+                  onClick={() => void submitLock(result.lockTxHash)}
+                  className="btn-ghost self-start rounded-md px-2 py-0.5 text-[10.5px]"
+                >
+                  try again
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </Card>

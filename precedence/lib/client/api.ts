@@ -119,7 +119,7 @@ export const api = {
       `/api/collateral/${encodeURIComponent(collateralId)}/analyze${amountUsd ? `?amountUsd=${amountUsd}` : ""}`,
     ),
 
-  // Priority races
+  // Priority settlements
   races: () => jget<{ ok: boolean; races: RaceSummary[] }>("/api/races"),
 
   race: (id: string, sinceSeq = 0) =>
@@ -130,6 +130,30 @@ export const api = {
 
   advanceRace: (id: string, mode: "auto" | "step") =>
     jpost<{ ok: boolean; phase?: string; race?: PriorityRace }>(`/api/races/${id}/advance`, { mode }),
+
+  // ── live races ──
+  //
+  // These send a transaction hash and nothing else. The block, the transaction index, the tranche
+  // and the amount are all decoded server-side from the receipt, because those numbers are the
+  // priority claim and a party cannot be allowed to state its own rank. Posting them from here
+  // would have been two fewer round trips and no proof at all.
+
+  /** The live race for a facility, or null when the app knows of none. */
+  liveRace: (collateralId: string) =>
+    jget<{ ok: boolean; id: string | null; race: PriorityRace | null }>(
+      `/api/races/live?collateralId=${encodeURIComponent(collateralId)}`,
+    ),
+
+  /** Record a race the caller has just opened on the vault. */
+  recordLiveRace: (body: { collateralId: string; openTxHash: string; registerTxHash?: string }) =>
+    jpost<{ ok: boolean; id?: string; race?: PriorityRace; error?: string }>("/api/races/live", body),
+
+  /** Record a lock the caller has just signed. */
+  recordLiveLock: (body: { collateralId: string; lockTxHash: string }) =>
+    jpost<{ ok: boolean; id?: string; race?: PriorityRace; error?: string }>(
+      "/api/races/live/locks",
+      body,
+    ),
 
   // Attestations & proofs
   attestations: () => jget<{ ok: boolean; attestations: Attestation[] }>("/api/attestations"),
@@ -170,7 +194,7 @@ export const api = {
   reset: () => jpost<{ ok: boolean; error?: string }>("/api/admin/reset", undefined, { "x-precedence-admin": adminToken() }),
 };
 
-/** Subscribe to a Priority Race's SSE lifecycle stream. */
+/** Subscribe to a settlement's SSE lifecycle stream. */
 export function streamRace(
   id: string,
   onEvent: (ev: LifecycleEvent) => void,

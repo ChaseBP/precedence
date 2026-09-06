@@ -16,9 +16,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
-import { AlertTriangle, ArrowRight, Loader2, Radio } from "lucide-react";
+import { AlertTriangle, ArrowRight, ExternalLink, Loader2, Radio } from "lucide-react";
 import type { Address, Hex } from "viem";
 import type { CollateralAsset } from "@/lib/precedence/types";
+import { api } from "@/lib/client/api";
 import { Badge, Card, Eyebrow } from "@/components/ui";
 import { usd } from "@/lib/client/format";
 import {
@@ -57,6 +58,16 @@ export function OpenRace({ collateral }: { collateral: CollateralAsset }) {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ openTxHash: Hex; registerTxHash?: Hex } | null>(null);
+  /**
+   * The race id the server issued after verifying the opening transaction, or why it could not.
+   *
+   * @remarks Held separately from `done` because the two can diverge: the transactions are on
+   * chain either way, and a failure to record them in the app must not be reported as a failure
+   * to open the race. It says what it is — the race is open, this app has not indexed it — and
+   * offers a retry.
+   */
+  const [recorded, setRecorded] = useState<{ id: string } | { error: string } | null>(null);
+  const [recording, setRecording] = useState(false);
 
   const addrs = cfg?.addresses?.sepolia;
   const explorer = cfg?.explorers?.sepolia ?? "https://sepolia.etherscan.io";
@@ -81,8 +92,79 @@ export function OpenRace({ collateral }: { collateral: CollateralAsset }) {
     }
   }, [addrs, collateral.docHash, isRealDocHash]);
 
-  useEffect(() => { void refresh(); }, [refresh, done]);
+  // Deferred, not called in the effect body. `refresh` sets state, and React 19 treats a
+  // synchronous setState inside an effect as a cascading render — the same deferral the rest of
+  // this app uses for the identical reason.
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void refresh();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [refresh, done]);
 
+  // Everything below this line runs on every render, before any early return.
+  //
+  // `record` is a hook. It sat after the guards, which meant a render that bailed out early
+  // called one fewer hook than a render that did not — the rules-of-hooks violation React
+  // catches with a mismatched-order error rather than anything that names the cause.
+
+  // Zeroed rather than guarded, because these are computed before the "no terms posted" bail-out
+  // below, and that bail-out cannot come first without putting a hook behind it. Nothing renders
+  // them in that state: `go` refuses a zero facility and the card itself never mounts.
+  const caps = {
+    senior: terms?.seniorCapUsd ?? 0,
+    junior: terms?.juniorCapUsd ?? 0,
+    subordinate: terms?.subordinateCapUsd ?? 0,
+  };
+  const facility = caps.senior + caps.junior + caps.subordinate;
+  const busy = stage !== null && stage !== "open";
+
+  /**
+   * Hand the opening transaction to the server so the race becomes a record in the app.
+   *
+   * @remarks The hash is all that is sent. The server fetches the receipt, decodes `RaceOpened`
+   * out of it, and reads the vault's own `raceNonce` — so nothing this browser asserts about the
+   * race can end up stored. Without this call the race exists on Sepolia and nowhere else, which
+   * is precisely why the interface could only ever display the scripted walkthrough.
+   */
+  const record = useCallback(
+    async (openTxHash: Hex, registerTxHash?: Hex) => {
+      setRecording(true);
+      try {
+        const r = await api.recordLiveRace({ collateralId: collateral.id, openTxHash, registerTxHash });
+        setRecorded(r.ok && r.id ? { id: r.id } : { error: r.error ?? "the server could not verify it" });
+      } catch (e) {
+        setRecorded({ error: e instanceof Error ? e.message : String(e) });
+      } finally {
+        setRecording(false);
+      }
+    },
+    [collateral.id],
+  );
+
+  async function go() {
+    if (!addrs) return;
+    setError(null);
+    setDone(null);
+    setRecorded(null);
+    try {
+      const r = await openRaceOnVault(
+        addrs.PriorityVault,
+        collateral.docHash as Hex,
+        caps,
+        windowS,
+        (s, detail) => { setStage(s); setNote(detail ?? ""); },
+      );
+      setDone({ openTxHash: r.openTxHash, registerTxHash: r.registerTxHash });
+      await record(r.openTxHash, r.registerTxHash);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setStage(null);
+    }
+  }
   // Nothing to say unless a real document, posted terms and a deployed vault all line up. Each of
   // those already has its own explanation in LockCapital directly below, so this card stays quiet
   // rather than repeating them.
@@ -95,37 +177,14 @@ export function OpenRace({ collateral }: { collateral: CollateralAsset }) {
   const zero = "0x0000000000000000000000000000000000000000";
   const claimed = !!race?.registered && race.obligor.toLowerCase() !== zero;
   const mine = !!address && !!race && race.obligor.toLowerCase() === address.toLowerCase();
-  // Either the vault has never seen this document (anyone may claim it), or it is already ours.
-  if (claimed && !mine) return null;
-  if (race?.raceOpen) return null;
 
-  const caps = {
-    senior: terms.seniorCapUsd,
-    junior: terms.juniorCapUsd,
-    subordinate: terms.subordinateCapUsd,
-  };
-  const facility = caps.senior + caps.junior + caps.subordinate;
-  const busy = stage !== null && stage !== "open";
-
-  async function go() {
-    if (!addrs) return;
-    setError(null);
-    setDone(null);
-    try {
-      const r = await openRaceOnVault(
-        addrs.PriorityVault,
-        collateral.docHash as Hex,
-        caps,
-        windowS,
-        (s, detail) => { setStage(s); setNote(detail ?? ""); },
-      );
-      setDone({ openTxHash: r.openTxHash, registerTxHash: r.registerTxHash });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setStage(null);
-    }
-  }
-
+  // The success card comes FIRST, before the guards below can hide it.
+  //
+  // Opening a race makes `raceOpen` true, and the next vault poll — seconds later — therefore
+  // satisfied the guard that hides this card once a race is running. So the receipts and the link
+  // into the settlement appeared for a moment and then vanished on their own, taking with them the
+  // only two hashes the borrower had just signed. The guard is for a card offering an action; it
+  // has no business hiding a confirmation.
   if (done) {
     return (
       <Card>
@@ -143,19 +202,53 @@ export function OpenRace({ collateral }: { collateral: CollateralAsset }) {
         </p>
         <div className="mt-2.5 flex flex-col gap-1 text-[11px]">
           {done.registerTxHash ? (
-            <a className="mono truncate" style={{ color: "var(--accent)" }} target="_blank" rel="noreferrer"
-               href={`${explorer}/tx/${done.registerTxHash}`}>
+            <a className="mono inline-flex items-center gap-1 truncate" style={{ color: "var(--accent)" }}
+               target="_blank" rel="noreferrer" href={`${explorer}/tx/${done.registerTxHash}`}>
               registerCollateral · {done.registerTxHash}
+              <ExternalLink size={9} className="shrink-0" />
             </a>
           ) : null}
-          <a className="mono truncate" style={{ color: "var(--accent)" }} target="_blank" rel="noreferrer"
-             href={`${explorer}/tx/${done.openTxHash}`}>
+          <a className="mono inline-flex items-center gap-1 truncate" style={{ color: "var(--accent)" }}
+             target="_blank" rel="noreferrer" href={`${explorer}/tx/${done.openTxHash}`}>
             openRace · {done.openTxHash}
+            <ExternalLink size={9} className="shrink-0" />
           </a>
+        </div>
+
+        {/* Whether the app itself has a record of this race, kept honest and kept separate. The
+            race is on Sepolia regardless; what can fail here is only our indexing of it. */}
+        <div className="mt-3 border-t pt-2.5 text-[11px]" style={{ borderColor: "var(--border)" }}>
+          {recording ? (
+            <span className="flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
+              <Loader2 size={11} className="animate-spin" /> verifying the receipt on the server…
+            </span>
+          ) : recorded && "id" in recorded ? (
+            <a href={`/race?id=${recorded.id}`} className="inline-flex items-center gap-1 font-semibold"
+               style={{ color: "var(--accent)" }}>
+              Follow this settlement <ArrowRight size={11} className="shrink-0" />
+            </a>
+          ) : recorded ? (
+            <div className="flex flex-col gap-1.5">
+              <span className="flex items-start gap-1.5" style={{ color: "var(--warn)" }}>
+                <AlertTriangle size={11} className="mt-0.5 shrink-0" />
+                <span className="min-w-0 break-words">
+                  The race is open on Sepolia, but this app could not record it: {recorded.error}
+                </span>
+              </span>
+              <button onClick={() => void record(done.openTxHash, done.registerTxHash)}
+                      className="btn-ghost self-start rounded-md px-2 py-0.5 text-[10.5px]">
+                try again
+              </button>
+            </div>
+          ) : null}
         </div>
       </Card>
     );
   }
+
+
+  if (claimed && !mine) return null;
+  if (race?.raceOpen) return null;
 
   return (
     <Card>
