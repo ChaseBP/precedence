@@ -22,6 +22,15 @@ export interface AdapterTruth {
   agentRuntime: boolean;
   /** The long form, e.g. "Sepolia live · Creditcoin CC3 live · Financier AI". */
   chip: string;
+  /**
+   * Set when the deployment says its API is elsewhere but answered locally anyway.
+   *
+   * @remarks A distinct state from "simulated", and the distinction matters. Simulated is a
+   * deliberate configuration and is safe to display. This is a routing failure whose answers are
+   * meaningless, and showing it as "simulated" would be reporting a broken deployment as a working
+   * one in a degraded mode.
+   */
+  misconfigured?: string;
 }
 
 export function useAdapterTruth(): AdapterTruth | null {
@@ -31,6 +40,17 @@ export function useAdapterTruth(): AdapterTruth | null {
     (async () => {
       try {
         const c = await fetchAppConfig();
+        if (cancelled) return;
+        if ((c as { misconfigured?: string })?.misconfigured) {
+          setTruth({
+            sepoliaLive: false,
+            creditcoinLive: false,
+            agentRuntime: false,
+            chip: "API not reachable — deployment misconfigured",
+            misconfigured: (c as { misconfigured?: string }).misconfigured,
+          });
+          return;
+        }
         const sepoliaLive = Boolean(c?.sepolia?.live);
         const creditcoinLive = Boolean(c?.creditcoin?.live);
         const agentRuntime = c?.runtime === "agent";
@@ -64,6 +84,9 @@ export function useAdapterTruth(): AdapterTruth | null {
  */
 export function chainStatusSentence(truth: AdapterTruth | null): string {
   if (!truth) return "Testnet only.";
+  if (truth.misconfigured) {
+    return "This deployment cannot reach its API, so nothing here can be verified.";
+  }
   const { sepoliaLive, creditcoinLive } = truth;
   if (sepoliaLive && creditcoinLive) {
     return "Testnet only. Both Ethereum Sepolia and Creditcoin CC3 are live in this deployment.";

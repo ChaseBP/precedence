@@ -70,7 +70,43 @@ function loadRootEnv(): void {
 
 loadRootEnv();
 
+/**
+ * Where the API lives, when it does not live here.
+ *
+ * @remarks Set on the Vercel deployment and nowhere else. The frontend and the API are one Next
+ * app in this repo, but they cannot both run on Vercel: the store is a JSON file on disk, the
+ * prover spawns the worker as a child process, and `getDeps()` reads
+ * `../contracts/deployments/*.json` — none of which exist on a serverless filesystem. An API route
+ * running there falls back to the mock adapters and the app reports every chain as simulated, which
+ * is the honest answer to a broken configuration and a useless thing to show a judge.
+ *
+ * So Vercel serves the pages and proxies every `/api/*` call to a real machine that has all three.
+ * Every page in this app is a client component and only the layouts render on the server, and they
+ * touch neither config nor the store — so nothing on the Vercel side needs any of it.
+ */
+const API_ORIGIN = process.env.PRECEDENCE_API_ORIGIN?.trim().replace(/\/+$/, "");
+
 const nextConfig: NextConfig = {
+  /**
+   * Proxy the API to `PRECEDENCE_API_ORIGIN`, when one is configured.
+   *
+   * @remarks `beforeFiles` is load-bearing and the reason this is not a two-line config. From the
+   * Next docs: a `rewrites()` that returns a plain ARRAY is "applied after checking the filesystem
+   * (pages and /public files)". This app has real `app/api/*` route handlers, so an array rewrite
+   * for `/api/:path*` loses to them every time — the proxy would never fire, Vercel would answer
+   * from its own mock-mode adapters, and the only symptom would be an app quietly claiming both
+   * chains are simulated. `beforeFiles` is checked "before all files", which is the only placement
+   * that actually overrides a route handler.
+   */
+  async rewrites() {
+    if (!API_ORIGIN) return [];
+    return {
+      beforeFiles: [{ source: "/api/:path*", destination: `${API_ORIGIN}/api/:path*` }],
+      afterFiles: [],
+      fallback: [],
+    };
+  },
+
   /**
    * Compile the wallet stack in-app rather than as pre-built externals.
    *

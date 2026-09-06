@@ -9,6 +9,37 @@ import { isPersistent, storePath } from "@/lib/precedence/store/json-store";
  * WHY an adapter is in the mode it is in, so a fallback is visible rather than silent.
  */
 export async function GET() {
+  /**
+   * The canary for a broken frontend/backend split.
+   *
+   * @remarks `PRECEDENCE_API_ORIGIN` is set only on a deployment whose API lives somewhere else,
+   * and a `beforeFiles` rewrite is supposed to send every `/api/*` request there. So if this
+   * handler is executing while that variable is set, the rewrite did NOT fire — and the answer it
+   * is about to give is mock-mode nonsense from a serverless box with no deployments file, no
+   * store and no worker.
+   *
+   * Without this the only symptom is an app calmly reporting both chains as simulated, which looks
+   * like a configuration choice rather than a routing failure. Said out loud instead, because the
+   * UI reads this endpoint to decide what to claim and it should refuse to claim anything.
+   */
+  const misroutedTo = process.env.PRECEDENCE_API_ORIGIN?.trim().replace(/\/+$/, "");
+  if (misroutedTo) {
+    return Response.json(
+      {
+        ok: false,
+        misconfigured: "api-rewrite-not-applied",
+        error:
+          `This deployment is configured to proxy its API to ${misroutedTo}, but the request ` +
+          `reached the frontend's own route handler instead — so the rewrite is not in effect. ` +
+          `Anything this instance reports about the chains would be mock data. Check that ` +
+          `next.config.ts returns the rewrite under \`beforeFiles\` (an array-form rewrite loses ` +
+          `to app/api route handlers) and that PRECEDENCE_API_ORIGIN is set at build time.`,
+        expectedApiOrigin: misroutedTo,
+      },
+      { status: 503 },
+    );
+  }
+
   const c = getConfig();
   const d = getDeps();
   return Response.json({
