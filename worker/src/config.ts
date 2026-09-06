@@ -29,6 +29,18 @@ export const MAX_BATCH_SIZE = 10;
 /** MAX_BATCH_RANGE — and they must fall inside this many blocks. */
 export const MAX_BATCH_RANGE = 1000;
 
+/** The value of an env line, with any trailing comment removed. Mirrors `next.config.ts`. */
+function envValue(raw: string): string {
+  const v = raw.trim();
+  const q = v[0];
+  if (q === '"' || q === "'") {
+    const end = v.indexOf(q, 1);
+    return end > 0 ? v.slice(1, end) : v.slice(1);
+  }
+  const hash = v.search(/(^|\s)#/);
+  return (hash >= 0 ? v.slice(0, hash) : v).trim();
+}
+
 function parseEnvFile(path: string): Record<string, string> {
   if (!existsSync(path)) return {};
   const out: Record<string, string> = {};
@@ -36,7 +48,9 @@ function parseEnvFile(path: string): Record<string, string> {
     const t = line.trim();
     if (!t || t.startsWith("#")) continue;
     const i = t.indexOf("=");
-    if (i > 0) out[t.slice(0, i).trim()] = t.slice(i + 1).split("#")[0].trim();
+    // A `#` opens a comment only after whitespace or at the start of the value, and a quoted value
+    // is verbatim. `split("#")[0]` would have truncated a value that legally contains one.
+    if (i > 0) out[t.slice(0, i).trim()] = envValue(t.slice(i + 1));
   }
   return out;
 }
@@ -46,6 +60,26 @@ export const env = { ...parseEnvFile(resolve(ROOT, ".env.local")), ...process.en
 function required(key: string): string {
   const v = env[key];
   if (!v) throw new Error(`Missing ${key}. See the Setup section of the root README.`);
+  /**
+   * A key-shaped variable that is not key-shaped gets named here.
+   *
+   * @remarks Otherwise it reaches ethers and comes back as `invalid BytesLike value
+   * (argument="value", value="0x…f8 # permissionless prover — deliberately NOT the deployer")`,
+   * which reports the symptom and buries the cause in the middle of the value. The cause was a
+   * trailing comment in `.env.local` surviving a parser that did not strip one, and the same shape
+   * of mistake — a stray quote, a copied trailing space, a wrapped line — produces the same
+   * unreadable error. Checked here because this is the last point before the value becomes
+   * somebody else's problem.
+   */
+  if (/_PK$/.test(key) && !/^0x[0-9a-fA-F]{64}$/.test(v)) {
+    const looksCommented = /\s#/.test(v);
+    throw new Error(
+      `${key} is not a 32-byte hex private key (got ${v.length} characters).` +
+        (looksCommented
+          ? " It still has a trailing `#` comment attached — whatever loaded it did not strip one."
+          : " Check for stray quotes or whitespace in .env.local."),
+    );
+  }
   return v;
 }
 

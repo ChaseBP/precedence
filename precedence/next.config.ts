@@ -18,6 +18,41 @@ import type { NextConfig } from "next";
  * Values already in the environment win, so an explicit `PRECEDENCE_MODE=mock bun run dev` still
  * overrides the file.
  */
+
+/**
+ * The value of an env line, with any trailing comment removed.
+ *
+ * @remarks This parser used to strip quotes and stop, which quietly corrupted every key in the
+ * file that carries an explanatory comment — and in this file that is all seven private keys:
+ *
+ *     PROVER_CC3_PK=0x…f8   # permissionless prover — deliberately NOT the deployer
+ *
+ * `process.env.PROVER_CC3_PK` then held the hex AND the sentence. The worker prefers `process.env`
+ * over its own correct parse of the same file, so the polluted value won there too, and ethers
+ * rejected it as `invalid BytesLike value` — an error that names the symptom and gives no hint
+ * that a comment is the cause. Every signing path was affected: the prover, the keeper, and the
+ * server-side Sepolia roles.
+ *
+ * It only ever worked when the env had already been sourced into the shell, because a shell
+ * strips the comment itself and this function skips keys that are already set. That is also why it
+ * survived testing.
+ *
+ * A `#` is a comment only when it follows whitespace or opens the value, so a value that legally
+ * contains one (`pass#word`) is kept whole. A quoted value is taken verbatim, since a `#` inside
+ * quotes is data.
+ */
+function envValue(raw: string): string {
+  const v = raw.trim();
+  const q = v[0];
+  if (q === '"' || q === "'") {
+    const end = v.indexOf(q, 1);
+    if (end > 0) return v.slice(1, end);
+    return v.slice(1);
+  }
+  const hash = v.search(/(^|\s)#/);
+  return (hash >= 0 ? v.slice(0, hash) : v).trim();
+}
+
 function loadRootEnv(): void {
   const file = resolve(process.cwd(), "..", ".env.local");
   if (!existsSync(file)) return;
@@ -28,13 +63,7 @@ function loadRootEnv(): void {
     const eq = line.indexOf("=");
     if (eq < 1) continue;
     const key = line.slice(0, eq).trim();
-    let value = line.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
+    const value = envValue(line.slice(eq + 1));
     if (process.env[key] === undefined) process.env[key] = value;
   }
 }

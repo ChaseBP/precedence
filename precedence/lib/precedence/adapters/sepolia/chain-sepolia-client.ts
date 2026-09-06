@@ -78,9 +78,18 @@ export class ChainSepoliaClient implements SepoliaClient {
    */
   private wallet(role: keyof ChainSepoliaConfig["keys"]): { client: WalletClient; account: Address } {
     const pk = this.cfg.keys[role];
+    const envName = role === "obligor" ? "OBLIGOR_PK" : `FIN_${role.toUpperCase()}_PK`;
     if (!pk) {
-      const envName = role === "obligor" ? "OBLIGOR_PK" : `FIN_${role.toUpperCase()}_PK`;
       throw new Error(`No Sepolia key configured for "${role}". Set ${envName} in .env.local.`);
+    }
+    // A key-shaped value that is not key-shaped, named before viem turns it into a hex-decoding
+    // error. The cause is usually a trailing `#` comment that whatever loaded the file did not
+    // strip, and that error message does not say so.
+    if (!/^0x[0-9a-fA-F]{64}$/.test(pk)) {
+      throw new Error(
+        `${envName} is not a 32-byte hex private key (got ${pk.length} characters)` +
+          (/\s#/.test(pk) ? " — it still has a trailing `#` comment attached." : "."),
+      );
     }
     const account = privateKeyToAccount(pk as ViemHex);
     return {
