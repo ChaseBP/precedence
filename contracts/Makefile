@@ -2,7 +2,11 @@
 #
 # IMPORTANT: on this machine bare `forge` on PATH is an unrelated AI tool ("forge code"), NOT
 # Foundry. Every target below uses the absolute Foundry path. Never call bare `forge`.
-FORGE := /home/raven_bp/.foundry/bin/forge
+# $(HOME), not an absolute path — this was pinned to one machine's home directory and broke
+# on every other clone. Still pinned to ~/.foundry rather than PATH: `forge` on PATH is an
+# unrelated AI tool on the original author's machine, and picking that up produces errors
+# that look like Solidity problems.
+FORGE := $(HOME)/.foundry/bin/forge
 CAST  := $(HOME)/.foundry/bin/cast
 ENV   := ../.env.local
 
