@@ -236,6 +236,30 @@ from that receipt's `Lock_` or `RaceOpened` event, and a receipt that reverted, 
 different contract, or belongs to a different facility is rejected with a 422. The block and index
 *are* the priority claim, so a party stating its own would be a party choosing its own rank.
 
+### 5.2 What actually moves a live settlement forward
+
+Nothing in this protocol advances on a timer, and the settlement page now names the stage it is in
+and what is holding it, refreshed from both chains every 20 seconds.
+
+| Stage | What it means | What moves it on |
+|---|---|---|
+| `WINDOW_OPEN` | Locks are being accepted. | The deadline passing. |
+| `AWAITING_CLOSE` | The deadline passed. The vault rejects new locks but the race is **still open**. | Somebody sending `closeRace`. The obligor may at any time; **anyone** may once the deadline has passed. The page offers the button. |
+| `AWAITING_ATTESTATION` | Closed. Attestcoin has not yet reached the source block. | Attestcoin, in ten-block batches. Watch the frontier close in. |
+| `PROOF_READY` | The source block is attested. Every input the proof needs exists. | The worker. The page prints the exact command. |
+| `PROVEN` | Verified at `0x0FD2`. | — |
+
+Two things surprise people, and both are deliberate:
+
+- **The deadline does not close a race.** It only makes the vault start rejecting locks. Closing is
+  a transaction. An auto-close would need a trusted timer; a permissionless close means settlement
+  never waits on the borrower staying online.
+- **Filling the facility does not close it either.** There is no quorum. A facility that filled
+  short still settles — allocation simply stops at what arrived, and the rest is refundable.
+
+So a race that has been "open" for longer than its window is not stuck and is not short of lenders.
+It is waiting for `closeRace`, and after that for attestation.
+
 > **Set `PRECEDENCE_STORE_PATH` before you start a live run.** Without it the store is
 > memory-only, and restarting the server between the lock and the proof — eight minutes later —
 > loses the app's record of a settlement whose transactions are still on chain and still cost gas.
