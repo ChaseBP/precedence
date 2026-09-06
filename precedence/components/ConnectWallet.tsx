@@ -16,7 +16,11 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { AlertTriangle, Wallet } from "lucide-react";
 
-export function ConnectWallet() {
+export function ConnectWallet({ variant = "primary" }: { variant?: "primary" | "ghost" }) {
+  // On the landing page connecting is NOT the primary action — browsing facilities is. Left solid
+  // there, the wallet button was the only filled object above the fold and outranked the hero's
+  // own call to action.
+  const cls = variant === "ghost" ? "btn-ghost rounded-lg" : "btn-primary";
   return (
     <ConnectButton.Custom>
       {({ account, chain, openAccountModal, openChainModal, openConnectModal, mounted }) => {
@@ -31,7 +35,7 @@ export function ConnectWallet() {
           return (
             <button
               onClick={openConnectModal}
-              className="btn-primary flex h-8 shrink-0 items-center gap-1.5 px-3 text-[11px] font-semibold"
+              className={`${cls} flex h-8 shrink-0 items-center gap-1.5 px-3 text-[11px] font-semibold`}
             >
               <Wallet size={13} />
               Connect

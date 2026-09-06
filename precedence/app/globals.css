@@ -21,7 +21,11 @@
   --accent: #536DFE;
   --accent-dim: #3B4CD6;
   --accent-glow: rgba(83, 109, 254, 0.35);
-  --on-accent: #FFFFFF;      /* readable foreground on --accent, in both themes */
+  /* Theme-dependent by necessity. The dark accent (#536DFE) is light enough that white on it
+     measures 4.21:1 — under AA — while near-black measures 4.76:1. The light accent
+     (#2535F5) is the reverse: white is 7.23:1 and near-black only 2.72:1. One value cannot
+     serve both, and this token's whole job is to be the readable one. */
+  --on-accent: #0A070B;
   --silver: #8896AD;
   --success: #10B981;
   --warn: #FB923C;

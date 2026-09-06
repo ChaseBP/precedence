@@ -3,19 +3,21 @@
 /**
  * The landing page.
  *
- * @remarks It used to be one viewport tall with no scroll at all: a logo, a wordmark, one run-on
- * paragraph, a button and a status line, every one of them stacked on the same centre axis. It
- * read as a title card rather than a product, which is exactly what it was.
+ * @remarks The claim this product makes is **spatial** — index 71 beat index 72 inside one block —
+ * and prose can only report a spatial fact, never deliver one. So the page draws it. The block is
+ * a vertical index axis, the winning locks are rows on that axis, and the proof pipeline is a
+ * horizontal rail beneath. Everything else is caption.
  *
- * The rebuild leads with the receipt instead of a slogan about the receipt. `SETTLEMENT` is a real
- * settled race — two locks in ONE Sepolia block, separated by transaction index alone, proven at
- * `0x0FD2` and settled on Creditcoin. That artefact is the whole argument, it is verifiable on a
- * public explorer, and no competitor can copy it without doing the work. Everything below it is
- * support.
+ * Two structural rules the previous version got wrong, both measured:
  *
- * Deliberately absent: the cursor-following spotlight, the 3D tilt, the per-letter blur entrance
- * and the endlessly retyping status line. They read as game marketing rather than as a place to
- * put money, and two independent reviewers described the blur as looking like a rendering defect.
+ * The page had **two left margins** — header and hero at x=168, every section and the footer at
+ * x=208 — because the hero used `max-w-6xl` with padding inside the max-width and the sections
+ * used `max-w-5xl` with padding outside. One `Band` now owns the measure so that cannot recur.
+ *
+ * And its only structural device was a `--bg-0`/`--bg-1` tint alternation of about 1.5%
+ * luminance, which **disappears on a projector** — leaving one 2431px column broken by four
+ * hairlines. Differentiation is now carried by unequal vertical rhythm and by exactly two
+ * `--border-strong` rules, neither of which a projector can flatten.
  */
 
 import Link from "next/link";
@@ -27,61 +29,127 @@ import { SETTLEMENT, EXPLORER, DEPLOYED } from "@/lib/landing-record";
 
 const short = (h: string) => `${h.slice(0, 10)}…${h.slice(-6)}`;
 
-/* ─────────────────────────── the receipt ─────────────────────────── */
-
-function SettlementRecord() {
-  const reduced = useReducedMotion();
+/**
+ * One measure for the whole page.
+ *
+ * @remarks The outer element carries ground, rule and rhythm and bleeds full width; the inner one
+ * holds every glyph inside 64rem. `rule="strong"` is spent exactly twice — opening the figure act
+ * and opening the footer — because two landmarks a projector can still resolve are worth more than
+ * six it cannot.
+ */
+function Band({
+  children,
+  ground,
+  rule,
+  pt = "3rem",
+  pb = "3rem",
+  as: Tag = "section",
+}: {
+  children: React.ReactNode;
+  ground?: "bg-0" | "bg-1";
+  rule?: "hair" | "strong";
+  pt?: string;
+  pb?: string;
+  as?: "section" | "header" | "footer" | "div";
+}) {
   return (
-    <div
-      className="w-full overflow-hidden rounded-2xl border"
-      style={{ borderColor: "var(--border-strong)", background: "var(--bg-1)" }}
+    <Tag
+      style={{
+        background: ground === "bg-1" ? "var(--bg-1)" : ground === "bg-0" ? "var(--bg-0)" : undefined,
+        borderTop: rule
+          ? `${rule === "strong" ? 2 : 1}px solid ${rule === "strong" ? "var(--border-strong)" : "var(--border)"}`
+          : undefined,
+        paddingTop: pt,
+        paddingBottom: pb,
+      }}
+      className="px-5 sm:px-6 xl:px-8"
     >
-      <div
-        className="flex items-baseline justify-between gap-3 border-b px-5 py-3.5"
+      <div className="mx-auto w-full max-w-[64rem]">{children}</div>
+    </Tag>
+  );
+}
+
+/* ─────────────────────────── the block ─────────────────────────── */
+
+/**
+ * The settled race, drawn on its block's index axis.
+ *
+ * @remarks Ghost ticks above and below the two real rows are what make the axis legible as an
+ * axis: without neighbours, 71 and 72 are just two numbers. They are drawn in `--border`, never as
+ * text, because `--rank-subordinate` as a label measures 3.55:1 on this surface.
+ */
+function BlockFigure() {
+  const reduced = useReducedMotion();
+  const ghosts = [69, 70];
+  const trailing = [73, 74];
+
+  return (
+    <figure
+      className="m-0 w-full overflow-hidden rounded-xl"
+      style={{ border: "1px solid var(--border-strong)", background: "var(--bg-1)" }}
+    >
+      <figcaption
+        className="flex items-baseline justify-between gap-3 border-b px-5 py-3"
         style={{ borderColor: "var(--border)" }}
       >
-        {/* The one all-caps label that survives. A caption on a document is the vernacular of
-            trade finance, not template chrome. */}
-        <span className="mono text-[0.62rem] uppercase tracking-[0.14em]" style={{ color: "var(--text-faint)" }}>
+        <span className="mono text-[0.6875rem] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
           Settlement record
         </span>
-        <span className="mono text-[0.68rem]" style={{ color: "var(--proof-verified)" }}>
-          verified
+        {/* The word carries --text-muted and the state is carried by the dot. Emerald as small
+            text measures 3.77:1 in light; as a 6px mark against the same ground it is a non-text
+            element at 3.77:1, which is above the 3:1 that applies to one. */}
+        <span className="flex items-center gap-1.5">
+          <span
+            aria-hidden
+            className="inline-block h-1.5 w-1.5 rounded-full"
+            style={{ background: "var(--proof-verified)" }}
+          />
+          <span className="mono text-[0.6875rem]" style={{ color: "var(--text-muted)" }}>
+            verified
+          </span>
         </span>
+      </figcaption>
+
+      <div className="px-5 pt-4 text-[0.8125rem]" style={{ color: "var(--text-muted)" }}>
+        {SETTLEMENT.sourceChain}, block{" "}
+        <a
+          href={EXPLORER.sepoliaBlock(SETTLEMENT.block)}
+          target="_blank"
+          rel="noreferrer"
+          className="mono underline decoration-dotted underline-offset-4 hover:decoration-solid"
+          style={{ color: "var(--text)" }}
+        >
+          {SETTLEMENT.block}
+        </a>
       </div>
 
-      <div className="px-5 pt-4">
-        <div className="text-[0.78rem]" style={{ color: "var(--text-muted)" }}>
-          {SETTLEMENT.sourceChain}, block{" "}
-          <a
-            href={EXPLORER.sepoliaBlock(SETTLEMENT.block)}
-            target="_blank"
-            rel="noreferrer"
-            className="mono underline decoration-dotted underline-offset-4 hover:decoration-solid"
-            style={{ color: "var(--text)" }}
-          >
-            {SETTLEMENT.block}
-          </a>
-        </div>
-      </div>
+      {/* the index axis */}
+      <div className="px-5 pb-1 pt-3">
+        {ghosts.map((n) => (
+          <GhostTick key={n} n={n} />
+        ))}
 
-      <div className="flex flex-col gap-1.5 p-5 pt-3">
         {SETTLEMENT.locks.map((l, i) => (
           <motion.a
             key={l.txHash}
             href={EXPLORER.sepoliaTx(l.txHash)}
             target="_blank"
             rel="noreferrer"
-            // The one orchestrated moment on this page: the two rows arrive in their proven
-            // order. Under reduced motion they are simply already in it.
+            // Moment one of two on this page: the winning rows arrive in their proven order.
             initial={reduced ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: reduced ? 0 : 0.45 + i * 0.45, ease: [0.16, 1, 0.3, 1] }}
-            className="grid grid-cols-[auto_1fr_auto] items-center gap-x-4 rounded-lg px-3 py-2.5 transition-colors"
-            style={{ background: "var(--bg-2)", border: "1px solid var(--border)" }}
+            className="group grid grid-cols-[3.25rem_1fr_auto] items-center gap-x-4 rounded-lg px-3 py-2.5 transition-colors"
+            style={{
+              background: "var(--bg-2)",
+              boxShadow: `inset 3px 0 0 var(--rank-${l.tranche.toLowerCase()})`,
+              marginBottom: "0.375rem",
+            }}
           >
+            {/* 20px/700 makes this "large text", where --accent on --bg-2 needs 3:1 and measures
+                4.36:1. At 18px/600 it was small text needing 4.5:1 and failed. */}
             <span
-              className="mono text-lg font-semibold tabular-nums"
+              className="mono text-xl font-bold tabular-nums"
               style={{ color: "var(--accent)" }}
               title={`transaction index ${l.txIndex}`}
             >
@@ -89,147 +157,156 @@ function SettlementRecord() {
             </span>
             <span className="min-w-0">
               <span
-                className="mono text-[0.7rem] uppercase tracking-wider"
+                className="mono block text-[0.7rem] uppercase tracking-wider"
                 style={{ color: `var(--rank-${l.tranche.toLowerCase()})` }}
               >
                 {l.tranche}
               </span>
-              <span className="mono block truncate text-[0.62rem]" style={{ color: "var(--text-faint)" }}>
+              {/* --text-faint measures 4.37:1 on --bg-2 in light; --text-muted is 5.62:1. */}
+              <span className="mono block truncate text-[0.6875rem]" style={{ color: "var(--text-muted)" }}>
                 {short(l.txHash)}
               </span>
             </span>
-            <span className="mono text-sm font-semibold tabular-nums">{l.amount}</span>
+            <span className="mono text-right text-sm font-semibold tabular-nums">{l.amount}</span>
           </motion.a>
+        ))}
+
+        {trailing.map((n) => (
+          <GhostTick key={n} n={n} />
         ))}
       </div>
 
       <div
-        className="border-t px-5 py-3.5 text-[0.72rem] leading-relaxed"
+        className="border-t px-5 py-3.5 text-[0.75rem] leading-relaxed"
         style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
       >
         One block. The index is the only thing separating them, and it is what decides who is
         senior.
-        <span className="mt-1.5 block" style={{ color: "var(--text-faint)" }}>
-          Proven at{" "}
-          <span className="mono" style={{ color: "var(--text-muted)" }}>
-            0x0FD2
-          </span>
-          , settled on {SETTLEMENT.settledOn.chain} block{" "}
-          <a
-            href={EXPLORER.creditcoinBlock(SETTLEMENT.settledOn.block)}
-            target="_blank"
-            rel="noreferrer"
-            className="mono underline decoration-dotted underline-offset-4 hover:decoration-solid"
-            style={{ color: "var(--text-muted)" }}
-          >
-            {SETTLEMENT.settledOn.block}
-          </a>
-          . {SETTLEMENT.refunded} later locks were returned in full.
-        </span>
       </div>
+    </figure>
+  );
+}
+
+/** An index position with nothing in it — the neighbours that make the axis read as an axis. */
+function GhostTick({ n }: { n: number }) {
+  return (
+    <div className="grid grid-cols-[3.25rem_1fr] items-center gap-x-4 px-3 py-1" aria-hidden>
+      <span className="mono text-[0.6875rem] tabular-nums" style={{ color: "var(--text-faint)" }}>
+        {n}
+      </span>
+      <span className="h-px w-full" style={{ background: "var(--border)" }} />
+    </div>
+  );
+}
+
+/* ─────────────────────────── the proof rail ─────────────────────────── */
+
+/**
+ * What happens after the block, drawn to scale.
+ *
+ * @remarks The attestation is a **segment with width**, not a dot, because the six-to-nine minute
+ * wait is the one part of this pipeline a reader consistently misreads as instant. Geometry states
+ * it without a sentence having to.
+ */
+function ProofRail() {
+  const reduced = useReducedMotion();
+  const a = SETTLEMENT.attestation;
+  return (
+    <div className="w-full">
+      <div className="flex items-end justify-between gap-4 pb-2 text-[0.6875rem]" style={{ color: "var(--text-muted)" }}>
+        <span>Lock lands on Sepolia</span>
+        <span className="mono">
+          attestation · {a.minMinutes}–{a.maxMinutes} min, measured
+        </span>
+        <span>Proven on Creditcoin</span>
+      </div>
+      <div className="relative h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--bg-2)" }}>
+        {/* Moment two of two: the wait draws itself once, the first time it is seen. */}
+        <motion.span
+          className="absolute inset-y-0 left-[12%] block rounded-full"
+          style={{ width: "62%", background: "var(--proof-pending)", transformOrigin: "left" }}
+          initial={reduced ? false : { scaleX: 0 }}
+          whileInView={{ scaleX: 1 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+        />
+        <span className="absolute inset-y-0 left-0 block w-[3px] rounded-full" style={{ background: "var(--accent)" }} />
+        <span
+          className="absolute inset-y-0 right-0 block w-[3px] rounded-full"
+          style={{ background: "var(--proof-verified)" }}
+        />
+      </div>
+      <p className="mt-2 text-[0.75rem]" style={{ color: "var(--text-faint)" }}>
+        Verification is one Creditcoin transaction once the proof exists. The wait before it is the
+        source block being attested, and it is real.
+      </p>
     </div>
   );
 }
 
 /* ─────────────────────────── sections ─────────────────────────── */
 
-function Section({
-  title,
-  deck,
-  children,
-  tint,
-}: {
-  title: string;
-  deck?: string;
-  children: React.ReactNode;
-  tint?: boolean;
-}) {
+function Heading({ title, deck }: { title: string; deck?: string }) {
   return (
-    <section
-      className="border-t px-6 py-12 sm:py-16"
-      style={{ borderColor: "var(--border)", background: tint ? "var(--bg-1)" : "transparent" }}
-    >
-      <div className="mx-auto w-full max-w-5xl">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight sm:text-3xl">
-          {title}
-        </h2>
-        {deck ? (
-          <p className="mt-2.5 max-w-[62ch] text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            {deck}
-          </p>
-        ) : null}
-        <div className="mt-8">{children}</div>
-      </div>
-    </section>
+    <>
+      <h2 className="font-[family-name:var(--font-display)] text-[1.75rem] font-semibold tracking-tight">
+        {title}
+      </h2>
+      {deck ? (
+        <p className="mt-2.5 max-w-[62ch] text-[0.95rem] leading-[1.65]" style={{ color: "var(--text-muted)" }}>
+          {deck}
+        </p>
+      ) : null}
+    </>
   );
 }
 
+/** Asymmetric on purpose: the split is the argument, and it survives a projector where tint does not. */
 function Mechanism() {
   return (
-    <div className="grid gap-px overflow-hidden rounded-xl border md:grid-cols-2" style={{ borderColor: "var(--border)", background: "var(--border)" }}>
-      {[
-        {
-          h: "How it works today",
-          body: "A lender files a lien with a registry and hopes the clerk timestamps it before anyone else's. Priority is an administrative outcome, argued after the fact, and the record lives somewhere neither party controls.",
-          mark: false,
-        },
-        {
-          h: "How it works here",
-          body: "A lender sends a transaction. Its block and its index inside that block are facts the chain already committed to, and the precompile re-derives them from the proof itself. There is nothing left to argue about.",
-          mark: true,
-        },
-      ].map((c) => (
-        <div
-          key={c.h}
-          className="p-6"
-          style={{
-            background: "var(--bg-1)",
-            // The side that is this product gets a rule, not brighter text.
-            boxShadow: c.mark ? "inset 3px 0 0 var(--accent)" : undefined,
-          }}
-        >
-          <h3 className="text-sm font-semibold">{c.h}</h3>
-          <p className="mt-2 max-w-[52ch] text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            {c.body}
-          </p>
-        </div>
-      ))}
+    <div className="grid overflow-hidden rounded-xl md:grid-cols-[42fr_58fr]" style={{ border: "1px solid var(--border)" }}>
+      <div className="p-6" style={{ background: "var(--bg-0)" }}>
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
+          How it works today
+        </h3>
+        <p className="mt-2 max-w-[52ch] text-[0.875rem] leading-[1.7]" style={{ color: "var(--text-muted)" }}>
+          A lender files a lien with a registry and hopes the clerk timestamps it before anyone
+          else&apos;s. Priority is an administrative outcome, argued after the fact, and the record
+          lives somewhere neither party controls.
+        </p>
+      </div>
+      <div className="p-6" style={{ background: "var(--bg-1)", boxShadow: "inset 3px 0 0 var(--accent)" }}>
+        <h3 className="text-sm font-semibold">How it works here</h3>
+        <p className="mt-2 max-w-[52ch] text-[0.875rem] leading-[1.7]" style={{ color: "var(--text-muted)" }}>
+          A lender sends a transaction. Its block and its index inside that block are facts the
+          chain already committed to, and the precompile re-derives them from the proof itself.
+          There is nothing left to argue about.
+        </p>
+      </div>
     </div>
   );
 }
 
+/** The one legitimate sequence on the page, so the only place a number marker is earned. */
 function HowItWorks() {
-  // Numbered because this genuinely is a sequence — each step cannot begin before the last ends.
   const steps = [
-    {
-      n: 1,
-      h: "A borrower posts terms",
-      b: "They register a real asset — a warehouse receipt, a freight invoice — and publish how much they want across three tranches, with a rate for each.",
-    },
-    {
-      n: 2,
-      h: "Lenders race to lock",
-      b: "Capital locks on Sepolia. Whoever's transaction lands earliest in the proven order takes the senior rank; anything past a tranche cap comes back in full.",
-    },
-    {
-      n: 3,
-      h: "Priority settles by proof",
-      b: `Once the source block is attested — ${SETTLEMENT.attestation.minMinutes} to ${SETTLEMENT.attestation.maxMinutes} minutes, measured — the precompile verifies every lock in one call and the lien is recorded on Creditcoin.`,
-    },
+    ["A borrower posts terms", "They register a real asset — a warehouse receipt, a freight invoice — and publish how much they want across three tranches, with a rate for each."],
+    ["Lenders race to lock", "Capital locks on Sepolia. Whoever's transaction lands earliest in the proven order takes the senior rank; anything past a tranche cap comes back in full."],
+    ["Priority settles by proof", `Once the source block is attested — ${SETTLEMENT.attestation.minMinutes} to ${SETTLEMENT.attestation.maxMinutes} minutes, measured — the precompile verifies every lock in one call and the lien is recorded.`],
   ];
   return (
-    <ol className="grid gap-8 md:grid-cols-3">
-      {steps.map((s) => (
-        <li key={s.n}>
-          <div
-            className="mono flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold"
-            style={{ border: "1px solid var(--border-strong)", color: "var(--text-muted)" }}
+    <ol className="grid gap-x-8 gap-y-8 md:grid-cols-3">
+      {steps.map(([h, b], i) => (
+        <li key={h} className="relative pt-5" style={{ borderTop: "1px solid var(--border)" }}>
+          <span
+            className="mono absolute -top-[0.7rem] left-0 flex h-[1.4rem] w-[1.4rem] items-center justify-center rounded-full text-[0.6875rem] font-semibold"
+            style={{ background: "var(--bg-1)", border: "1px solid var(--border-strong)", color: "var(--text-muted)" }}
           >
-            {s.n}
-          </div>
-          <h3 className="mt-3.5 text-sm font-semibold">{s.h}</h3>
-          <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            {s.b}
+            {i + 1}
+          </span>
+          <h3 className="text-sm font-semibold">{h}</h3>
+          <p className="mt-1.5 max-w-[46ch] text-[0.875rem] leading-[1.7]" style={{ color: "var(--text-muted)" }}>
+            {b}
           </p>
         </li>
       ))}
@@ -238,47 +315,75 @@ function HowItWorks() {
 }
 
 function Deployed() {
-  const groups = [
-    { label: "Creditcoin CC3", rows: DEPLOYED.creditcoin, url: EXPLORER.creditcoinAddress },
-    { label: "Ethereum Sepolia", rows: DEPLOYED.sepolia, url: EXPLORER.sepoliaAddress },
-    { label: "Attestcoin precompiles", rows: DEPLOYED.precompiles, url: EXPLORER.creditcoinAddress },
-  ];
+  const Row = ({ name, address, href }: { name: string; address: string; href: string }) => (
+    <div className="flex items-baseline justify-between gap-3 border-t py-2" style={{ borderColor: "var(--border)" }}>
+      <dt className="text-[0.8125rem]" style={{ color: "var(--text-muted)" }}>
+        {name}
+      </dt>
+      <dd className="mono shrink-0 text-[0.6875rem]">
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="underline decoration-dotted underline-offset-4 hover:decoration-solid"
+          style={{ color: "var(--text-muted)" }}
+        >
+          {/^0x0{20,}/.test(address) ? `0x${address.slice(-4).toUpperCase()}` : `${address.slice(0, 6)}…${address.slice(-4)}`}
+        </a>
+      </dd>
+    </div>
+  );
+
   return (
-    <div className="grid gap-x-10 gap-y-8 md:grid-cols-3">
-      {groups.map((g) => (
-        <div key={g.label}>
-          <div className="pb-2 text-xs font-semibold">{g.label}</div>
-          <dl className="flex flex-col">
-            {g.rows.map((r) => (
-              <div
-                key={r.address}
-                className="flex items-baseline justify-between gap-3 border-t py-2"
-                style={{ borderColor: "var(--border)" }}
-              >
-                <dt className="text-[0.78rem]" style={{ color: "var(--text-muted)" }}>
-                  {r.name}
-                </dt>
-                <dd className="mono shrink-0 text-[0.68rem]">
-                  <a
-                    href={g.url(r.address)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline-offset-4 hover:underline"
-                    style={{ color: "var(--text-faint)" }}
-                  >
-                    {/* A precompile's address IS its short form. Truncating 0x…0FD2 through the
-                        generic middle-ellipsis produced "0x0000…0FD2", which reads as a mangled
-                        hash rather than the well-known constant it is. */}
-                    {/^0x0{20,}/.test(r.address)
-                      ? `0x${r.address.slice(-4).toUpperCase()}`
-                      : `${r.address.slice(0, 6)}…${r.address.slice(-4)}`}
-                  </a>
-                </dd>
-              </div>
+    <div className="grid gap-x-10 gap-y-8 md:grid-cols-[38fr_62fr]">
+      <div>
+        <div className="pb-1 text-xs font-semibold">Creditcoin CC3</div>
+        <dl>
+          {DEPLOYED.creditcoin.map((r) => (
+            <Row key={r.address} name={r.name} address={r.address} href={EXPLORER.creditcoinAddress(r.address)} />
+          ))}
+        </dl>
+      </div>
+
+      <div className="grid gap-x-10 gap-y-7 sm:grid-cols-2">
+        <div>
+          <div className="pb-1 text-xs font-semibold">Ethereum Sepolia</div>
+          <dl>
+            {DEPLOYED.sepolia.map((r) => (
+              <Row key={r.address} name={r.name} address={r.address} href={EXPLORER.sepoliaAddress(r.address)} />
+            ))}
+          </dl>
+          <div className="pb-1 pt-6 text-xs font-semibold">Attestcoin precompiles</div>
+          <dl>
+            {DEPLOYED.precompiles.map((r) => (
+              <Row key={r.address} name={r.name} address={r.address} href={EXPLORER.creditcoinAddress(r.address)} />
             ))}
           </dl>
         </div>
-      ))}
+
+        {/* Where a "trusted by" row would go. This project has no logos to show and will not
+            invent any, so the space carries the only credibility it can honestly offer: what was
+            measured, and how many times. */}
+        <div className="rounded-xl p-4" style={{ border: "1px solid var(--border)", background: "var(--bg-1)" }}>
+          <div className="text-xs font-semibold">Measured, not claimed</div>
+          <dl className="mt-2.5 flex flex-col gap-1.5 text-[0.8125rem]">
+            {[
+              ["Attestation latency", `${SETTLEMENT.attestation.minMinutes}–${SETTLEMENT.attestation.maxMinutes} min`],
+              ["Median", `${SETTLEMENT.attestation.p50Minutes} min`],
+              ["Samples", String(SETTLEMENT.attestation.samples)],
+              ["Locks returned in full", String(SETTLEMENT.refunded)],
+            ].map(([k, v]) => (
+              <div key={k} className="flex items-baseline justify-between gap-3">
+                <dt style={{ color: "var(--text-muted)" }}>{k}</dt>
+                <dd className="mono tabular-nums">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-3 text-[0.75rem] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+            Testnet. Not audited. Sepolia is simulated in this deployment; Creditcoin CC3 is live.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -290,11 +395,11 @@ function Limits() {
     ["Proof is not law.", "A court has never been asked to weigh a block index against a filing date. What this gives you is an ordering neither party can dispute, not a ruling."],
   ];
   return (
-    <dl className="grid gap-7 md:grid-cols-3">
+    <dl className="grid gap-x-8 gap-y-7 md:grid-cols-3">
       {items.map(([h, b]) => (
         <div key={h}>
           <dt className="text-sm font-semibold">{h}</dt>
-          <dd className="mt-1.5 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+          <dd className="mt-1.5 max-w-[46ch] text-[0.875rem] leading-[1.7]" style={{ color: "var(--text-muted)" }}>
             {b}
           </dd>
         </div>
@@ -317,103 +422,160 @@ export default function Landing() {
         };
 
   return (
-    <main className="relative min-h-screen" style={{ background: "var(--bg-0)" }}>
+    <main style={{ background: "var(--bg-0)" }}>
       <div className="grain" aria-hidden />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-5">
-        <Link href="/" className="flex items-center gap-2.5 rounded-lg" aria-label="PRECEDENCE home">
-          <Logo size={26} />
-          <span className="font-[family-name:var(--font-display)] text-sm font-bold tracking-tight">
-            PRECEDENCE
-          </span>
-        </Link>
-        {/* These were `hidden sm:inline` with no hamburger behind them, so below 640px the landing
-            page had no navigation at all — only a theme toggle. They stay visible and simply wrap. */}
-        <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-[0.8rem]">
-          <Link href="/collateral" className="underline-offset-4 hover:underline" style={{ color: "var(--text-muted)" }}>
-            Facilities
-          </Link>
-          <Link href="/race" className="underline-offset-4 hover:underline" style={{ color: "var(--text-muted)" }}>
-            Priority settlement
-          </Link>
-          <Link href="/registry" className="hidden underline-offset-4 hover:underline sm:inline" style={{ color: "var(--text-muted)" }}>
-            Registry
-          </Link>
-          <ConnectWallet />
-          <ThemeToggle />
-        </nav>
-      </header>
-
-      {/* ── hero: asymmetric, left-aligned. The old page centred everything on one axis, which is
-             what made it read as a title card. ── */}
-      <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-12 px-6 pb-16 pt-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-24 lg:pt-16">
-        <div className="min-w-0">
-          <motion.h1
-            {...rise(0)}
-            className="font-[family-name:var(--font-display)] text-[2.15rem] font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-[3.4rem]"
-          >
-            Priority goes to the transaction that landed first.
-          </motion.h1>
-
-          <motion.p
-            {...rise(0.08)}
-            className="mt-5 max-w-[56ch] text-base leading-relaxed"
-            style={{ color: "var(--text-muted)" }}
-          >
-            Lenders compete to fund real-world collateral. Rank is decided by where each
-            transaction actually landed in the block order — proven on Creditcoin, not asserted by
-            anyone. Not by who reached a filing office first.
-          </motion.p>
-
-          <motion.div {...rise(0.16)} className="mt-8 flex flex-wrap items-center gap-3">
-            <Link href="/collateral" className="btn-accent px-5 py-3 text-sm font-semibold">
-              Browse facilities
+      <Band as="header" ground="bg-1" pt="1rem" pb="1rem">
+        {/* Two deliberate rows below 640px, not three ragged ones. Letting the whole bar wrap put
+            the links above the wordmark and the wallet below it — three rows on different
+            baselines. The brand and the controls hold one row; the links take their own. */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="PRECEDENCE home">
+              <Logo size={26} />
+              <span className="font-[family-name:var(--font-display)] text-sm font-bold tracking-tight">
+                PRECEDENCE
+              </span>
             </Link>
-            <Link href="/registry/new" className="btn-ghost rounded-lg px-4 py-3 text-sm font-medium">
-              Register collateral
-            </Link>
-          </motion.div>
-
-          <motion.p {...rise(0.24)} className="mt-6 text-xs" style={{ color: "var(--text-faint)" }}>
-            Deployed on Creditcoin CC3 and Ethereum Sepolia. Every figure on this page links to a
-            public explorer.
-          </motion.p>
-        </div>
-
-        <motion.div {...rise(0.12)} className="min-w-0">
-          <SettlementRecord />
-        </motion.div>
-      </div>
-
-      <Section
-        title="Two lenders, one block"
-        deck="Lien priority is normally an administrative race — whoever files first, wins. That race is decided by an office, after the fact. This one is decided by the chain, at the moment it happens."
-        tint
-      >
-        <Mechanism />
-      </Section>
-
-      <Section title="How a facility works" deck="Three steps, in order. Nothing here needs a trusted intermediary.">
-        <HowItWorks />
-      </Section>
-
-      <Section title="What is deployed" deck="Live contracts on two chains, and the Attestcoin precompiles they depend on." tint>
-        <Deployed />
-      </Section>
-
-      <Section title="What this does not claim" deck="The limits are part of the design, so they are stated here rather than discovered later.">
-        <Limits />
-      </Section>
-
-      <footer className="border-t px-6 py-10" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <Logo size={20} />
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-              Proof-ordered capital priority
+            <span className="flex items-center gap-1.5 sm:hidden">
+              <ConnectWallet variant="ghost" />
+              <ThemeToggle />
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+          <nav className="-mx-2 flex items-center gap-x-1 overflow-x-auto no-scrollbar sm:mx-0 sm:justify-end">
+            {[
+              { href: "/collateral", label: "Facilities" },
+              { href: "/race", label: "Priority settlement" },
+              { href: "/registry", label: "Registry" },
+            ].map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="inline-flex min-h-[40px] shrink-0 items-center whitespace-nowrap rounded-lg px-2 text-[0.8125rem] underline-offset-4 hover:underline"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {l.label}
+              </Link>
+            ))}
+            {/* Ghost here on purpose. As a solid it was the only filled object on the page and
+                outranked the hero's own call to action. */}
+            <span className="ml-1 hidden items-center gap-1.5 sm:flex">
+              <ConnectWallet variant="ghost" />
+              <ThemeToggle />
+            </span>
+          </nav>
+        </div>
+      </Band>
+
+      <Band ground="bg-1" pt="3rem" pb="4rem">
+        <div className="grid items-start gap-10 lg:grid-cols-[1fr_1.05fr] lg:gap-12">
+          <motion.div {...rise(0)} className="min-w-0">
+            <h1
+              className="font-[family-name:var(--font-display)] font-bold tracking-tight"
+              style={{ fontSize: "clamp(2.15rem, 1.2rem + 3.2vw, 3.4rem)", lineHeight: 1.06 }}
+            >
+              Priority goes to the transaction that landed first.
+            </h1>
+            <p className="mt-5 max-w-[56ch] text-[0.95rem] leading-[1.7]" style={{ color: "var(--text-muted)" }}>
+              Lenders compete to fund real-world collateral. Rank is decided by where each
+              transaction actually landed in the block order — proven on Creditcoin, not asserted by
+              anyone. Not by who reached a filing office first.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link href="/collateral" className="btn-primary inline-flex min-h-[44px] items-center px-5 text-sm font-semibold">
+                Browse facilities
+              </Link>
+              <Link href="/registry/new" className="btn-ghost inline-flex min-h-[44px] items-center rounded-lg px-4 text-sm font-medium">
+                Register collateral
+              </Link>
+            </div>
+            <p className="mt-6 max-w-[56ch] text-[0.75rem]" style={{ color: "var(--text-muted)" }}>
+              Deployed on Creditcoin CC3 and Ethereum Sepolia. Every figure on this page links to a
+              public explorer.
+            </p>
+          </motion.div>
+
+          <motion.div {...rise(0.1)} className="min-w-0">
+            <BlockFigure />
+          </motion.div>
+        </div>
+
+        {/* Spans the measure, so the band has a floor instead of a dead quadrant under the figure. */}
+        <div className="mt-12">
+          <ProofRail />
+        </div>
+      </Band>
+
+      <Band ground="bg-0" rule="hair" pt="4rem" pb="4rem">
+        <Heading
+          title="Two lenders, one block"
+          deck="Lien priority is normally an administrative race — whoever files first, wins. That race is decided by an office, after the fact. This one is decided by the chain, at the moment it happens."
+        />
+        <div className="mt-8">
+          <Mechanism />
+        </div>
+      </Band>
+
+      <Band ground="bg-1" rule="strong" pt="6rem" pb="6rem">
+        <Heading title="How a facility works" deck="Three steps, in order. Nothing here needs a trusted intermediary." />
+        <div className="mt-10">
+          <HowItWorks />
+        </div>
+      </Band>
+
+      <Band ground="bg-0" rule="hair" pt="4rem" pb="4rem">
+        <Heading title="What is deployed" deck="Live contracts on two chains, and the Attestcoin precompiles they depend on." />
+        <div className="mt-8">
+          <Deployed />
+        </div>
+      </Band>
+
+      <Band ground="bg-0" rule="hair" pt="3rem" pb="4rem">
+        <Heading
+          title="What this does not claim"
+          deck="The limits are part of the design, so they are stated here rather than discovered later."
+        />
+        <div className="mt-8">
+          <Limits />
+        </div>
+      </Band>
+
+      <Band as="footer" ground="bg-1" rule="strong" pt="3rem" pb="3rem">
+        <div className="grid gap-8 md:grid-cols-[1fr_auto]">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <Logo size={20} />
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                Proof-ordered capital priority
+              </span>
+            </div>
+            {/* A footer whose own content is verification. These three are the whole claim, and
+                each one resolves on a public explorer. */}
+            <dl className="mt-4 flex flex-col gap-1.5 text-[0.75rem]">
+              {[
+                ["Source block", String(SETTLEMENT.block), EXPLORER.sepoliaBlock(SETTLEMENT.block)],
+                ["Settled on Creditcoin", String(SETTLEMENT.settledOn.block), EXPLORER.creditcoinBlock(SETTLEMENT.settledOn.block)],
+                ["Verifier precompile", "0x0FD2", EXPLORER.creditcoinAddress(DEPLOYED.precompiles[0].address)],
+              ].map(([k, v, href]) => (
+                <div key={k} className="flex items-baseline gap-2">
+                  <dt style={{ color: "var(--text-muted)" }}>{k}</dt>
+                  <dd className="mono">
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline decoration-dotted underline-offset-4 hover:decoration-solid"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {v}
+                    </a>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <nav className="flex flex-col gap-1 text-[0.8125rem] md:text-right">
             {[
               { href: "/collateral", label: "Facilities" },
               { href: "/registry/new", label: "Register collateral" },
@@ -421,17 +583,24 @@ export default function Landing() {
               { href: "/registry", label: "Registry" },
               { href: "/dashboard", label: "Telemetry" },
             ].map((l) => (
-              <Link key={l.href} href={l.href} className="inline-flex min-h-[40px] items-center px-1 underline-offset-4 hover:underline" style={{ color: "var(--text-muted)" }}>
+              <Link
+                key={l.href}
+                href={l.href}
+                className="inline-flex min-h-[40px] items-center underline-offset-4 hover:underline md:justify-end"
+                style={{ color: "var(--text-muted)" }}
+              >
                 {l.label}
               </Link>
             ))}
-          </div>
-          <p className="mono w-full text-[0.66rem]" style={{ color: "var(--text-faint)" }}>
-            Testnet only. Sepolia data is simulated in this deployment; Creditcoin CC3 is live. pUSD
-            is test scrip, not a stablecoin.
-          </p>
+          </nav>
         </div>
-      </footer>
+
+        {/* Promoted from 0.66rem. This is the honesty statement, not fine print. */}
+        <p className="mt-8 max-w-[70ch] text-[0.75rem] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+          Testnet only. Sepolia data is simulated in this deployment; Creditcoin CC3 is live. pUSD
+          is test scrip, not a stablecoin.
+        </p>
+      </Band>
     </main>
   );
 }
