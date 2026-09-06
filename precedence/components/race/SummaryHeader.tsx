@@ -48,6 +48,14 @@ export function SummaryHeader({
 
   // Set only after the server fetched a receipt for the opening transaction. See `live-race.ts`.
   const live = !!currentRace.onchain;
+  /**
+   * A scripted race names its financiers ("meridian"); a live one can only name a wallet.
+   *
+   * @remarks This KPI was sized for a one-word agent id, so a settled live race put 42 characters
+   * of address through it and overran the next column. Shortened for the tile, full on hover and
+   * in the rank card below — which is where a hash actually gets cross-checked.
+   */
+  const isAddress = (v: string) => /^0x[0-9a-fA-F]{40}$/.test(v);
 
   // The vault first, then the race's own locks, then bids. The last fallback exists only for a
   // scripted walkthrough, where bids are the whole story and no vault has been asked.
@@ -145,7 +153,7 @@ export function SummaryHeader({
           {statusLine}
         </motion.span>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-4 grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3 sm:grid-cols-[repeat(4,minmax(0,1fr))]">
         <KPI
           label={committedLabel}
           value={usd(totalLocked)}
@@ -154,7 +162,17 @@ export function SummaryHeader({
         <KPI label="Financiers" value={financierCount ? String(financierCount) : "—"} />
         <KPI
           label="Senior Claim"
-          value={senior ? senior.toUpperCase() : currentRace.settlement ? "Unfilled" : "Pending Proof"}
+          value={
+            senior
+              ? isAddress(senior)
+                ? `${senior.slice(0, 6)}…${senior.slice(-4)}`
+                : senior.toUpperCase()
+              : currentRace.settlement
+                ? "Unfilled"
+                : "Pending Proof"
+          }
+          // The full value, since the shortened one is not something a judge can cross-check.
+          title={senior && isAddress(senior) ? senior : undefined}
           // "Unfilled" beside a funded facility reads as a failure. It is an outcome: nobody
           // locked into the senior tranche, so the facility filled from the ones beneath it.
           hint={
@@ -177,9 +195,12 @@ function KPI({
   accent,
   color,
   hint,
+  title,
 }: {
   label: string;
   value: string;
+  /** Native tooltip carrying the untruncated value. Supplementary only, never the sole carrier. */
+  title?: string;
   accent?: boolean;
   color?: string;
   /**
@@ -195,8 +216,9 @@ function KPI({
     <div>
       <Eyebrow>{label}</Eyebrow>
       <div
-        className={`num mt-0.5 text-lg font-semibold ${accent && !color ? "text-gradient" : ""}`}
+        className={`num mt-0.5 truncate text-lg font-semibold ${accent && !color ? "text-gradient" : ""}`}
         style={color ? { color } : undefined}
+        title={title}
       >
         {value}
       </div>

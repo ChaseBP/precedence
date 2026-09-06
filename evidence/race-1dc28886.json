@@ -1,0 +1,70 @@
+{
+  "kind": "priority-race",
+  "collateralId": "0x1dc28886d1574dae6fb0027f2d4b023530499513163c3b049566a910334361b7",
+  "capturedAtZ": "2026-09-06T13:04:51.124Z",
+  "attestation": {
+    "waitMinutes": 0.51,
+    "attestedHeight": 11647390,
+    "note": "Attestation is the slow stage and takes MINUTES. The 'one block' claim covers only verification plus the state transition, which happened inside the Creditcoin transaction above."
+  },
+  "sourceChain": {
+    "name": "Ethereum Sepolia",
+    "chainId": 11155111,
+    "chainKey": 1,
+    "vault": "0x000d8d9C5Ab3b3d98A574eCEB34136e885C16656",
+    "vaultExplorerUrl": "https://sepolia.etherscan.io/address/0x000d8d9C5Ab3b3d98A574eCEB34136e885C16656",
+    "locks": [
+      {
+        "financier": "0x537fC71385e01619a23e5C60Cf9A729A11dDCaBD",
+        "tranche": "SENIOR",
+        "amount": "$4,000.00",
+        "txHash": "0x67d4cafe17fb48d448156f3c59c913007c305ca0b3ae3ac123dc0ef53db35cd3",
+        "blockNumber": 11647382,
+        "txIndex": 139,
+        "seq": 0,
+        "explorerUrl": "https://sepolia.etherscan.io/tx/0x67d4cafe17fb48d448156f3c59c913007c305ca0b3ae3ac123dc0ef53db35cd3"
+      }
+    ]
+  },
+  "creditcoin": {
+    "chainId": 102031,
+    "gate": "0x1E6713DdF4a2D90fb871EF545941b3f190099153",
+    "gateExplorerUrl": "https://creditcoin-testnet.blockscout.com/address/0x1E6713DdF4a2D90fb871EF545941b3f190099153",
+    "settleTxHash": "0xe6b493c5df3e7814644c9e7d00fa0520a535d2f8ad4f000d58ed66b69b9c548a",
+    "settleExplorerUrl": "https://creditcoin-testnet.blockscout.com/tx/0xe6b493c5df3e7814644c9e7d00fa0520a535d2f8ad4f000d58ed66b69b9c548a",
+    "blockNumber": 5440665,
+    "gasUsed": "757624",
+    "provenPositions": [
+      {
+        "height": 11647382,
+        "txIndex": 139,
+        "financier": "0x537fC71385e01619a23e5C60Cf9A729A11dDCaBD"
+      }
+    ]
+  },
+  "crossCheck": {
+    "agrees": true,
+    "rows": [
+      {
+        "txHash": "0x67d4cafe17fb48d448156f3c59c913007c305ca0b3ae3ac123dc0ef53db35cd3",
+        "precompileTxIndex": 139,
+        "explorerTxIndex": 139,
+        "agrees": true
+      }
+    ],
+    "note": "calculateTxIndex derives the position from the Merkle path; the explorer reports it independently. They agree."
+  },
+  "settlement": {
+    "awards": [
+      {
+        "financier": "0x537fC71385e01619a23e5C60Cf9A729A11dDCaBD",
+        "tranche": "SENIOR",
+        "rank": 1,
+        "amount": "$4,000.00",
+        "height": 11647382,
+        "txIndex": 139
+      }
+    ],
+    "refunds": []
+  }
+}
