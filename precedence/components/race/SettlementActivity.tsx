@@ -150,6 +150,15 @@ export function SettlementActivity({
    */
   const onChangedRef = useRef(onChanged);
   const onStatusRef = useRef(onStatus);
+  /**
+   * Set once the settlement can no longer change, so the interval stops asking.
+   *
+   * @remarks `PROVEN` is derived from a settlement existing, and a settlement never un-exists.
+   * Without this the panel kept polling for the life of the tab: 180 requests an hour, five chain
+   * reads each, to redisplay five numbers that were fixed hours earlier. A judge who opens a
+   * settled settlement and walks away should cost nothing.
+   */
+  const doneRef = useRef(false);
   useEffect(() => {
     onChangedRef.current = onChanged;
     onStatusRef.current = onStatus;
@@ -175,6 +184,7 @@ export function SettlementActivity({
       setOriginGap((g) => Math.max(g, r.attestation.blocksToGo));
       if (lastStage.current !== null && lastStage.current !== r.stage) onChangedRef.current?.();
       lastStage.current = r.stage;
+      if (r.stage === "PROVEN") doneRef.current = true;
       setS(r);
       onStatusRef.current?.(r);
       setCheckedAt(performance.timeOrigin + performance.now());
@@ -192,10 +202,25 @@ export function SettlementActivity({
     });
     // 20s. The frontier advances no faster than once a minute, so a tighter interval would be
     // requests spent to show the same number, and a looser one makes the panel feel dead.
-    const t = setInterval(() => void poll(), 20_000);
+    //
+    // Two conditions skip a tick rather than shortening the interval. `doneRef` is permanent: a
+    // proven settlement cannot change again. `document.hidden` is not — a backgrounded tab is the
+    // normal way to wait out an eight-minute attestation, and polling one nobody is looking at is
+    // the purest waste on this page. The `visibilitychange` listener catches up on return, so the
+    // panel is current by the time it is seen rather than up to twenty seconds stale.
+    const tick = () => {
+      if (doneRef.current || document.hidden) return;
+      void poll();
+    };
+    const t = setInterval(tick, 20_000);
+    const onVisible = () => {
+      if (!document.hidden && !doneRef.current) void poll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
       clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [poll]);
 

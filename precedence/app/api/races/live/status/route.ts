@@ -48,6 +48,46 @@ export async function GET(req: Request) {
     );
   }
 
+  // A proven settlement is finished, and asking the chains about it again cannot change any of
+  // these numbers. The client stops polling once it sees PROVEN, but this is the backstop that
+  // makes an older tab, a reload, or anything else hitting the endpoint cost nothing: without it,
+  // a settled race answered five RPC reads per request forever.
+  //
+  // Served from the stored record, which for a proven race is what the proof itself wrote — so
+  // this answers even where no vault is deployed, before the reader is asked for.
+  if (race.settlement) {
+    const heights = race.locks.map((l) => l.lockBlockNumber);
+    const target = heights.length ? Math.max(...heights) : race.onchain.openBlockNumber;
+    return Response.json({
+      ok: true,
+      id: race.id,
+      stage: "PROVEN" satisfies SettlementStage,
+      vault: {
+        raceOpen: false,
+        raceNonce: race.onchain.raceNonce,
+        lockCount: race.locks.length,
+        totalLockedUsd: race.locks.reduce((s, l) => s + (l.refunded ? 0 : l.amountUsd), 0),
+        facilitySizeUsd: race.onchain.facilitySizeUsd,
+        raceDeadline: race.onchain.raceDeadline,
+        secondsLeft: 0,
+        obligor: race.onchain.obligor,
+        closableByAnyone: false,
+      },
+      attestation: {
+        chainKey: Number(SEPOLIA_CHAIN_KEY),
+        // The frontier has moved on since; what is true and fixed is that the target was attested.
+        attestedHeight: target,
+        checkpointHeight: target,
+        sepoliaHead: target,
+        lagBlocks: 0,
+        targetHeight: target,
+        targetAttested: true,
+        blocksToGo: 0,
+      },
+      proverCommand: `cd worker && bun run src/cli.ts prove ${race.onchain.collateralId} --from-vault`,
+    });
+  }
+
   const got = getSepoliaReader();
   if (!got.reader) return Response.json({ ok: false, error: got.why }, { status: 502 });
   const reader = got.reader;
@@ -77,15 +117,13 @@ export async function GET(req: Request) {
   const nowS = Math.floor(Date.now() / 1000);
   const secondsLeft = Math.max(0, vault.raceDeadline - nowS);
 
-  const stage: SettlementStage = race.settlement
-    ? "PROVEN"
-    : vault.raceOpen
-      ? secondsLeft > 0
-        ? "WINDOW_OPEN"
-        : "AWAITING_CLOSE"
-      : targetAttested
-        ? "PROOF_READY"
-        : "AWAITING_ATTESTATION";
+  const stage: SettlementStage = vault.raceOpen
+    ? secondsLeft > 0
+      ? "WINDOW_OPEN"
+      : "AWAITING_CLOSE"
+    : targetAttested
+      ? "PROOF_READY"
+      : "AWAITING_ATTESTATION";
 
   return Response.json({
     ok: true,
