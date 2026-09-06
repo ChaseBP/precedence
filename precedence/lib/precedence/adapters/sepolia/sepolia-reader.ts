@@ -245,7 +245,19 @@ export class SepoliaReader {
  * deployed" with the deploy command instead of a stack trace. A missing deployment is an ordinary
  * state of this app, not a fault.
  */
+/**
+ * Cached on `globalThis`, exactly as `getDeps()` is.
+ *
+ * @remarks `loadDeployedAddresses()` is two `existsSync` plus two `readFileSync` plus two
+ * `JSON.parse`, synchronously, and this ran on every request. The status endpoint is polled every
+ * twenty seconds per open settlement, so several tabs meant a steady drip of blocking disk reads
+ * on the request path to re-derive an address that is fixed for the life of the process — and a
+ * fresh viem client each time, discarding any connection reuse.
+ */
+const g = globalThis as unknown as { __precedenceSepoliaReader?: SepoliaReader };
+
 export function getSepoliaReader(): { reader: SepoliaReader } | { reader: null; why: string } {
+  if (g.__precedenceSepoliaReader) return { reader: g.__precedenceSepoliaReader };
   const vault = loadDeployedAddresses().sepolia?.PriorityVault;
   if (!vault) {
     return {
@@ -255,5 +267,6 @@ export function getSepoliaReader(): { reader: SepoliaReader } | { reader: null; 
         "is nothing to verify a lock against. Run `cd contracts && make deploy-sepolia`.",
     };
   }
-  return { reader: new SepoliaReader(vault, getConfig().sepoliaRpc) };
+  g.__precedenceSepoliaReader = new SepoliaReader(vault, getConfig().sepoliaRpc);
+  return { reader: g.__precedenceSepoliaReader };
 }

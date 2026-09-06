@@ -50,7 +50,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }
 
       const r = await getRace(id);
-      if (r && isTerminal(r.status)) {
+      // `!r` matters as much as the terminal check. A race can vanish under an open tab —
+      // `POST /api/admin/reset` wipes the store — and without this the route fell through to
+      // `subscribeEvents` and held a connection and a subscription open forever for an id that
+      // no longer exists. The page shows "Settlement Not Found" but never unmounts, so the
+      // client's own cleanup never runs either.
+      if (!r || isTerminal(r.status)) {
         sendDone();
         try {
           controller.close();
