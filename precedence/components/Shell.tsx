@@ -10,6 +10,7 @@ import { api } from "@/lib/client/api";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ConnectWallet } from "@/components/ConnectWallet";
+import { useAdapterTruth, type AdapterTruth } from "@/lib/client/use-adapter-truth";
 
 /**
  * @remarks "Borrow" earns a top-level slot because without it the borrower half of the product was
@@ -44,56 +45,6 @@ function Wordmark({ size = "text-lg" }: { size?: string }) {
   );
 }
 
-interface AdapterTruth {
-  sepoliaLive: boolean;
-  creditcoinLive: boolean;
-  agentRuntime: boolean;
-  chip: string;
-}
-
-/**
- * Read each adapter's own `isLive()` and report it verbatim.
- *
- * @remarks This previously compared `c.sepolia === "viem"`, but `/api/config` returns an OBJECT
- * (`{requested, live, note}`), so both comparisons were permanently false and the chip was a
- * constant that could never report live mode. Two failures in one: the mode disclosure the project
- * relies on did not function, and it would not have started working when the chain went live.
- *
- * Returning `null` while loading matters — rendering a default would mean guessing, and the one
- * thing this hook must never do is guess in the reassuring direction.
- */
-function useAdapterTruth(): AdapterTruth | null {
-  const [truth, setTruth] = useState<AdapterTruth | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/config", { cache: "no-store" });
-        const c = await res.json();
-        const sepoliaLive = Boolean(c?.sepolia?.live);
-        const creditcoinLive = Boolean(c?.creditcoin?.live);
-        const agentRuntime = c?.runtime === "agent";
-        if (cancelled) return;
-        setTruth({
-          sepoliaLive,
-          creditcoinLive,
-          agentRuntime,
-          chip: [
-            sepoliaLive ? "Sepolia live" : "Sepolia simulated",
-            creditcoinLive ? "Creditcoin CC3 live" : "Creditcoin CC3 simulated",
-            agentRuntime ? "Financier AI" : "Policy Engine",
-          ].join(" · "),
-        });
-      } catch {
-        if (!cancelled) setTruth(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return truth;
-}
 
 /**
  * The header's chain status.

@@ -26,6 +26,7 @@ import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { SETTLEMENT, EXPLORER, DEPLOYED } from "@/lib/landing-record";
+import { useAdapterTruth, chainStatusSentence } from "@/lib/client/use-adapter-truth";
 
 const short = (h: string) => `${h.slice(0, 10)}…${h.slice(-6)}`;
 
@@ -314,7 +315,7 @@ function HowItWorks() {
   );
 }
 
-function Deployed() {
+function Deployed({ truth }: { truth: ReturnType<typeof useAdapterTruth> }) {
   const Row = ({ name, address, href }: { name: string; address: string; href: string }) => (
     <div className="flex items-baseline justify-between gap-3 border-t py-2" style={{ borderColor: "var(--border)" }}>
       <dt className="text-[0.8125rem]" style={{ color: "var(--text-muted)" }}>
@@ -379,8 +380,11 @@ function Deployed() {
               </div>
             ))}
           </dl>
+          {/* Derived, never typed. This sentence was authored as prose and became false the
+              moment Sepolia went live — a untrue statement in the credibility block of the front
+              page. It now reads the adapters. */}
           <p className="mt-3 text-[0.75rem] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            Testnet. Not audited. Sepolia is simulated in this deployment; Creditcoin CC3 is live.
+            Not audited. {chainStatusSentence(truth)}
           </p>
         </div>
       </div>
@@ -412,6 +416,7 @@ function Limits() {
 
 export default function Landing() {
   const reduced = useReducedMotion();
+  const truth = useAdapterTruth();
   const rise = (delay: number) =>
     reduced
       ? {}
@@ -526,7 +531,7 @@ export default function Landing() {
       <Band ground="bg-0" rule="hair" pt="4rem" pb="4rem">
         <Heading title="What is deployed" deck="Live contracts on two chains, and the Attestcoin precompiles they depend on." />
         <div className="mt-8">
-          <Deployed />
+          <Deployed truth={truth} />
         </div>
       </Band>
 
@@ -541,7 +546,7 @@ export default function Landing() {
       </Band>
 
       <Band as="footer" ground="bg-1" rule="strong" pt="3rem" pb="3rem">
-        <div className="grid gap-8 md:grid-cols-[1fr_auto]">
+        <div className="grid gap-8">
           <div className="min-w-0">
             <div className="flex items-center gap-2.5">
               <Logo size={20} />
@@ -575,7 +580,7 @@ export default function Landing() {
             </dl>
           </div>
 
-          <nav className="flex flex-col gap-1 text-[0.8125rem] md:text-right">
+          <nav className="-mx-2 flex flex-wrap items-center gap-x-1 gap-y-0 text-[0.8125rem]">
             {[
               { href: "/collateral", label: "Facilities" },
               { href: "/registry/new", label: "Register collateral" },
@@ -586,7 +591,7 @@ export default function Landing() {
               <Link
                 key={l.href}
                 href={l.href}
-                className="inline-flex min-h-[40px] items-center underline-offset-4 hover:underline md:justify-end"
+                className="inline-flex min-h-[40px] items-center rounded-lg px-2 underline-offset-4 hover:underline"
                 style={{ color: "var(--text-muted)" }}
               >
                 {l.label}
@@ -597,8 +602,7 @@ export default function Landing() {
 
         {/* Promoted from 0.66rem. This is the honesty statement, not fine print. */}
         <p className="mt-8 max-w-[70ch] text-[0.75rem] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-          Testnet only. Sepolia data is simulated in this deployment; Creditcoin CC3 is live. pUSD
-          is test scrip, not a stablecoin.
+          {chainStatusSentence(truth)} pUSD is test scrip, not a stablecoin.
         </p>
       </Band>
     </main>

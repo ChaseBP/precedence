@@ -12,7 +12,15 @@ export async function GET() {
   const c = getConfig();
   const d = getDeps();
   return Response.json({
-    mode: c.mode,
+    // What is actually live, not the master default. This returned `c.mode` — the env fallback —
+    // so it read "mock" while both adapters reported themselves live.
+    mode:
+      d.sepolia.isLive() && d.creditcoin.isLive()
+        ? "chain"
+        : d.sepolia.isLive() || d.creditcoin.isLive()
+          ? "mixed"
+          : "mock",
+    requestedMode: c.mode,
     sepolia: { requested: c.sepoliaMode, live: d.sepolia.isLive(), note: d.modeNotes.sepolia },
     creditcoin: { requested: c.creditcoinMode, live: d.creditcoin.isLive(), note: d.modeNotes.creditcoin },
     runtime: c.runtimeMode,
