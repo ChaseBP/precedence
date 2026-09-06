@@ -177,6 +177,13 @@ export default function RegisterCollateralPage() {
   // Server-side problems always show — they came from an actual attempt. Local ones wait until
   // the borrower has entered a cap or pressed the button.
   const showProblems = [...(attempted || money.total > 0 ? localProblems : []), ...problems];
+  // Which inputs each rule implicates, so the banner is a summary rather than the only signal.
+  const capsOverAdvance = Number.isFinite(money.advance) && money.total > money.advance;
+  const ratesOutOfOrder = (() => {
+    const [a, b, c] = [n(f.seniorRatePct), n(f.juniorRatePct), n(f.subordinateRatePct)];
+    return [a, b, c].every(Number.isFinite) && !(a <= b && b <= c);
+  })();
+  const flagged = (attempted || money.total > 0) && { caps: capsOverAdvance, rates: ratesOutOfOrder };
   /** Split the advance 60/30/10 — a conventional starting point, not a recommendation. */
   function suggestCaps() {
     if (!Number.isFinite(money.advance) || money.advance <= 0) return;
@@ -214,6 +221,27 @@ export default function RegisterCollateralPage() {
         faceValueUsd: prev.faceValueUsd || (p.faceValueUsd ? String(p.faceValueUsd) : ""),
         termDays: p.termDays ? String(p.termDays) : prev.termDays,
       }));
+
+      // Carry the read through to the terms. Caps are what the borrower actually has to decide,
+      // and leaving them blank after extracting a face value stops the pre-fill one step short of
+      // being useful. Suggested, not imposed: only when all three are still empty, and every
+      // figure stays editable.
+      setF((prev) => {
+        const face = Number(prev.faceValueUsd);
+        const margin = Number(prev.haircutPct);
+        const advance =
+          Number.isFinite(face) && Number.isFinite(margin) ? Math.round(face * (1 - margin / 100)) : Number.NaN;
+        const untouched = !prev.seniorCapUsd && !prev.juniorCapUsd && !prev.subordinateCapUsd;
+        if (!untouched || !Number.isFinite(advance) || advance <= 0) return prev;
+        const senior = Math.round(advance * 0.6);
+        const junior = Math.round(advance * 0.3);
+        return {
+          ...prev,
+          seniorCapUsd: String(senior),
+          juniorCapUsd: String(junior),
+          subordinateCapUsd: String(advance - senior - junior),
+        };
+      });
     } catch (e) {
       setReadNote(`Could not read the document: ${(e as Error).message}`);
     } finally {
@@ -556,10 +584,12 @@ export default function RegisterCollateralPage() {
                 </div>
                 <div className="mt-2 flex flex-col gap-2">
                   <Field label="Max amount (USD)">
-                    <Input field={capKey} value={f[capKey]} onChange={(v) => set(capKey, v)} numeric placeholder="0" />
+                    <Input field={capKey} value={f[capKey]} onChange={(v) => set(capKey, v)} numeric placeholder="0"
+                      invalid={!!flagged && flagged.caps} />
                   </Field>
                   <Field label="Interest rate (%)">
-                    <Input field={rateKey} value={f[rateKey]} onChange={(v) => set(rateKey, v)} numeric />
+                    <Input field={rateKey} value={f[rateKey]} onChange={(v) => set(rateKey, v)} numeric
+                      invalid={!!flagged && flagged.rates} />
                   </Field>
                 </div>
               </div>
@@ -683,11 +713,13 @@ function Field({ label, hint, full, children }: { label: string; hint?: string; 
     </label>
   );
 }
-function Input({ value, onChange, placeholder, numeric, field }: {
+function Input({ value, onChange, placeholder, numeric, field, invalid }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   numeric?: boolean;
+  /** Tint the border when this input is one of the ones a validation rule is complaining about. */
+  invalid?: boolean;
   /** Stable hook for browser tests. The tranche rules mirror on-chain invariants, so driving
    *  them reliably from outside the app is worth one attribute. */
   field?: string;
@@ -702,7 +734,12 @@ function Input({ value, onChange, placeholder, numeric, field }: {
       // Placeholders were rendering at full body contrast, so an empty field looked filled in —
       // a borrower could submit believing the example values were theirs.
       className={`w-full rounded-lg px-2.5 py-1.5 text-[12px] outline-none placeholder:italic placeholder:opacity-55 ${numeric ? "mono" : ""}`}
-      style={{ background: "var(--bg-2)", border: "1px solid var(--border)", color: "var(--text)" }}
+      aria-invalid={invalid || undefined}
+      style={{
+        background: "var(--bg-2)",
+        border: `1px solid ${invalid ? "var(--danger)" : "var(--border)"}`,
+        color: "var(--text)",
+      }}
     />
   );
 }
