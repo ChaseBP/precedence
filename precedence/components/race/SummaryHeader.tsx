@@ -25,6 +25,9 @@ export function SummaryHeader({
   const currentRace = race;
   if (!currentRace) return null;
 
+  // Set only after the server fetched a receipt for the opening transaction. See `live-race.ts`.
+  const live = !!currentRace.onchain;
+
   const totalLocked =
     currentRace.bids.reduce((s, b) => s + b.committedUsd, 0) || currentRace.requestedTotalUsd;
   // A name with a zero amount is not a senior holder. The refinance step could set the name
@@ -54,13 +57,46 @@ export function SummaryHeader({
   return (
     <div className="glass rounded-2xl p-4 sm:p-5">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" style={{ color: "var(--text-faint)" }}>
-        <span className="mono">Priority Race</span>
+        <span className="mono">Priority settlement</span>
         <span>/</span>
         <span className="mono" style={{ color: "var(--text-muted)" }}>
           {currentRace.collateral.symbol}
         </span>
         <span>/</span>
         <span className="mono">{currentRace.id}</span>
+        {/* Provenance in the breadcrumb, where it is read before anything below it. A viewer
+            asking "is this real" was previously answered only by scattered `sample` markers deep
+            in the proof rail, which is the wrong place and the wrong tone: the answer belongs at
+            the top, and when it is yes it should say so. */}
+        {live ? (
+          <>
+            <span>/</span>
+            <span
+              className="mono rounded px-1.5 py-0.5 text-[9.5px] uppercase tracking-wider"
+              style={{
+                color: "var(--proof-verified)",
+                border: "1px solid color-mix(in srgb, var(--proof-verified) 40%, transparent)",
+              }}
+              title={`Race ${currentRace.onchain?.raceNonce} on the vault at ${currentRace.onchain?.vaultAddress}`}
+            >
+              live on sepolia
+            </span>
+          </>
+        ) : (
+          <>
+            <span>/</span>
+            <span
+              className="mono rounded px-1.5 py-0.5 text-[9.5px] uppercase tracking-wider"
+              style={{
+                color: "var(--warn)",
+                border: "1px solid color-mix(in srgb, var(--warn) 35%, transparent)",
+              }}
+              title="A scripted walkthrough of the protocol. Its hashes are simulated, so they do not open on a block explorer."
+            >
+              scripted walkthrough
+            </span>
+          </>
+        )}
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">

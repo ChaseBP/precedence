@@ -8,7 +8,8 @@ import { Badge, Card, Eyebrow } from "@/components/ui";
 // explorer.cc3-testnet.creditcoin.network does not resolve (HTTP 000, checked 2026-09-02).
 // A judge clicking a verification link that dies is the single most damaging thing this app
 // could do, so the fallback is the host every other part of the repo already uses.
-const FALLBACK_EXPLORER = "https://creditcoin-testnet.blockscout.com";
+const CREDITCOIN_EXPLORER = "https://creditcoin-testnet.blockscout.com";
+const SEPOLIA_EXPLORER = "https://sepolia.etherscan.io";
 
 function ProofStepRow({
   label,
@@ -111,25 +112,29 @@ function ProofStepRow({
  *  2. PROOF AVAILABLE (Merkle + 1 shared continuity proof generated)
  *  3. VERIFIED at 0x0FD2 on Creditcoin CC3 (one block post-attestation)
  */
-export function ProofRail({
-  race,
-  creditcoinLive = false,
-}: {
-  race: PriorityRace;
-  creditcoinLive?: boolean;
-  identityRegistry?: Hex | "";
-}) {
+export function ProofRail({ race }: { race: PriorityRace; identityRegistry?: Hex | "" }) {
   const p = race.proofRecord;
+  /**
+   * Whether this race's hashes point at transactions that exist.
+   *
+   * @remarks `race.onchain` is set only after the server fetched a receipt for the opening
+   * transaction, so its presence is the one reliable answer — and it is a property of the RACE,
+   * not of the app's configuration.
+   *
+   * This used to read `simulated || !creditcoinLive`, which conflated two unrelated things and got
+   * the common case wrong in the worst direction: with the Creditcoin adapter reading in mock
+   * mode, a genuine Sepolia lock — signed from the lender's own wallet, confirmed, with a real
+   * hash — was labelled `sample` and its explorer link withheld. The rule is not "is Creditcoin
+   * live", it is "did this hash come from a chain".
+   */
+  const live = !!race.onchain;
   // Settled once the priority stack exists — everything downstream of PRIORITY_SETTLED.
-  // Keyed off the RACE, not adapter liveness. Creditcoin reads can be live while the scripted
-  // race that produced these hashes is simulated, and it was the latter that mattered.
-  const simulated = race.simulated === true;
   const isSettled = !!race.settlement;
   const hasLocks = race.locks.length > 0;
 
   const firstLock = race.locks[0];
   const explorerUrl = p?.creditcoinTxHash
-    ? `${FALLBACK_EXPLORER}/tx/${p.creditcoinTxHash}`
+    ? `${CREDITCOIN_EXPLORER}/tx/${p.creditcoinTxHash}`
     : undefined;
 
   return (
@@ -147,10 +152,17 @@ export function ProofRail({
       <div className="divide-y" style={{ borderColor: "var(--border)" }}>
         <ProofStepRow
           label="1. Source Locks (Sepolia)"
-          detail={firstLock ? `${race.locks.length} locks anchored · Block #${firstLock.lockBlockNumber}` : "PriorityVault.sol · pending"}
-          href={firstLock?.sepoliaTxHash ? `https://sepolia.etherscan.io/tx/${firstLock.sepoliaTxHash}` : undefined}
+          // The position, not just the height. `(height, txIndex)` is the priority root, and
+          // naming only the block hides the half that resolves a same-block tie.
+          detail={
+            firstLock
+              ? `${race.locks.length} lock${race.locks.length === 1 ? "" : "s"} anchored · block ` +
+                `${firstLock.lockBlockNumber.toLocaleString()} · txIndex ${firstLock.lockTxIndex}`
+              : "PriorityVault.sol · pending"
+          }
+          href={firstLock?.sepoliaTxHash ? `${SEPOLIA_EXPLORER}/tx/${firstLock.sepoliaTxHash}` : undefined}
           status={hasLocks ? "verified" : "waiting"}
-          mock={simulated || !creditcoinLive}
+          mock={!live}
         />
         <ProofStepRow
           label="2. Attestation Proof (0x0FD3)"
@@ -158,14 +170,14 @@ export function ProofRail({
           // sawtooths because attestation advances in batches, so only a range is truthful.
           detail={hasLocks ? "6.5-9.3m measured attestation window · batch proof ready" : "waitUntilHeightAttested · waiting"}
           status={isSettled ? "verified" : hasLocks ? "available" : "waiting"}
-          mock={simulated || !creditcoinLive}
+          mock={!live}
         />
         <ProofStepRow
           label="3. Precompile Verify (0x0FD2)"
           detail={isSettled ? `batch verifyAndEmit() TRUE · settled in 1 CC3 block` : "AttestationGate · pending"}
           href={explorerUrl}
           status={isSettled ? "verified" : "waiting"}
-          mock={simulated || !creditcoinLive}
+          mock={!live}
         />
       </div>
     </Card>
