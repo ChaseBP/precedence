@@ -48,6 +48,36 @@ const TERMINAL_PHASES: LifecyclePhase[] = [
 ];
 
 
+/** One poll of `/api/races/live/status`. Mirrors the route's own return shape. */
+export interface SettlementStatus {
+  ok: boolean;
+  error?: string;
+  id: string;
+  stage: "WINDOW_OPEN" | "AWAITING_CLOSE" | "AWAITING_ATTESTATION" | "PROOF_READY" | "PROVEN";
+  vault: {
+    raceOpen: boolean;
+    raceNonce: number;
+    lockCount: number;
+    totalLockedUsd: number;
+    facilitySizeUsd: number;
+    raceDeadline: number;
+    secondsLeft: number;
+    obligor: Hex;
+    closableByAnyone: boolean;
+  };
+  attestation: {
+    chainKey: number;
+    attestedHeight: number;
+    checkpointHeight: number;
+    sepoliaHead: number;
+    lagBlocks: number;
+    targetHeight: number;
+    targetAttested: boolean;
+    blocksToGo: number;
+  };
+  proverCommand: string;
+}
+
 export interface PortfolioLending {
   collateralId: string;
   title: string;
@@ -154,6 +184,16 @@ export const api = {
       "/api/races/live/locks",
       body,
     ),
+
+  /**
+   * What a live settlement is waiting for, read from both chains.
+   *
+   * @remarks Polled, and deliberately a server call rather than three browser reads: a viewer with
+   * no wallet still gets the answer, and the vault state and the attestation frontier arrive
+   * together so the panel cannot show one of them stale beside the other.
+   */
+  settlementStatus: (id: string) =>
+    jget<SettlementStatus>(`/api/races/live/status?id=${encodeURIComponent(id)}`),
 
   // Attestations & proofs
   attestations: () => jget<{ ok: boolean; attestations: Attestation[] }>("/api/attestations"),

@@ -463,6 +463,34 @@ export async function openRaceOnVault(
 }
 
 /**
+ * Close the financing window on the vault.
+ *
+ * @remarks Nothing closes a race on its own, and the absence of this in the UI is what made the
+ * live path dead-end. The deadline does not close it — it only makes the vault start rejecting
+ * locks — and filling the facility does not close it either. `closeRace` is a transaction someone
+ * has to send, and until it lands the race stays open, no allocation is final and no proof can be
+ * built. A borrower watching a window they set for five minutes elapse with nothing happening was
+ * looking at a correct contract and a missing button.
+ *
+ * The vault's own rule: the obligor may close at any time; anyone at all may close once the
+ * deadline has passed. Both are honoured here rather than restricted to the obligor, because the
+ * second half is the property that makes settlement not depend on the borrower staying online.
+ */
+export async function closeRaceOnVault(vault: Address, collateralId: Hex): Promise<Hex> {
+  await ensureChain(SEPOLIA);
+  const hash = await writeContract(wagmiConfig, {
+    chainId: SEPOLIA,
+    address: vault,
+    abi: PriorityVault_ABI,
+    functionName: "closeRace",
+    args: [collateralId],
+  });
+  const r = await waitForTransactionReceipt(wagmiConfig, { chainId: SEPOLIA, hash });
+  if (r.status !== "success") throw new Error(`closeRace reverted: ${hash}`);
+  return hash;
+}
+
+/**
  * Mint test dollars to the connected wallet.
  *
  * @remarks pUSD's faucet is permissionless on purpose — a demo where the deployer must hand out
