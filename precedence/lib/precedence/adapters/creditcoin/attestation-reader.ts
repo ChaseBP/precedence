@@ -19,7 +19,7 @@
 import { createPublicClient, http, type PublicClient } from "viem";
 import type { Hex } from "../../types";
 import { CREDITCOIN_RPC_DEFAULT, getConfig, loadDeployedAddresses } from "../../config";
-import { CollateralRegistry_ABI } from "../generated/abis";
+import { CollateralRegistry_ABI, PriorityEngine_ABI } from "../generated/abis";
 
 /** Attestcoin's chainKey for Ethereum Sepolia. Docs-confirmed; mainnet is 3. */
 export const SEPOLIA_CHAIN_KEY = 1n;
@@ -187,4 +187,37 @@ export async function creditcoinReadiness(
     };
   }
   return { ok: true };
+}
+
+/**
+ * Whether Creditcoin has already settled this race.
+ *
+ * @remarks Asked because the app's own record is not the authority. A store reset, a fresh clone
+ * or a memory-only run leaves no local settlement while the chain still holds one, and the prover
+ * then builds a perfectly valid proof — its own view-only `verify()` returns true — and dies at
+ * `estimateGas` with `execution reverted (unknown custom error)`, having spent nothing but
+ * explaining nothing either.
+ *
+ * A non-empty priority stack is the engine's own answer to "is this settled", so it is the thing
+ * to ask.
+ */
+export async function alreadySettledOnCreditcoin(collateralId: Hex): Promise<boolean> {
+  const engine = loadDeployedAddresses().creditcoin?.PriorityEngine;
+  if (!engine) return false;
+  const client = createPublicClient({
+    transport: http(getConfig().creditcoinRpc || CREDITCOIN_RPC_DEFAULT),
+  });
+  try {
+    const stack = (await client.readContract({
+      address: engine,
+      abi: PriorityEngine_ABI,
+      functionName: "priorityStack",
+      args: [collateralId],
+    })) as unknown[];
+    return stack.length > 0;
+  } catch {
+    // A read failure is not evidence of a settlement, and refusing to prove on one would be worse
+    // than letting the prover try.
+    return false;
+  }
 }

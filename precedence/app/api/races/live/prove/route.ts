@@ -1,5 +1,6 @@
 import {
   AttestationReader,
+  alreadySettledOnCreditcoin,
   creditcoinReadiness,
 } from "@/lib/precedence/adapters/creditcoin/attestation-reader";
 import {
@@ -74,6 +75,20 @@ export async function POST(req: Request) {
   // separate registration on a separate chain.
   const ready = await creditcoinReadiness(race.onchain.collateralId);
   if (!ready.ok) return Response.json({ ok: false, error: ready.why }, { status: 409 });
+
+  // And whether the chain has already done this. `race.settlement` above is only our record of it,
+  // which a store reset or a fresh clone does not have.
+  if (await alreadySettledOnCreditcoin(race.onchain.collateralId)) {
+    return Response.json(
+      {
+        ok: false,
+        error:
+          "Creditcoin has already settled this race — its priority stack is populated. This app " +
+          "has no record of it, which happens after a store reset; the proof on chain stands.",
+      },
+      { status: 409 },
+    );
+  }
 
   try {
     const job = startProverJob(race.id, race.onchain.collateralId);
