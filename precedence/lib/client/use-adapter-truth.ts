@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { fetchAppConfig } from "./app-config";
 
 export interface AdapterTruth {
   sepoliaLive: boolean;
@@ -29,8 +30,7 @@ export function useAdapterTruth(): AdapterTruth | null {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/config", { cache: "no-store" });
-        const c = await res.json();
+        const c = await fetchAppConfig();
         const sepoliaLive = Boolean(c?.sepolia?.live);
         const creditcoinLive = Boolean(c?.creditcoin?.live);
         const agentRuntime = c?.runtime === "agent";

@@ -42,6 +42,7 @@ import { registerCollateralOnChain, type RegisterStage } from "@/lib/client/regi
 import { ConnectPrompt } from "@/components/ConnectPrompt";
 import { SUGGESTED_RATES } from "@/lib/precedence/domain/collateral";
 import type { CollateralAssetType, RegistrationProposal } from "@/lib/precedence/types";
+import { fetchAppConfig } from "@/lib/client/app-config";
 const ASSET_TYPES: { value: CollateralAssetType; label: string; hint: string }[] = [
   { value: "warehouse-receipt", label: "Warehouse receipt", hint: "Goods in a bonded store" },
   { value: "trade-receivable", label: "Trade receivable", hint: "An invoice owed to you" },
@@ -148,7 +149,7 @@ export default function RegisterCollateralPage() {
     let cancelled = false;
     (async () => {
       try {
-        const j = await (await fetch("/api/config", { cache: "no-store" })).json();
+        const j = await fetchAppConfig();
         if (!cancelled) {
           setAddresses(j?.addresses ?? {});
           if (j?.explorers?.creditcoin) setCcExplorer(j.explorers.creditcoin);

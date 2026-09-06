@@ -44,6 +44,7 @@ import {
 } from "@/lib/client/vault";
 import { usd } from "@/lib/client/format";
 import type { CollateralAsset } from "@/lib/precedence/types";
+import { fetchAppConfig } from "@/lib/client/app-config";
 
 const TRANCHE_NAMES = ["SENIOR", "JUNIOR", "SUBORDINATE"] as const;
 
@@ -74,7 +75,7 @@ export function ServiceFacility({ collateral }: { collateral: CollateralAsset })
     let cancelled = false;
     (async () => {
       try {
-        const j = (await (await fetch("/api/config", { cache: "no-store" })).json()) as ConfigShape;
+        const j = (await fetchAppConfig()) as ConfigShape;
         if (!cancelled) setCfg(j);
       } catch {
         if (!cancelled) setCfg({});

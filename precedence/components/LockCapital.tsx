@@ -43,6 +43,7 @@ import {
 } from "@/lib/client/vault";
 import { usd, pct, trancheColor } from "@/lib/client/format";
 import { api } from "@/lib/client/api";
+import { fetchAppConfig } from "@/lib/client/app-config";
 import type { CollateralAsset, CollateralState, Tranche } from "@/lib/precedence/types";
 
 const TRANCHES: { name: Tranche; ordinal: 0 | 1 | 2 }[] = [
@@ -98,8 +99,7 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch("/api/config", { cache: "no-store" });
-        const j = (await r.json()) as ConfigShape;
+        const j = (await fetchAppConfig()) as ConfigShape;
         if (!cancelled) setCfg(j);
       } catch {
         if (!cancelled) setCfg({});
@@ -122,18 +122,40 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
     }
   }, [addrs, collateral.docHash, isRealDocHash]);
 
+  // The countdown is the only reason to poll this fast, so the poll follows the countdown.
+  //
+  // The interval used to run for the life of the mount, gated only on there being an address and a
+  // real document. That is 600 direct `eth_call`s an hour from the browser, and they kept coming
+  // on a facility that had already been repaid — where every early return below renders "this
+  // facility is not taking new capital", but the returns are all beneath the hooks, so the guard
+  // never reached the interval. Measured at 12 requests a minute on a page at rest.
+  //
+  // Once the vault reports the race closed there is no countdown left to keep current, so a slow
+  // heartbeat is enough to notice a NEW race being opened. A hidden tab does neither.
+  const raceRunning = race?.raceOpen === true;
+  const pollMs = race === null ? 6000 : raceRunning ? 6000 : 60_000;
+
   useEffect(() => {
     if (!addrs || !isRealDocHash) return;
     let cancelled = false;
     void Promise.resolve().then(() => {
       if (!cancelled) void refreshRace();
     });
-    const t = setInterval(() => void refreshRace(), 6000);
+    const tick = () => {
+      if (document.hidden) return;
+      void refreshRace();
+    };
+    const t = setInterval(tick, pollMs);
+    const onVisible = () => {
+      if (!document.hidden) void refreshRace();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
       clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [addrs, isRealDocHash, refreshRace]);
+  }, [addrs, isRealDocHash, refreshRace, pollMs]);
 
   useEffect(() => {
     if (!addrs || !address || !onSepolia) return;

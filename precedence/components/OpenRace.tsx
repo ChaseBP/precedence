@@ -20,6 +20,7 @@ import { AlertTriangle, ArrowRight, ExternalLink, Loader2, Radio } from "lucide-
 import type { Address, Hex } from "viem";
 import type { CollateralAsset } from "@/lib/precedence/types";
 import { api } from "@/lib/client/api";
+import { fetchAppConfig } from "@/lib/client/app-config";
 import { Badge, Card, Eyebrow } from "@/components/ui";
 import { usd } from "@/lib/client/format";
 import {
@@ -76,8 +77,7 @@ export function OpenRace({ collateral }: { collateral: CollateralAsset }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/config", { cache: "no-store" })
-      .then((r) => r.json())
+    fetchAppConfig()
       .then((j: ConfigShape) => { if (!cancelled) setCfg(j); })
       .catch(() => { if (!cancelled) setCfg({}); });
     return () => { cancelled = true; };
