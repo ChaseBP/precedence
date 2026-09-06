@@ -18,17 +18,19 @@
  * Registration signs on **Creditcoin CC3**, not Sepolia, because `registerCollateral` takes
  * `msg.sender` as the obligor of record.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  ExternalLink,
   FileText,
   Info,
   Loader2,
   Sparkles,
+  Upload,
 } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { usd } from "@/lib/client/format";
@@ -114,9 +116,24 @@ export default function RegisterCollateralPage() {
   const [reading, setReading] = useState(false);
   const [proposal, setProposal] = useState<RegistrationProposal | null>(null);
   const [readNote, setReadNote] = useState<string | null>(null);
+  // Which fields the read populated. The pre-fill worked and was invisible: the button sits at
+  // roughly y=730 and the first field it fills is at y=1049, so on a 1000px viewport every value
+  // landed below the fold and the only thing on screen was a confidence percentage. It read as an
+  // assessment tool rather than a pre-fill.
+  const [filled, setFilled] = useState<string[]>([]);
+  const [fileNote, setFileNote] = useState<string | null>(null);
+  const termsRef = useRef<HTMLElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
-  const [done, setDone] = useState<{ id: string; chain: boolean; note: string } | null>(null);
+  const [done, setDone] = useState<{
+    id: string;
+    chain: boolean;
+    note: string;
+    /** Both signatures, so the borrower leaves this page with receipts rather than a sentence. */
+    registerTx?: string;
+    termsTx?: string;
+  } | null>(null);
+  const [ccExplorer, setCcExplorer] = useState("https://creditcoin-testnet.blockscout.com");
   // A fresh form must not scold. Validation appears once the borrower has actually engaged with
   // the terms, or as soon as they try to submit — never before they have typed anything.
   const [attempted, setAttempted] = useState(false);
@@ -132,7 +149,10 @@ export default function RegisterCollateralPage() {
     (async () => {
       try {
         const j = await (await fetch("/api/config", { cache: "no-store" })).json();
-        if (!cancelled) setAddresses(j?.addresses ?? {});
+        if (!cancelled) {
+          setAddresses(j?.addresses ?? {});
+          if (j?.explorers?.creditcoin) setCcExplorer(j.explorers.creditcoin);
+        }
       } catch {
         if (!cancelled) setAddresses({});
       }
@@ -208,6 +228,15 @@ export default function RegisterCollateralPage() {
       }
       const p = r.proposal!;
       setProposal(p);
+      const named: string[] = [];
+      if (p.title) named.push("title");
+      if (p.docIdentifier) named.push("document id");
+      if (p.obligor) named.push("borrower");
+      if (p.custodian) named.push("custodian");
+      if (p.custodianLocation) named.push("location");
+      if (p.faceValueUsd) named.push("asset value");
+      if (p.termDays) named.push("term");
+      setFilled(named);
       // Only fills blanks. Overwriting something the borrower typed would be the model
       // correcting a human, which is exactly backwards here.
       setF((prev) => ({
@@ -246,6 +275,39 @@ export default function RegisterCollateralPage() {
       setReadNote(`Could not read the document: ${(e as Error).message}`);
     } finally {
       setReading(false);
+      // Bring the filled fields into view. Otherwise the one visible consequence of pressing the
+      // button is a percentage, and the values it wrote are a scroll away.
+      requestAnimationFrame(() => {
+        const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+        termsRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      });
+    }
+  }
+
+  /**
+   * Read a dropped or chosen file into the textarea.
+   *
+   * @remarks Text formats only, and it says so rather than accepting a PDF and failing silently.
+   * A PDF or .docx needs a parser and a binary read; pasting the text out of one takes a borrower
+   * five seconds and cannot go subtly wrong.
+   */
+  async function loadFile(file: File | undefined | null) {
+    if (!file) return;
+    setFileNote(null);
+    const textish = /\.(txt|md|csv|json|eml|rtf)$/i.test(file.name) || file.type.startsWith("text/");
+    if (!textish) {
+      setFileNote(`${file.name} is not a text file. Open it and paste the text instead — PDF and Word need a converter this page deliberately does not ship.`);
+      return;
+    }
+    if (file.size > 512_000) {
+      setFileNote(`${file.name} is ${(file.size / 1024).toFixed(0)}KB. Paste the relevant page instead.`);
+      return;
+    }
+    try {
+      setDoc(await file.text());
+      setFileNote(`Loaded ${file.name}. Read it to pre-fill the form.`);
+    } catch {
+      setFileNote(`Could not read ${file.name}.`);
     }
   }
   async function submit() {
@@ -266,6 +328,7 @@ export default function RegisterCollateralPage() {
       // The switch is requested explicitly by this flow. wagmi throws on a chain mismatch rather
       // than switching, so passing chainId alone would only produce the mismatch error.
       let onChain: { docHash: string; txHash: string; registryAddress: string; vaultAddress: string } | undefined;
+      let signed: { registerTx?: string; termsTx?: string } = {};
       const registry = addresses?.creditcoin?.CollateralRegistry;
       const vault = addresses?.sepolia?.PriorityVault;
 
@@ -300,6 +363,7 @@ export default function RegisterCollateralPage() {
           registryAddress: registry,
           vaultAddress: vault,
         };
+        signed = { registerTx: res.registerTx, termsTx: res.termsTx };
       }
       setChainStage(null);
 
@@ -328,7 +392,12 @@ export default function RegisterCollateralPage() {
         setProblems(r.problems ?? [r.error ?? "Registration failed."]);
         return;
       }
-      setDone({ id: r.collateral!.id, chain: Boolean(r.chain), note: r.note ?? "" });
+      setDone({
+        id: r.collateral!.id,
+        chain: Boolean(r.chain),
+        note: r.note ?? "",
+        ...signed,
+      });
     } catch (e) {
       setChainStage(null);
       setProblems([(e as Error).message]);
@@ -348,6 +417,42 @@ export default function RegisterCollateralPage() {
           <p className="mx-auto mt-2.5 max-w-md text-sm" style={{ color: "var(--text-muted)" }}>
             {done.note}
           </p>
+          {done.registerTx || done.termsTx ? (
+            // Two signatures happened; both get a link. A confirmation with no receipt asks the
+            // borrower to take the app's word for something they can check in one click.
+            <div
+              className="mx-auto mt-4 max-w-md rounded-xl p-3 text-left"
+              style={{ border: "1px solid var(--border)", background: "var(--bg-1)" }}
+            >
+              <div className="text-[11px] font-semibold">On-chain receipts · Creditcoin CC3</div>
+              <dl className="mt-2 flex flex-col gap-1.5">
+                {([
+                  ["Asset registered", done.registerTx],
+                  ["Terms posted", done.termsTx],
+                ] as const)
+                  .filter(([, h]) => !!h)
+                  .map(([label, h]) => (
+                    <div key={label} className="flex items-baseline justify-between gap-3">
+                      <dt className="text-[11.5px]" style={{ color: "var(--text-muted)" }}>
+                        {label}
+                      </dt>
+                      <dd className="mono min-w-0 text-[11px]">
+                        <a
+                          href={`${ccExplorer}/tx/${h}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 underline decoration-dotted underline-offset-4 hover:decoration-solid"
+                          style={{ color: "var(--accent)" }}
+                        >
+                          {String(h).slice(0, 10)}…{String(h).slice(-8)}
+                          <ExternalLink size={10} className="shrink-0" />
+                        </a>
+                      </dd>
+                    </div>
+                  ))}
+              </dl>
+            </div>
+          ) : null}
           {!done.chain ? (
             <div className="mt-3 flex justify-center">
               <Badge color="var(--warn)">Stored locally — not signed on-chain</Badge>
@@ -441,12 +546,35 @@ export default function RegisterCollateralPage() {
           <textarea
             value={doc}
             onChange={(e) => setDoc(e.target.value)}
+            onDrop={(e) => {
+              e.preventDefault();
+              void loadFile(e.dataTransfer.files?.[0]);
+            }}
+            onDragOver={(e) => e.preventDefault()}
             rows={5}
-            placeholder="Paste the document text — receipt number, depositor, custodian, quantity, appraised value, dates…"
+            placeholder="Paste the document text, or drop a .txt file here — receipt number, depositor, custodian, quantity, appraised value, dates…"
             className="mono mt-3 w-full resize-y rounded-lg p-3 text-[11.5px] outline-none"
             style={{ background: "var(--bg-2)", border: "1px solid var(--border)", color: "var(--text)" }}
           />
+          {fileNote ? (
+            <p className="mt-2 text-[10.5px]" style={{ color: "var(--text-muted)" }}>
+              {fileNote}
+            </p>
+          ) : null}
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <label className="btn-ghost inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px]">
+              <Upload size={12} />
+              Choose a file
+              <input
+                type="file"
+                accept=".txt,.md,.csv,.json,.eml,.rtf,text/*"
+                className="sr-only"
+                onChange={(e) => {
+                  void loadFile(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+            </label>
             <button
               onClick={readDocument}
               disabled={reading || doc.trim().length < 40}
@@ -464,6 +592,23 @@ export default function RegisterCollateralPage() {
           {readNote ? (
             <p className="mt-3 flex items-start gap-1.5 text-[11px]" style={{ color: "var(--warn)" }}>
               <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {readNote}
+            </p>
+          ) : null}
+          {filled.length > 0 ? (
+            <p
+              className="mt-3 flex items-start gap-1.5 rounded-lg p-2.5 text-[11.5px]"
+              style={{
+                color: "var(--proof-verified)",
+                background: "var(--proof-verified-soft)",
+                border: "1px solid color-mix(in srgb, var(--proof-verified) 30%, transparent)",
+              }}
+            >
+              <CheckCircle2 size={13} className="mt-0.5 shrink-0" />
+              <span style={{ color: "var(--text)" }}>
+                Filled {filled.length} field{filled.length === 1 ? "" : "s"} below — {filled.join(", ")}
+                {filled.length ? ", plus suggested tranche caps" : ""}. Every one is editable, and
+                nothing is registered until you sign.
+              </span>
             </p>
           ) : null}
           {proposal ? (
@@ -497,7 +642,7 @@ export default function RegisterCollateralPage() {
         </Card>
       </section>
       {/* ── the asset ── */}
-      <section className="mt-5">
+      <section ref={termsRef} className="mt-5 scroll-mt-6">
         <Card>
           <h2 className="text-sm font-semibold">What you are borrowing against</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">

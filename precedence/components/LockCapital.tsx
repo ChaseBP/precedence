@@ -69,6 +69,7 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ lockTxHash: Hex; blockNumber: number; txIndex: number } | null>(null);
   const [minting, setMinting] = useState(false);
+  const [mintTx, setMintTx] = useState<Hex | null>(null);
 
   const addrs = cfg?.addresses?.sepolia;
   // A fixture's docHash is a visible placeholder like 0xSAMPLE_DOC_HASH_..., not a bytes32. The
@@ -352,7 +353,10 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
                   setError(null);
                   setMinting(true);
                   try {
-                    await mintTestUsd(addrs.PUSD, 25_000);
+                    // The faucet is a real Sepolia transaction, so it gets a receipt like every
+                    // other one on this page rather than silently changing a balance.
+                    const h = await mintTestUsd(addrs.PUSD, 25_000);
+                    setMintTx(h);
                     const p = await readLenderPosition(addrs, address as Address);
                     setPos(p);
                   } catch (e) {
@@ -368,6 +372,18 @@ export function LockCapital({ collateral }: { collateral: CollateralAsset }) {
                 {minting ? <Loader2 size={10} className="animate-spin" /> : null}
                 get test pUSD
               </button>
+              {mintTx ? (
+                <a
+                  href={`${explorer}/tx/${mintTx}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mono inline-flex items-center gap-1 underline decoration-dotted underline-offset-4 hover:decoration-solid"
+                  style={{ color: "var(--accent)" }}
+                >
+                  {mintTx.slice(0, 8)}…
+                  <ExternalLink size={9} className="shrink-0" />
+                </a>
+              ) : null}
             </span>
           ) : null}
         </div>
