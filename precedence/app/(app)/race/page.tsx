@@ -22,7 +22,7 @@ import {
   Maximize2,
 } from "lucide-react";
 import type { Agent, AgentDecision, PriorityRace, LifecyclePhase, ProverCallRecord } from "@/lib/precedence/types";
-import { api, streamRace } from "@/lib/client/api";
+import { api, streamRace, type SettlementStatus } from "@/lib/client/api";
 import type { LifecycleEvent } from "@/lib/precedence/types";
 import { usd, pct, trancheColor } from "@/lib/client/format";
 import { Badge, Card, Dot, Eyebrow, SectionTitle, Why } from "@/components/ui";
@@ -42,6 +42,7 @@ import { ProverChainPanel } from "@/components/race/ProverChainPanel";
 import { ProofRail } from "@/components/race/ProofRail";
 import { OnChainReceipts } from "@/components/race/OnChainReceipts";
 import { SettlementActivity } from "@/components/race/SettlementActivity";
+import { Fold } from "@/components/race/Fold";
 import { ProvenOrder } from "@/components/race/ProvenOrder";
 import { WaveAlert } from "@/components/motion/WaveAlert";
 
@@ -230,6 +231,15 @@ function RaceInner() {
   const [hovering, setHovering] = useState(false); // hover = reading, so the dwell bar holds
   const [wave, setWave] = useState<{ label: string; variant: "settle" | "breach" | "refinance" | "detected" } | null>(null);
   const reduced = useReducedMotion();
+  /**
+   * The live settlement's stage, as the chains report it.
+   *
+   * @remarks Held here rather than only inside the activity panel because the header and the stage
+   * timeline have to agree with it. A live race's STORED phase stops at RACE_OPEN and never moves —
+   * nothing advances it, deliberately, since the scripted engine is refused on a live race — so
+   * anything reading the stored phase eventually contradicts the panel.
+   */
+  const [liveStatus, setLiveStatus] = useState<SettlementStatus | null>(null);
 
   /**
    * A settlement that exists on chain, rather than a scripted walkthrough of one.
@@ -468,7 +478,33 @@ function RaceInner() {
   const settled = isTerminalPhase(race?.status);
   // Whether the PROOF exists, which is a different question from which phase the race is in.
   const proven = !!race?.proofRecord || !!race?.settlement;
-  const statusLine = STATUS_LINE[race?.status ?? "COLLATERAL_REGISTERED"] ?? "Settling priority…";
+  /** One line per live stage, mirroring the panel's own headline rather than restating the phase. */
+  const LIVE_STATUS_LINE: Record<SettlementStatus["stage"], string> = {
+    WINDOW_OPEN: "Financing window open on the vault · locks accepted until the deadline",
+    AWAITING_CLOSE: "Window elapsed · the race is still open until someone sends closeRace",
+    AWAITING_ATTESTATION: "Attestcoin is attesting the source block · ordering already fixed",
+    PROOF_READY: "Source block attested · the proof can be submitted on Creditcoin",
+    PROVEN: "Verified at 0x0FD2 · priority is proven",
+  };
+  const statusLine =
+    (liveStatus ? LIVE_STATUS_LINE[liveStatus.stage] : undefined) ??
+    STATUS_LINE[race?.status ?? "COLLATERAL_REGISTERED"] ??
+    "Settling priority…";
+  /**
+   * Which of the seven lane stages a LIVE settlement is in.
+   *
+   * @remarks Everything from attestation onwards is the PROOF stage: the ordering is fixed the
+   * moment the locks land, and what remains is proving it. `SummaryHeader` renders that as
+   * "Attesting" rather than "Priority Settled" while `proven` is false, so the boldest claim on
+   * the screen still waits for the proof that earns it.
+   */
+  const LIVE_PHASE: Record<SettlementStatus["stage"], LifecyclePhase> = {
+    WINDOW_OPEN: "RACE_OPEN",
+    AWAITING_CLOSE: "RACE_OPEN",
+    AWAITING_ATTESTATION: "PRIORITY_SETTLED",
+    PROOF_READY: "PRIORITY_SETTLED",
+    PROVEN: "PRIORITY_SETTLED",
+  };
 
   const advanceStep = async () => {
     if (!id || busy) return;
@@ -802,7 +838,11 @@ function RaceInner() {
   // was orienting you to. Once the playhead catches up the two are the same value again.
   // Which lane position the proof actually lands at, so the rank badge can follow the replay.
   const proofStageIndex = Math.max(0, stagesShown.findIndex((st) => st.sid === "settled"));
-  const tlStatus: LifecyclePhase = lagging ? stagesShown[ph]?.phases[0] ?? race.status : race.status;
+  const tlStatus: LifecyclePhase = liveStatus
+    ? LIVE_PHASE[liveStatus.stage]
+    : lagging
+      ? stagesShown[ph]?.phases[0] ?? race.status
+      : race.status;
   const shown = stagesShown.slice(0, ph + 1);
   // Space activates whatever button has focus, so a transport control left focused would fire
   // twice on one keypress — once as the button, once as "pause". Releasing focus after a click
@@ -843,7 +883,13 @@ function RaceInner() {
 
       {/* Summary Header & Timeline */}
       <FadeUp>
-        <SummaryHeader race={race} statusLine={statusLine} proven={proven} />
+        <SummaryHeader
+          race={race}
+          statusLine={statusLine}
+          proven={proven}
+          chainStatus={liveStatus}
+          phase={liveStatus ? LIVE_PHASE[liveStatus.stage] : undefined}
+        />
       </FadeUp>
 
       <FadeUp delay={0.08}>
@@ -896,136 +942,183 @@ function RaceInner() {
         ) : null}
       </div>
 
-      {/* Main Grid */}
-      {/* minmax(0, …) rather than bare fr. A grid track's default min-width is `auto`, so the long
-          unbreakable mono strings in the prover pipeline forced their track wider than its share
-          and pushed the whole page to 2326px at a 1280 viewport — about 1000px of horizontal
-          overflow on the app's most complex screen. `min-w-0` on each column is the same fix from
-          the child side, and both are needed because either alone can be defeated by content. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        {/* Left: the lane. One playhead, forward-chronological, driven by LANE. */}
-        <div className="flex min-w-0 flex-col gap-3.5">
-          {shown.map((st) => (
-            // While the spotlight is up the lane shows collapsed rows only — otherwise the same
-            // stage is expanded in two places at once and the eye has nowhere to land.
-            <StageSection
-              key={st.id}
-              kicker={st.kicker}
-              title={laneTitle(st.id, race)}
-              statusLine={stageSummary(st.sid, race)}
-              active={st.active && st.id === heroStage?.id && !spot}
-              defaultOpen={st.id === heroStage?.id && !spot}
-            >
-              {renderStage(st.id)}
-            </StageSection>
-          ))}
-        </div>
+      {/* ── Two compositions, because this page serves two different things ──
+          A scripted walkthrough is a NARRATIVE: seven stages, complete in seconds, replayed at
+          reading speed with a spotlight. A lane plus a rail of supporting panels is right for it.
+          A live settlement is a MONITOR: one value changing over minutes and everything else
+          fixed. Given the narrative's layout it produced a lane holding three cards above 2,078px
+          of nothing, and a rail where the only element that moves sat 928px down — below the fold
+          at 1440x900. A viewer waiting out the attestation had to scroll to find the one thing
+          that would tell them the app was not hung, and lost sight of it when they scrolled back.
+          Measurements and the rejected alternatives are in analysis/live-settlement-layout.md. */}
+      {live ? (
+        <div className="flex flex-col gap-5">
+          {/* Full width, and that is load-bearing rather than cosmetic. It cannot fall below the
+              fold at any viewport, and across the full width its five attestation figures lay out
+              as one strip instead of a five-row list — so the panel is SHORTER here than it was in
+              the rail as well as more prominent. */}
+          <SettlementActivity
+            race={race}
+            hero
+            onStatus={setLiveStatus}
+            onChanged={() => void refetch(race.id)}
+          />
 
-        {/* Right Sidebar: Visual telemetry & Verification log */}
-        <div className="flex min-w-0 flex-col gap-4">
-          {/* The per-phase stepper. `PhaseStepper` existed and was imported here but never
-              rendered, so the console showed only a compressed horizontal rail — a viewer could
-              see WHERE the race was but not the shape of the sequence it moves through, and it
-              runs fast enough that the rail alone is easy to miss. Vertical, with the active phase
-              highlighted and spinning, is what makes each step legible as it passes. */}
-          <Card>
-            <Eyebrow>Protocol Phase</Eyebrow>
-            <div className="mt-2.5">
-              <PhaseStepper status={race.status} />
+          {/* Two balanced columns, plain breakpoint grid flow. No sticky: sticky does not pull an
+              element up, it only holds one after it has been scrolled past, so it fixes nothing on
+              load — and its containing block is its own column, so it unpins where that column
+              ends. No nested scroll container either: overflow-y-auto clips the cards' outer glow
+              and hijacks touch scrolling. The fix for a page that is too long is to make it
+              shorter. */}
+          <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+            <div className="flex min-w-0 flex-col gap-4">
+              <ProvenOrder race={race} settled={proven} />
             </div>
-          </Card>
-
-          <Card>
-            <Eyebrow>Priority Engine Core</Eyebrow>
-            <PriorityCore active={!settled} label={race.status.toUpperCase()} />
-          </Card>
-
-          <Card>
-            <Eyebrow>Capital Waterfall Flow</Eyebrow>
-            <CapitalFlowGraph bids={race.bids} active={!settled} />
-          </Card>
-
-          {/* Above the proof pipeline on purpose. The pipeline explains what is still happening;
-              this says the answer is already known, which is what a viewer staring at
-              PENDING_EVIDENCE for seven minutes actually needs to be told. */}
-          {/* Follows the replay playhead. Stepping back to stage 1 kept showing PROVEN, which
-              is the one badge on this screen that must never be shown early — the proof does not
-              exist at that point in the story being replayed. */}
-          {/* Above the rank card and the rail on purpose. Both of those describe the shape of the
-              settlement; this one answers "is anything still happening", which is the question a
-              viewer has first and the one the page previously could not answer at all. */}
-          {live ? <SettlementActivity race={race} onChanged={() => void refetch(race.id)} /> : null}
-
-          <ProvenOrder race={race} settled={proven && ph >= proofStageIndex} />
-          <ProofRail race={race} />
-          <OnChainReceipts race={race} />
-
-          <Card>
-            <LogDrawer events={events} />
-          </Card>
-
-          {/* Transport controls, and why a live settlement has none.
-              These call the orchestrator, which runs the SCRIPTED lifecycle against simulated
-              adapters. On a race that exists on Sepolia that would write a fabricated settlement
-              over a real one — the single worst thing this app could do — so the buttons are not
-              merely disabled here, they are replaced by the thing a viewer actually needs: what
-              the settlement is waiting for, and how long that takes. */}
-          {live ? (
-            <Card>
-              <Eyebrow>What happens next</Eyebrow>
-              <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
-                This settlement is on chain, so it advances when the chains do and not when anyone
-                presses anything. Attestcoin attests the source block first — 6.5&ndash;9.3 minutes,
-                measured, in batches — and one Creditcoin transaction then verifies every lock in
-                the race at{" "}
-                <span className="mono">0x0FD2</span>, fixing priority in a single block.
-              </p>
-              <p className="mt-2 text-[11px]" style={{ color: "var(--text-faint)" }}>
-                Until that proof exists the ranking above is our reading of Sepolia, badged
-                OBSERVED. It becomes PROVEN when{" "}
-                <span className="mono">calculateTxIndex</span> confirms each position on Creditcoin.
-              </p>
-            </Card>
-          ) : !settled ? (
-            <Card className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={advanceStep}
-                  disabled={busy}
-                  className="btn-ghost flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
-                >
-                  <FastForward size={13} />
-                  Step
-                </button>
-                <button
-                  onClick={advanceAuto}
-                  disabled={busy}
-                  className="btn-accent flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
-                >
-                  <Play size={13} />
-                  Auto Run
-                </button>
-              </div>
-              <span className="mono text-[0.68rem]" style={{ color: "var(--text-faint)" }}>
-                {busy ? "advancing…" : "ready"}
-              </span>
-            </Card>
-          ) : (
-            <Card className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs" style={{ color: "var(--success)" }}>
-                <Award size={14} />
-                <span>Priority settlement finalized</span>
-              </div>
-              <button
-                onClick={() => router.push("/collateral")}
-                className="btn-ghost rounded-lg px-3 py-1 text-xs"
-              >
-                Next facility
-              </button>
-            </Card>
-          )}
+            <div className="flex min-w-0 flex-col gap-4">
+              <ProofRail race={race} />
+              {/* Folded, not removed. Six 66-character hashes are 286px of the most valuable
+                  space on the page spent on audit artifacts, and every one stays complete,
+                  copyable and one click away. */}
+              <OnChainReceipts race={race} folded />
+              <Fold title="Collateral & title record" count={race.collateral.symbol}>
+                {renderStage("registered")}
+              </Fold>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        // The scripted walkthrough's own layout, unchanged.
+        //
+        // minmax(0, …) rather than bare fr: a grid track's default min-width is `auto`, so the
+        // long unbreakable mono strings in the prover pipeline forced their track wider than its
+        // share and pushed the page to 2326px at a 1280 viewport — about 1000px of horizontal
+        // overflow. `min-w-0` on each column is the same fix from the child side, and both are
+        // needed because either alone can be defeated by content.
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+          {/* Left: the lane. One playhead, forward-chronological, driven by LANE. */}
+          <div className="flex min-w-0 flex-col gap-3.5">
+            {shown.map((st) => (
+              // While the spotlight is up the lane shows collapsed rows only — otherwise the same
+              // stage is expanded in two places at once and the eye has nowhere to land.
+              <StageSection
+                key={st.id}
+                kicker={st.kicker}
+                title={laneTitle(st.id, race)}
+                statusLine={stageSummary(st.sid, race)}
+                active={st.active && st.id === heroStage?.id && !spot}
+                defaultOpen={st.id === heroStage?.id && !spot}
+              >
+                {renderStage(st.id)}
+              </StageSection>
+            ))}
+          </div>
+
+          {/* Right Sidebar: Visual telemetry & Verification log */}
+          <div className="flex min-w-0 flex-col gap-4">
+            {/* The per-phase stepper. `PhaseStepper` existed and was imported here but never
+                rendered, so the console showed only a compressed horizontal rail — a viewer could
+                see WHERE the race was but not the shape of the sequence it moves through, and it
+                runs fast enough that the rail alone is easy to miss. Vertical, with the active phase
+                highlighted and spinning, is what makes each step legible as it passes. */}
+            <Card>
+              <Eyebrow>Protocol Phase</Eyebrow>
+              <div className="mt-2.5">
+                <PhaseStepper status={race.status} />
+              </div>
+            </Card>
+
+            <Card>
+              <Eyebrow>Priority Engine Core</Eyebrow>
+              <PriorityCore active={!settled} label={race.status.toUpperCase()} />
+            </Card>
+
+            <Card>
+              <Eyebrow>Capital Waterfall Flow</Eyebrow>
+              <CapitalFlowGraph bids={race.bids} active={!settled} />
+            </Card>
+
+            {/* Above the proof pipeline on purpose. The pipeline explains what is still happening;
+                this says the answer is already known, which is what a viewer staring at
+                PENDING_EVIDENCE for seven minutes actually needs to be told. */}
+            {/* Follows the replay playhead. Stepping back to stage 1 kept showing PROVEN, which
+                is the one badge on this screen that must never be shown early — the proof does not
+                exist at that point in the story being replayed. */}
+            {/* Above the rank card and the rail on purpose. Both of those describe the shape of the
+                settlement; this one answers "is anything still happening", which is the question a
+                viewer has first and the one the page previously could not answer at all. */}
+            {live ? <SettlementActivity race={race} onChanged={() => void refetch(race.id)} /> : null}
+
+            <ProvenOrder race={race} settled={proven && ph >= proofStageIndex} />
+            <ProofRail race={race} />
+            <OnChainReceipts race={race} />
+
+            <Card>
+              <LogDrawer events={events} />
+            </Card>
+
+            {/* Transport controls, and why a live settlement has none.
+                These call the orchestrator, which runs the SCRIPTED lifecycle against simulated
+                adapters. On a race that exists on Sepolia that would write a fabricated settlement
+                over a real one — the single worst thing this app could do — so the buttons are not
+                merely disabled here, they are replaced by the thing a viewer actually needs: what
+                the settlement is waiting for, and how long that takes. */}
+            {live ? (
+              <Card>
+                <Eyebrow>What happens next</Eyebrow>
+                <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
+                  This settlement is on chain, so it advances when the chains do and not when anyone
+                  presses anything. Attestcoin attests the source block first — 6.5&ndash;9.3 minutes,
+                  measured, in batches — and one Creditcoin transaction then verifies every lock in
+                  the race at{" "}
+                  <span className="mono">0x0FD2</span>, fixing priority in a single block.
+                </p>
+                <p className="mt-2 text-[11px]" style={{ color: "var(--text-faint)" }}>
+                  Until that proof exists the ranking above is our reading of Sepolia, badged
+                  OBSERVED. It becomes PROVEN when{" "}
+                  <span className="mono">calculateTxIndex</span> confirms each position on Creditcoin.
+                </p>
+              </Card>
+            ) : !settled ? (
+              <Card className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={advanceStep}
+                    disabled={busy}
+                    className="btn-ghost flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
+                  >
+                    <FastForward size={13} />
+                    Step
+                  </button>
+                  <button
+                    onClick={advanceAuto}
+                    disabled={busy}
+                    className="btn-accent flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
+                  >
+                    <Play size={13} />
+                    Auto Run
+                  </button>
+                </div>
+                <span className="mono text-[0.68rem]" style={{ color: "var(--text-faint)" }}>
+                  {busy ? "advancing…" : "ready"}
+                </span>
+              </Card>
+            ) : (
+              <Card className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs" style={{ color: "var(--success)" }}>
+                  <Award size={14} />
+                  <span>Priority settlement finalized</span>
+                </div>
+                <button
+                  onClick={() => router.push("/collateral")}
+                  className="btn-ghost rounded-lg px-3 py-1 text-xs"
+                >
+                  Next facility
+                </button>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Spotlight: the playhead stage pops center, then docks into the lane ── */}
       <AnimatePresence>
