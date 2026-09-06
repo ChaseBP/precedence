@@ -15,10 +15,14 @@ fi
 ORIGIN="${ORIGIN%/}"
 [[ "$ORIGIN" == https://* ]] || { echo "the origin must be https — Vercel will not proxy to http" >&2; exit 2; }
 
-# The Vercel CLI shells out to `node`, which lives under nvm here and is not on the default PATH.
+# Two separate PATH problems, and missing either one stops this script dead.
+#   - `vercel` was installed with bun, so the binary is in ~/.bun/bin.
+#   - the CLI then shells out to `node`, which lives under nvm and is on neither default PATH.
 NODE_BIN="$(dirname "$(ls -1 "$HOME"/.nvm/versions/node/*/bin/node 2>/dev/null | tail -1)")"
 [[ -n "$NODE_BIN" ]] && export PATH="$NODE_BIN:$PATH"
-command -v node >/dev/null || { echo "no node on PATH; the vercel CLI needs one" >&2; exit 1; }
+export PATH="$HOME/.bun/bin:$PATH"
+command -v node   >/dev/null || { echo "no node on PATH; the vercel CLI needs one" >&2; exit 1; }
+command -v vercel >/dev/null || { echo "no vercel on PATH (looked in ~/.bun/bin)" >&2; exit 1; }
 
 echo "==> checking the backend at $ORIGIN"
 CFG="$(curl -fsS --max-time 20 "$ORIGIN/api/config")" || { echo "backend unreachable" >&2; exit 1; }
@@ -58,11 +62,33 @@ for env in production preview; do
 done
 
 echo "==> deploying"
-URL="$(vercel deploy --prod --yes | tail -1)"
+vercel deploy --prod --yes
+
+# Verify against the project's stable ALIAS, not the deployment URL `vercel deploy` prints last.
+#
+# That per-deployment URL (`precedence-<hash>-<scope>.vercel.app`) sits behind Vercel's Deployment
+# Protection on a fresh project and answers every request with a 302 to a login page — so checking
+# it reports a broken deployment that is in fact fine. The production alias is public. Asked of the
+# API rather than assumed, because a project can have several aliases.
+# `vercel alias ls` maps the deployment URL to its aliases. The deployment URL itself is the one
+# thing NOT to use — see above. Prefer the shortest alias, which is the friendly project domain
+# rather than the `<project>-<scope>` form.
+ALIAS="$(vercel alias ls 2>/dev/null \
+  | grep -oE '[a-z0-9-]+\.vercel\.app' \
+  | grep -v -- '-chasebp' \
+  | awk '{ print length, $0 }' | sort -n | head -1 | cut -d' ' -f2-)"
+URL="${ALIAS:+https://$ALIAS}"
+[[ -n "$URL" ]] || { echo "deployed, but could not determine the public alias to verify" >&2; exit 1; }
 echo "    $URL"
 
 echo "==> verifying the deployed frontend proxies to the backend"
-for i in $(seq 1 10); do
+for i in $(seq 1 12); do
+  CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$URL/api/config" || true)"
+  if [[ "$CODE" == "30"* ]]; then
+    echo "    $URL redirects (HTTP $CODE) — Deployment Protection is on for this URL." >&2
+    echo "    Disable it for production, or verify with: vercel curl $URL/api/config" >&2
+    exit 1
+  fi
   OUT="$(curl -fsS --max-time 20 "$URL/api/config" 2>/dev/null)" && break
   sleep 5
 done

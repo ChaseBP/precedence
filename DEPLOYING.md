@@ -37,6 +37,14 @@ needs revisiting.
 
 ## 2. Azure — the backend
 
+**The contracts are not redeployed. Their deployment records are copied.**
+`contracts/deployments/{sepolia,creditcoin}.json` are the addresses of contracts that already exist
+on Sepolia and CC3, and they are what `getDeps()` reads. Copy them; never run `make deploy-*` for a
+new host. A redeploy would put fresh contracts at fresh addresses, and every settled race, every
+proof, every piece of evidence and every claim token in the registry refers to the old ones — the
+whole history would be orphaned to no purpose. Confirm after copying that
+`/api/config` reports the same addresses as the local files.
+
 A small burstable VM. It must **build** the Next app (~2 GB free during `next build`) and then run
 it (~160 MB) alongside the worker.
 
@@ -108,6 +116,20 @@ cannot reach its API, so nothing here can be verified"* instead of *"simulated"*
 
 Those two are different states and the distinction is the point: simulated is a deliberate
 configuration and safe to display; this is a routing failure whose answers are meaningless.
+
+### The deployment URL is not the URL to test
+
+`vercel deploy` prints a per-deployment URL last — `precedence-<hash>-<scope>.vercel.app`. On a
+fresh project that one sits behind **Deployment Protection** and answers every request with a 302
+to a login page, so checking it reports a broken deployment that is in fact fine. Test the stable
+alias instead:
+
+```bash
+vercel alias ls     # maps the deployment URL to its public aliases
+```
+
+`ops/deploy-vercel.sh` picks the shortest alias automatically, and if that URL redirects it says so
+and points at `vercel curl` rather than reporting a failure.
 
 ## 4. After deploying
 
