@@ -39,6 +39,7 @@ import { LogDrawer } from "@/components/race/LogDrawer";
 import { ProverCall } from "@/components/race/ProverCall";
 import { ProverChainPanel } from "@/components/race/ProverChainPanel";
 import { ProofRail } from "@/components/race/ProofRail";
+import { OnChainReceipts } from "@/components/race/OnChainReceipts";
 import { ProvenOrder } from "@/components/race/ProvenOrder";
 import { WaveAlert } from "@/components/motion/WaveAlert";
 
@@ -72,11 +73,18 @@ const LANE: { id: string; sid: string; phases: LifecyclePhase[]; kicker: string;
   { id: "record", sid: "distress", phases: ["SETTLED_CLOSED", "FROZEN_DRAW", "PCR_STABILIZATION", "GRACE_PERIOD", "DUTCH_LIQUIDATION", "TERMINATED_DEFAULT", "BREACHED"], kicker: "RECORD", title: "Settlement Record" },
 ];
 
-/** Stage 7 is the same card either way; only a distressed race earns the harder name. */
-const laneTitle = (id: string, r: PriorityRace) =>
-  id === "record" && r.track === "DISTRESSED"
-    ? "Deterministic Failure Branch"
-    : LANE.find((x) => x.id === id)?.title ?? "";
+/**
+ * The heading a stage carries, which is not always the one in {@link LANE}.
+ *
+ * @remarks Two stages earn a different name. Only a distressed race gets the harder wording for
+ * stage 7. And on a live race stage 3 is not "bids" at all — nobody declared anything, capital
+ * simply arrived — so the scripted title would be describing something that did not happen.
+ */
+const laneTitle = (id: string, r: PriorityRace) => {
+  if (id === "record" && r.track === "DISTRESSED") return "Deterministic Failure Branch";
+  if (id === "bids" && r.onchain) return "Locked Capital & Proven Positions";
+  return LANE.find((x) => x.id === id)?.title ?? "";
+};
 
 /** How long the spotlight holds each stage before it advances itself. Keyed by lane id. */
 const DWELL_MS: Record<string, number> = {
@@ -108,7 +116,7 @@ const STATUS_LINE: Record<string, string> = {
   TERMINATED_DEFAULT: "Unwind complete · loss allocated · obligor flagged DEFAULT",
   BREACHED: "Collateral movement proven · claims frozen · legal escalation",
   AUTO_REFUND: "Outpaced capital returned · no lien created",
-  ABORTED: "Priority race aborted",
+  ABORTED: "Priority settlement aborted",
 };
 
 const TERMINAL: LifecyclePhase[] = ["SETTLED_CLOSED", "TERMINATED_DEFAULT", "AUTO_REFUND", "ABORTED"];
@@ -144,7 +152,12 @@ function hasData(id: string, r: PriorityRace): boolean {
 }
 
 function stageSummary(id: string, r: PriorityRace): string {
-  const committed = r.bids.reduce((s, b) => s + b.committedUsd, 0);
+  // Locks first, bids as the fallback. A `bid` is a scripted financier's stated intention; a lock
+  // is capital in the vault. A live race has locks and no bids at all, so summing only bids
+  // printed "1 lock on Sepolia · $0 committed" next to two thousand real dollars.
+  const committed = r.locks.length
+    ? r.locks.reduce((s, l) => s + (l.refunded ? 0 : l.amountUsd), 0)
+    : r.bids.reduce((s, b) => s + b.committedUsd, 0);
   switch (id) {
     case "registered":
       return r.analysis
@@ -213,19 +226,27 @@ function RaceInner() {
   // Spotlight: the playhead stage pops as a centered overlay, then docks back into the lane.
   const [spot, setSpot] = useState(false);
   const [hovering, setHovering] = useState(false); // hover = reading, so the dwell bar holds
-  const [creditcoinLive, setCreditcoinLive] = useState(false);
   const [wave, setWave] = useState<{ label: string; variant: "settle" | "breach" | "refinance" | "detected" } | null>(null);
   const reduced = useReducedMotion();
+
+  /**
+   * A settlement that exists on chain, rather than a scripted walkthrough of one.
+   *
+   * @remarks Changes three things on this page, and each one would be a lie if it did not. The
+   * transport controls disappear, because "Step" and "Auto Run" drive the *simulated* orchestrator
+   * and pushing a live race through it would fabricate the settlement it is waiting to prove. The
+   * replay spotlight does not arm, because there is no scripted story to replay — the page is
+   * showing a present state, not narrating a past one. And the receipts card appears, because for
+   * the first time there is something real to link to.
+   */
+  const live = !!race?.onchain;
 
   const lastPhase = useRef<string>("");
   const notified = useRef<string>("");
 
   useEffect(() => {
     api.agents()
-      .then((r) => {
-        setAgents(r.agents);
-        setCreditcoinLive(r.creditcoinLive);
-      })
+      .then((r) => setAgents(r.agents))
       .catch(() => {});
   }, []);
 
@@ -235,7 +256,7 @@ function RaceInner() {
   }, []);
 
   // No ?id= — send the visitor to the race that is actually running (falling back
-  // to the most recent), so "Priority Race" in the nav is never a dead end.
+  // to the most recent), so "Priority settlement" in the nav is never a dead end.
   useEffect(() => {
     let cancelled = false;
     if (id) {
@@ -278,8 +299,15 @@ function RaceInner() {
         if (r?.race) {
           setRace(r.race);
           if (r?.events) setEvents(r.events);
-          if (isTerminalPhase(r.race.status)) {
-            // Already settled on first load: open at the result, not at a replay nobody asked for.
+          if (isTerminalPhase(r.race.status) || r.race.onchain) {
+            // Already settled, or live on chain: open at the current state.
+            //
+            // The playhead is a REPLAY device. A scripted race completes in seconds, which nobody
+            // can read, so the lane walks its stages at reading speed and says so. A live race has
+            // no story to replay — it is showing a present state that changes when the chains do.
+            // Left at zero it held a real settlement behind "the race is ahead — showing stages at
+            // reading speed", so the page reported its own animation as the reason a lender could
+            // not see the lock they had just signed.
             setPlayhead(Number.MAX_SAFE_INTEGER);
           } else {
             setSpot(true); // in flight: each stage spotlights as it lands
@@ -383,10 +411,13 @@ function RaceInner() {
   // the two never fight over the playhead.
   useEffect(() => {
     const last = stagesShown.length - 1;
-    if (spot || paused || playhead >= last) return;
+    // `live` is excluded rather than relying on the playhead already being pinned: a stage
+    // gaining data raises `last`, and without this the pacing timer would start walking a live
+    // race forward one card at a time as its locks arrived.
+    if (live || spot || paused || playhead >= last) return;
     const t = setTimeout(() => setPlayhead((i) => Math.min(i + 1, last)), 4500);
     return () => clearTimeout(t);
-  }, [playhead, paused, spot, stagesShown.length]);
+  }, [live, playhead, paused, spot, stagesShown.length]);
 
   // The spotlight is a modal, so the page behind it must not scroll.
   useEffect(() => {
@@ -404,6 +435,9 @@ function RaceInner() {
   // claim on these keys, so only a text field is excluded.
   useEffect(() => {
     if (!id) return;
+    // Nothing to step through on a live race: there is one present state, and stepping "back"
+    // from it would show a viewer a past the chain never had.
+    if (race?.onchain) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -427,12 +461,12 @@ function RaceInner() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [id, stagesShown.length, reduced]);
+  }, [id, race?.onchain, stagesShown.length, reduced]);
 
   const settled = isTerminalPhase(race?.status);
   // Whether the PROOF exists, which is a different question from which phase the race is in.
   const proven = !!race?.proofRecord || !!race?.settlement;
-  const statusLine = STATUS_LINE[race?.status ?? "COLLATERAL_REGISTERED"] ?? "Settling priority race…";
+  const statusLine = STATUS_LINE[race?.status ?? "COLLATERAL_REGISTERED"] ?? "Settling priority…";
 
   const advanceStep = async () => {
     if (!id || busy) return;
@@ -458,8 +492,8 @@ function RaceInner() {
   if (resolving) {
     return (
       <Card className="p-8 text-center">
-        <Eyebrow>Priority Race</Eyebrow>
-        <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>Loading the live race…</p>
+        <Eyebrow>Priority settlement</Eyebrow>
+        <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>Loading the live settlement…</p>
       </Card>
     );
   }
@@ -467,10 +501,10 @@ function RaceInner() {
   if (loadError || (!race && !id)) {
     return (
       <Card className="p-8 text-center">
-        <Eyebrow>Priority Race</Eyebrow>
-        <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-semibold">Race Not Found</h2>
+        <Eyebrow>Priority settlement</Eyebrow>
+        <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-semibold">Settlement Not Found</h2>
         <p className="mx-auto mt-2 max-w-md text-sm" style={{ color: "var(--text-muted)" }}>
-          The requested priority race does not exist. Open one from Facilities.
+          The requested settlement does not exist. Open one from Facilities.
         </p>
         <div className="mt-5">
           <button onClick={() => router.push("/collateral")} className="btn-accent rounded-lg px-4 py-2 text-sm font-semibold">
@@ -484,7 +518,7 @@ function RaceInner() {
   if (!race) {
     return (
       <div className="flex items-center justify-center py-20 text-sm" style={{ color: "var(--text-muted)" }}>
-        <Loader2 className="animate-spin" size={16} /> Loading Priority Race…
+        <Loader2 className="animate-spin" size={16} /> Loading the settlement…
       </div>
     );
   }
@@ -512,8 +546,12 @@ function RaceInner() {
             </div>
             <div>
               <Eyebrow>Safety Margin</Eyebrow>
+              {/* The asset's own haircut. This read "15%" and multiplied by 0.15 whatever the
+                  borrower had actually posted, so a 20% facility was described as 15% three lines
+                  under a header stating 20% — and the dollar figure was wrong to match. */}
               <div className="mono mt-0.5 font-semibold" style={{ color: "var(--success)" }}>
-                15% ({usd(race.collateral.faceValueUsd * 0.15)})
+                {race.collateral.haircutPct}% (
+                {usd(race.analysis?.haircutUsd ?? race.collateral.faceValueUsd * (race.collateral.haircutPct / 100))})
               </div>
             </div>
           </div>
@@ -550,7 +588,55 @@ function RaceInner() {
         </div>
         );
       case "bids":
-        return (
+        // Two different things share this stage, and showing the wrong one is a fabrication.
+        //
+        // A scripted race is contested by three house financiers with distinct mandates, and
+        // watching them reason is the point of the walkthrough. A live race has none: it is
+        // contested by whoever holds a wallet, and nobody has told us what they intend. Rendering
+        // Meridian, Vector and Novum "EVALUATING RISK & TRANCHE…" over a real facility invented
+        // three institutions that were not there — under a heading claiming they were bidding.
+        return live ? (
+          <div className="flex flex-col gap-3">
+            {race.locks.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {race.locks.map((l) => (
+                  <div
+                    key={l.sepoliaTxHash}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2.5"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <div className="min-w-0">
+                      <div
+                        className="text-[10.5px] font-semibold uppercase tracking-wider"
+                        style={{ color: trancheColor(l.tranche) }}
+                      >
+                        {l.tranche}
+                      </div>
+                      <div className="mono mt-0.5 truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
+                        {l.financierAddress}
+                      </div>
+                    </div>
+                    <div className="mono shrink-0 text-right text-[11px]">
+                      <div className="font-semibold">{usd(l.amountUsd)}</div>
+                      <div style={{ color: "var(--text-faint)" }}>
+                        block {l.lockBlockNumber.toLocaleString()} · index {l.lockTxIndex}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                No capital has been locked yet. The window is open on the vault; the first
+                transaction to land takes the first position.
+              </p>
+            )}
+            <Why>
+              These are wallets, not house agents. A live race has no declared intentions to show —
+              only transactions that landed, and the block and index each one landed at.
+            </Why>
+          </div>
+        ) : (
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
             {["meridian", "vector", "novum"].map((id) => (
@@ -842,14 +928,36 @@ function RaceInner() {
               is the one badge on this screen that must never be shown early — the proof does not
               exist at that point in the story being replayed. */}
           <ProvenOrder race={race} settled={proven && ph >= proofStageIndex} />
-          <ProofRail race={race} creditcoinLive={creditcoinLive} />
+          <ProofRail race={race} />
+          <OnChainReceipts race={race} />
 
           <Card>
             <LogDrawer events={events} />
           </Card>
 
-          {/* Stepper Controls */}
-          {!settled ? (
+          {/* Transport controls, and why a live settlement has none.
+              These call the orchestrator, which runs the SCRIPTED lifecycle against simulated
+              adapters. On a race that exists on Sepolia that would write a fabricated settlement
+              over a real one — the single worst thing this app could do — so the buttons are not
+              merely disabled here, they are replaced by the thing a viewer actually needs: what
+              the settlement is waiting for, and how long that takes. */}
+          {live ? (
+            <Card>
+              <Eyebrow>What happens next</Eyebrow>
+              <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
+                This settlement is on chain, so it advances when the chains do and not when anyone
+                presses anything. Attestcoin attests the source block first — 6.5&ndash;9.3 minutes,
+                measured, in batches — and one Creditcoin transaction then verifies every lock in
+                the race at{" "}
+                <span className="mono">0x0FD2</span>, fixing priority in a single block.
+              </p>
+              <p className="mt-2 text-[11px]" style={{ color: "var(--text-faint)" }}>
+                Until that proof exists the ranking above is our reading of Sepolia, badged
+                OBSERVED. It becomes PROVEN when{" "}
+                <span className="mono">calculateTxIndex</span> confirms each position on Creditcoin.
+              </p>
+            </Card>
+          ) : !settled ? (
             <Card className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <button
@@ -877,7 +985,7 @@ function RaceInner() {
             <Card className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs" style={{ color: "var(--success)" }}>
                 <Award size={14} />
-                <span>Priority Race Finalized</span>
+                <span>Priority settlement finalized</span>
               </div>
               <button
                 onClick={() => router.push("/collateral")}
