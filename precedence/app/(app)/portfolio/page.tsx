@@ -96,14 +96,17 @@ export default function PortfolioPage() {
     return (
       <FadeUp>
         <div className="mx-auto max-w-2xl py-14">
+          {/* One prompt, not two. This used to stack its own wallet icon, heading and paragraph
+              directly above ConnectPrompt, which renders the same icon, a sentence and the button —
+              so a disconnected visitor met the same request twice with two Connect buttons. */}
           <div className="mb-5 text-center">
-            <Wallet size={28} className="mx-auto mb-3" style={{ color: "var(--text-faint)" }} />
             <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight tracking-tight">
-              Connect a wallet to see your positions
+              Your positions
             </h1>
-            <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--text-muted)" }}>
+            <p className="mx-auto mt-2 max-w-md text-sm" style={{ color: "var(--text-muted)" }}>
               PRECEDENCE has no accounts and no passwords. Your positions are whatever your address
-              holds on-chain, so connecting is the whole of signing in.
+              holds on-chain, so connecting is the whole of signing in — and what you would see here
+              is every rank you hold, what each is owed, and anything still reclaimable.
             </p>
           </div>
           <ConnectPrompt

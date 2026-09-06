@@ -85,6 +85,13 @@ export function SummaryHeader({
         <KPI
           label="Senior Claim"
           value={senior ? senior.toUpperCase() : currentRace.settlement ? "Unfilled" : "Pending Proof"}
+          // "Unfilled" beside a funded facility reads as a failure. It is an outcome: nobody
+          // locked into the senior tranche, so the facility filled from the ones beneath it.
+          hint={
+            !senior && currentRace.settlement
+              ? "No lock landed in the senior tranche. The facility filled from junior and subordinate capital."
+              : undefined
+          }
           accent={!!senior}
           color={senior ? "var(--rank-senior)" : undefined}
         />
@@ -99,11 +106,20 @@ function KPI({
   value,
   accent,
   color,
+  hint,
 }: {
   label: string;
   value: string;
   accent?: boolean;
   color?: string;
+  /**
+   * One line under the figure, for a value that reads worse than it is.
+   *
+   * @remarks Rendered, not a `title`. A tooltip is invisible in a screenshot, unreachable by
+   * keyboard and absent on touch, so it cannot carry an explanation a reader needs in order not to
+   * misread the number above it.
+   */
+  hint?: string;
 }) {
   return (
     <div>
@@ -114,6 +130,11 @@ function KPI({
       >
         {value}
       </div>
+      {hint ? (
+        <div className="mt-0.5 max-w-[24ch] text-[10.5px] leading-snug" style={{ color: "var(--text-faint)" }}>
+          {hint}
+        </div>
+      ) : null}
     </div>
   );
 }

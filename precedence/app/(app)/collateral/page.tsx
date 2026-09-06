@@ -17,26 +17,37 @@ const SHOWN = 6;
 
 function CapitalTrancheBar({ col, agents }: { col: CollateralAsset; agents: Agent[] }) {
   if (!agents.length) return null;
-  const req = col.financingRequestedUsd;
-  const seniorReq = Math.round(req * 0.6);
-  const juniorReq = Math.round(req * 0.3);
-  const subReq = Math.max(0, req - seniorReq - juniorReq);
+  const t = col.terms;
+  const req = t ? t.seniorCapUsd + t.juniorCapUsd + t.subordinateCapUsd : col.financingRequestedUsd;
+  const seniorReq = t ? t.seniorCapUsd : Math.round(req * 0.6);
+  const juniorReq = t ? t.juniorCapUsd : Math.round(req * 0.3);
+  const subReq = t ? t.subordinateCapUsd : Math.max(0, req - Math.round(req * 0.6) - Math.round(req * 0.3));
+  const pctOf = (v: number) => (req > 0 ? `${(v / req) * 100}%` : "0%");
 
   return (
     <div>
       <div className="flex items-center justify-between text-[0.68rem]">
         <span className="eyebrow">Repayment Tiers · Senior / Junior / Subordinate</span>
         <span className="mono" style={{ color: "var(--text)" }}>
-          {usd(req)} Total Funding
+          {usd(req)} {t ? "Facility" : "Requested"}
         </span>
       </div>
       <div className="relative mt-1.5 flex h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--track)" }}>
-        <div className="h-full" style={{ width: "60%", background: "var(--rank-senior)" }} title={`Senior: $${seniorReq}`} />
-        <div className="h-full" style={{ width: "30%", background: "var(--rank-junior)" }} title={`Junior: $${juniorReq}`} />
-        <div className="h-full" style={{ width: "10%", background: "var(--rank-subordinate)" }} title={`Subordinate: $${subReq}`} />
+        <div className="h-full" style={{ width: pctOf(seniorReq), background: "var(--rank-senior)" }} title={`Senior: $${seniorReq}`} />
+        <div className="h-full" style={{ width: pctOf(juniorReq), background: "var(--rank-junior)" }} title={`Junior: $${juniorReq}`} />
+        <div className="h-full" style={{ width: pctOf(subReq), background: "var(--rank-subordinate)" }} title={`Subordinate: $${subReq}`} />
       </div>
       <div className="mt-1 flex items-center justify-between text-[0.68rem]" style={{ color: "var(--text-faint)" }}>
-        <span>Senior {usd(seniorReq)} · Junior {usd(juniorReq)} · Subordinate {usd(subReq)}</span>
+        <span>
+          {t ? (
+            <>
+              Senior {usd(seniorReq)} @ {pct(t.seniorRatePct)} · Junior {usd(juniorReq)} @{" "}
+              {pct(t.juniorRatePct)} · Subordinate {usd(subReq)} @ {pct(t.subordinateRatePct)}
+            </>
+          ) : (
+            <>Indicative split · Senior {usd(seniorReq)} · Junior {usd(juniorReq)} · Subordinate {usd(subReq)}</>
+          )}
+        </span>
         <span style={{ color: "var(--success)" }}>Competing financiers lock on Sepolia</span>
       </div>
     </div>
@@ -321,7 +332,7 @@ export default function CollateralPage() {
                   </div>
                   {c.terms ? (
                     <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[10.5px]" style={{ color: "var(--text-faint)" }}>
-                      <span>Senior {usd(c.terms.seniorCapUsd)}</span>
+                      <span>Senior {usd(c.terms.seniorCapUsd)} @ {pct(c.terms.seniorRatePct)}</span>
                       <span>Junior {usd(c.terms.juniorCapUsd)} @ {pct(c.terms.juniorRatePct)}</span>
                       <span>Sub {usd(c.terms.subordinateCapUsd)} @ {pct(c.terms.subordinateRatePct)}</span>
                     </div>
