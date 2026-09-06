@@ -1,8 +1,8 @@
 # Landing page — art direction
 
-## 1. What I looked at
+## 1. Evidence
 
-| Screenshot | What I actually see |
+| Screenshot | What is visible |
 | --- | --- |
 | `full__light__1440.png` | Six horizontal bands of near-identical height and identical internal rhythm. Measured in the browser: sections are 422 / 389 / 432 / 370 px tall — four sections within 62px of each other, each one heading (36px) → one-line deck → 32px gap → grid. The alternating tint (`--bg-0` #F4F5F8 vs `--bg-1` #FFFFFF) is a 1.5% luminance step; on screen it is faint, and the bands read as one column divided by hairlines. Below the hero there is not a single drawn mark. |
 | `hero__light__1440.png` | Confirmed: header and hero inner edge at **x=168**; every section and the footer at **x=208**. Two left margins, and two right edges (1272 vs 1232). The hero band is 594px tall carrying 434px of content; the receipt column is `items-center`, so it floats 40px clear of the headline's cap-height and 136px clear of the band floor. Both CTAs are outline buttons — the "primary" is white with indigo text — while the solid indigo `CONNECT` in the header is the loudest object on the page. |

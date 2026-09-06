@@ -1,7 +1,7 @@
-# Landing page — design plan (orchestrator's own pass)
+# Landing page — design plan
 
-Written before the reviewers reported, so their recommendations can be compared against an
-independent position rather than simply adopted.
+The position this rebuild was argued from, recorded before the critique it was weighed against so
+the two could be compared rather than one simply adopted.
 
 ## Subject, audience, job
 
