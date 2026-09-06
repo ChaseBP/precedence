@@ -204,6 +204,43 @@ open* to register the asset on the Sepolia vault and open the race.
 `OBSERVED`, becoming `PROVEN` once attestation completes. The console subscribes over SSE, so the
 flip happens without a refresh.
 
+### 5.1 Getting a settlement that is not a scripted walkthrough
+
+Two kinds of run exist and the interface labels which one you are looking at, in the breadcrumb at
+the top of the settlement page: **`LIVE ON SEPOLIA`** or **`SCRIPTED WALKTHROUGH`**.
+
+A scripted run is what the *Run a settlement* button produces. It walks all ten states in seconds
+against simulated adapters, which is the only way to show the whole lifecycle, and its transaction
+hashes are fabricated — so they are marked `sample` and deliberately do **not** link to an
+explorer. Expect that. A dead explorer link would be far worse than a labelled one.
+
+A live run needs two signatures and a deployed vault:
+
+1. **Register collateral** with a wallet connected. Two Creditcoin CC3 transactions. Their hashes
+   appear on the facility page afterwards under *Registered on Creditcoin CC3*.
+2. On that facility, **Claim and open** as the same wallet. Two Sepolia transactions. The app then
+   posts the opening transaction's hash to `POST /api/races/live`, which fetches the receipt,
+   decodes `RaceOpened` from it and records the race with `simulated: false`.
+3. **Lock capital** from any wallet — the same one is fine. Its hash goes to
+   `POST /api/races/live/locks`, and the block and transaction index are read back off the receipt.
+
+Follow the link the app offers, or open `/race` with no query string: it resolves to the running
+settlement. What you should see is `LIVE ON SEPOLIA`, an *On-chain receipts* card listing every
+transaction as a working explorer link, zero `sample` markers, and no *Step* / *Auto Run* controls —
+those drive the scripted engine and are refused on a live race by `POST /api/races/[id]/advance`
+with a 409, because running them would write a fabricated settlement over a real one.
+
+Nothing is taken on the browser's word. Only a transaction hash is ever posted; every figure — the
+block, the transaction index, the tranche, the amount, the vault's `seq` — is decoded server-side
+from that receipt's `Lock_` or `RaceOpened` event, and a receipt that reverted, was emitted by a
+different contract, or belongs to a different facility is rejected with a 422. The block and index
+*are* the priority claim, so a party stating its own would be a party choosing its own rank.
+
+> **Set `PRECEDENCE_STORE_PATH` before you start a live run.** Without it the store is
+> memory-only, and restarting the server between the lock and the proof — eight minutes later —
+> loses the app's record of a settlement whose transactions are still on chain and still cost gas.
+> `PRECEDENCE_STORE_PATH=../evidence/.store.json bun run dev`
+
 > **Expect a wait, and do not treat it as a hang.** Attestation of a source block takes **6.5–9.3
 > minutes**, measured over 239 samples. This is Attestcoin's cadence — a standing ~32-block gap
 > behind Sepolia head, advancing ten blocks at a time. It is not your RPC, and Creditcoin is idle
