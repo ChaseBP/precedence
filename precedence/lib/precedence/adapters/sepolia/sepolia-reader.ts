@@ -64,6 +64,11 @@ export interface OnChainRaceState {
   facilitySizeUsd: number;
   totalLockedUsd: number;
   raceDeadline: number;
+  /** Drawn and repaid, which is how the facility's life after settlement is observed. */
+  totalDrawnUsd: number;
+  totalRepaidUsd: number;
+  /** Zero until the race closes. After it, the window in which the obligor may draw. */
+  drawDeadline: number;
 }
 
 /** One `Lock_` event, decoded from the receipt that emitted it. */
@@ -129,7 +134,10 @@ export class SepoliaReader {
       lockCount: bigint;
       facilitySize: bigint;
       raceDeadline: bigint;
+      drawDeadline: bigint;
       totalLocked: bigint;
+      totalDrawn: bigint;
+      totalRepaid: bigint;
     };
     return {
       obligor: c.obligor,
@@ -140,6 +148,9 @@ export class SepoliaReader {
       facilitySizeUsd: fromUnits(c.facilitySize),
       totalLockedUsd: fromUnits(c.totalLocked),
       raceDeadline: Number(c.raceDeadline),
+      totalDrawnUsd: fromUnits(c.totalDrawn),
+      totalRepaidUsd: fromUnits(c.totalRepaid),
+      drawDeadline: Number(c.drawDeadline),
     };
   }
 

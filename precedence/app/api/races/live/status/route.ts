@@ -34,8 +34,19 @@ export type SettlementStage =
   | "AWAITING_ATTESTATION"
   /** Closed and attested. Everything needed for the proof exists; the worker has not run. */
   | "PROOF_READY"
-  /** Verified at 0x0FD2. */
-  | "PROVEN";
+  /** Verified at 0x0FD2. Priority is fixed; the facility has not been drawn. */
+  | "PROVEN"
+  /**
+   * Drawn, and running.
+   *
+   * @remarks Settlement ends at PROVEN, but the FACILITY does not — it then runs for its term.
+   * Without these two stages the page stopped dead on a proof with four lane stages still unlit,
+   * which reads as stuck rather than as finished. Both are observed from the vault's own
+   * `totalDrawn` and `totalRepaid`, so they move when the borrower acts and not before.
+   */
+  | "ENCUMBERED"
+  /** Repaid on Sepolia. The waterfall needs that repayment proven on Creditcoin. */
+  | "REPAID_AWAITING_PROOF";
 
 export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get("id");
@@ -65,30 +76,56 @@ export async function GET(req: Request) {
     );
   }
 
+  const got = getSepoliaReader();
+  if (!got.reader) return Response.json({ ok: false, error: got.why }, { status: 502 });
+  const reader = got.reader;
+  const attest = new AttestationReader();
+
   // A proven settlement is finished, and asking the chains about it again cannot change any of
   // these numbers. The client stops polling once it sees PROVEN, but this is the backstop that
   // makes an older tab, a reload, or anything else hitting the endpoint cost nothing: without it,
   // a settled race answered five RPC reads per request forever.
   //
-  // Served from the stored record, which for a proven race is what the proof itself wrote — so
-  // this answers even where no vault is deployed, before the reader is asked for.
+  // Served from the stored record plus ONE vault read. No attestation reads at all, which is the
+  // expensive half — a settled race used to answer five RPC calls per poll to redisplay figures
+  // that could not change.
   if (race.settlement) {
     const heights = race.locks.map((l) => l.lockBlockNumber);
     const target = heights.length ? Math.max(...heights) : race.onchain.openBlockNumber;
+
+    // One vault read, and no attestation reads at all: the proof is done, but the FACILITY is
+    // not, and `totalDrawn`/`totalRepaid` are how its life after settlement is observed. Skipping
+    // this is what made a proven settlement look stuck with four lane stages still unlit.
+    let servicing: Awaited<ReturnType<typeof reader.raceState>> | null = null;
+    try {
+      servicing = await reader.raceState(race.onchain.collateralId);
+    } catch {
+      // The settlement record stands on its own; a servicing read is extra.
+    }
+    const drawn = servicing?.totalDrawnUsd ?? 0;
+    const repaid = servicing?.totalRepaidUsd ?? 0;
+    const settledStage: SettlementStage =
+      drawn > 0 && repaid >= drawn ? "REPAID_AWAITING_PROOF" : drawn > 0 ? "ENCUMBERED" : "PROVEN";
+
     return Response.json({
       ok: true,
       id: race.id,
-      stage: "PROVEN" satisfies SettlementStage,
+      stage: settledStage,
       vault: {
         raceOpen: false,
         raceNonce: race.onchain.raceNonce,
         lockCount: race.locks.length,
-        totalLockedUsd: race.locks.reduce((s, l) => s + (l.refunded ? 0 : l.amountUsd), 0),
+        totalLockedUsd:
+          servicing?.totalLockedUsd ??
+          race.locks.reduce((s, l) => s + (l.refunded ? 0 : l.amountUsd), 0),
         facilitySizeUsd: race.onchain.facilitySizeUsd,
         raceDeadline: race.onchain.raceDeadline,
         secondsLeft: 0,
         obligor: race.onchain.obligor,
         closableByAnyone: false,
+        totalDrawnUsd: drawn,
+        totalRepaidUsd: repaid,
+        drawDeadline: servicing?.drawDeadline ?? 0,
       },
       attestation: {
         chainKey: Number(SEPOLIA_CHAIN_KEY),
@@ -105,11 +142,6 @@ export async function GET(req: Request) {
       prover: proverState(id),
     });
   }
-
-  const got = getSepoliaReader();
-  if (!got.reader) return Response.json({ ok: false, error: got.why }, { status: 502 });
-  const reader = got.reader;
-  const attest = new AttestationReader();
 
   // The block that has to be attested is the HIGHEST one any lock landed in — a race legitimately
   // spans blocks, and the proof cannot be built until the last of them is inside the frontier.
@@ -159,6 +191,9 @@ export async function GET(req: Request) {
       // Whoever may send `closeRace` right now. The obligor at any time; anyone once the deadline
       // has passed. Reported rather than left for the UI to re-derive from the contract's rule.
       closableByAnyone: secondsLeft === 0,
+      totalDrawnUsd: vault.totalDrawnUsd,
+      totalRepaidUsd: vault.totalRepaidUsd,
+      drawDeadline: vault.drawDeadline,
     },
     attestation: {
       chainKey: Number(SEPOLIA_CHAIN_KEY),

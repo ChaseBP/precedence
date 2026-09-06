@@ -53,7 +53,14 @@ export interface SettlementStatus {
   ok: boolean;
   error?: string;
   id: string;
-  stage: "WINDOW_OPEN" | "AWAITING_CLOSE" | "AWAITING_ATTESTATION" | "PROOF_READY" | "PROVEN";
+  stage:
+    | "WINDOW_OPEN"
+    | "AWAITING_CLOSE"
+    | "AWAITING_ATTESTATION"
+    | "PROOF_READY"
+    | "PROVEN"
+    | "ENCUMBERED"
+    | "REPAID_AWAITING_PROOF";
   vault: {
     raceOpen: boolean;
     raceNonce: number;
@@ -64,6 +71,9 @@ export interface SettlementStatus {
     secondsLeft: number;
     obligor: Hex;
     closableByAnyone: boolean;
+    totalDrawnUsd: number;
+    totalRepaidUsd: number;
+    drawDeadline: number;
   };
   attestation: {
     chainKey: number;

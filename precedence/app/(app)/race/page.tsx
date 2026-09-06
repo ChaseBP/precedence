@@ -484,7 +484,9 @@ function RaceInner() {
     AWAITING_CLOSE: "Window elapsed · the race is still open until someone sends closeRace",
     AWAITING_ATTESTATION: "Attestcoin is attesting the source block · ordering already fixed",
     PROOF_READY: "Source block attested · the proof can be submitted on Creditcoin",
-    PROVEN: "Verified at 0x0FD2 · priority is proven",
+    PROVEN: "Priority proven at 0x0FD2 · the obligor can now draw",
+    ENCUMBERED: "Facility drawn and running · lien recorded on Creditcoin",
+    REPAID_AWAITING_PROOF: "Repaid on Sepolia · the repayment needs proving before the waterfall pays",
   };
   const statusLine =
     (liveStatus ? LIVE_STATUS_LINE[liveStatus.stage] : undefined) ??
@@ -504,6 +506,10 @@ function RaceInner() {
     AWAITING_ATTESTATION: "PRIORITY_SETTLED",
     PROOF_READY: "PRIORITY_SETTLED",
     PROVEN: "PRIORITY_SETTLED",
+    // Stage 4 covers PRIORITY_SETTLED through ENCUMBERED, so a drawn facility lights the same
+    // segment — correctly. The lane only moves past it when the loan does.
+    ENCUMBERED: "ENCUMBERED",
+    REPAID_AWAITING_PROOF: "REPAYMENT_PROOF",
   };
 
   const advanceStep = async () => {

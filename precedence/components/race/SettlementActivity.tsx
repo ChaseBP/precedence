@@ -326,6 +326,11 @@ export function SettlementActivity({
     AWAITING_ATTESTATION: { title: "Attestcoin is attesting the source block", tone: "var(--proof-pending)" },
     PROOF_READY: { title: "Attested · the proof can be submitted", tone: "var(--proof-available)" },
     PROVEN: { title: "Verified at 0x0FD2", tone: "var(--proof-verified)" },
+    ENCUMBERED: { title: "Facility drawn · lien active", tone: "var(--proof-verified)" },
+    REPAID_AWAITING_PROOF: {
+      title: "Repaid on Sepolia · the repayment needs proving",
+      tone: "var(--proof-available)",
+    },
   };
   const head = HEAD[s.stage];
 
@@ -532,12 +537,75 @@ export function SettlementActivity({
         </>
       ) : null}
 
-      {s.stage === "PROVEN" ? (
-        <p className="mt-2 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
-          Every lock in this race was verified in one Creditcoin transaction at{" "}
-          <span className="mono">0x0FD2</span>, and the ranking above is proven rather than
-          observed.
-        </p>
+      {/* What remains after the proof.
+          Settlement ends here; the FACILITY does not. Stage 4 of the lane covers PRIORITY_SETTLED
+          through ENCUMBERED, and stages 5 to 7 are the loan's own life — drawn, optionally
+          refinanced, repaid, released — which runs over its term in days or months, not in the
+          next minute. Saying nothing here left a proven settlement looking stuck with four
+          segments unlit, which is the opposite of the truth. */}
+      {s.stage === "PROVEN" || s.stage === "ENCUMBERED" || s.stage === "REPAID_AWAITING_PROOF" ? (
+        <>
+          <p className="mt-2 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
+            Every lock in this race was verified in one Creditcoin transaction at{" "}
+            <span className="mono">0x0FD2</span>, and the ranking above is proven rather than
+            observed. <span style={{ color: "var(--text)" }}>Priority is settled — that part is
+            finished.</span>
+          </p>
+
+          <Grid
+            hero={hero}
+            rows={[
+              ["locked", usd(s.vault.totalLockedUsd)],
+              ["drawn", usd(s.vault.totalDrawnUsd)],
+              ["repaid", usd(s.vault.totalRepaidUsd)],
+              ["facility", usd(s.vault.facilitySizeUsd)],
+            ]}
+          />
+
+          <div className="mt-3 rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
+            <Eyebrow>What is left, and when</Eyebrow>
+            <ol className="mt-1.5 flex flex-col gap-1 text-[11.5px]" style={{ color: "var(--text-muted)" }}>
+              <li className="flex gap-2">
+                <span className="mono shrink-0" style={{ color: s.vault.totalDrawnUsd > 0 ? "var(--proof-verified)" : "var(--accent)" }}>
+                  {s.vault.totalDrawnUsd > 0 ? "done" : "next"}
+                </span>
+                <span>
+                  <span style={{ color: "var(--text)" }}>Draw.</span> The obligor takes the
+                  allocated capital out of the vault — a Sepolia transaction, on the facility page.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="mono shrink-0" style={{ color: "var(--text-faint)" }}>term</span>
+                <span>
+                  <span style={{ color: "var(--text)" }}>Encumbered.</span> The lien runs for{" "}
+                  {race.collateral.termDays} days. Refinance is opportunistic, not a step — it
+                  happens only if a better rate appears.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="mono shrink-0" style={{ color: "var(--text-faint)" }}>
+                  {s.stage === "REPAID_AWAITING_PROOF" ? "now" : "later"}
+                </span>
+                <span>
+                  <span style={{ color: "var(--text)" }}>Repay, then prove it.</span> The waterfall
+                  pays out against the amount decoded from the repayment transaction on Creditcoin,
+                  so a repayment needs its own proof — the same attestation wait again.
+                </span>
+              </li>
+            </ol>
+            <a
+              href={`/collateral/${race.collateral.id}`}
+              className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold"
+              style={{ color: "var(--accent)" }}
+            >
+              Open the facility to draw or repay <ArrowRight size={11} className="shrink-0" />
+            </a>
+          </div>
+          <Note>
+            The four remaining stages above are the loan&rsquo;s life, not queued work. Nothing here
+            is waiting on this app.
+          </Note>
+        </>
       ) : null}
 
       {/* ── the one action this panel offers ── */}

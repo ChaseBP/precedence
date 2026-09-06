@@ -247,7 +247,15 @@ and what is holding it, refreshed from both chains every 20 seconds.
 | `AWAITING_CLOSE` | The deadline passed. The vault rejects new locks but the race is **still open**. | Somebody sending `closeRace`. The obligor may at any time; **anyone** may once the deadline has passed. The page offers the button. |
 | `AWAITING_ATTESTATION` | Closed. Attestcoin has not yet reached the source block. | Attestcoin, in ten-block batches. Watch the frontier close in. |
 | `PROOF_READY` | The source block is attested. Every input the proof needs exists. | The worker. The page prints the exact command. |
-| `PROVEN` | Verified at `0x0FD2`. | — |
+| `PROVEN` | Verified at `0x0FD2`. Priority is settled — that part is finished. | The obligor drawing. |
+| `ENCUMBERED` | Drawn, and the lien is running for the facility's term. | Repayment, days or months later. |
+| `REPAID_AWAITING_PROOF` | Repaid on Sepolia. | Proving that repayment on Creditcoin — another attestation wait. |
+
+**Settlement ending is not the lifecycle ending.** Stage 4 of the seven-stage strip covers
+`PRIORITY_SETTLED` through `ENCUMBERED`, and stages 5 to 7 — refinance, payout, record — are the
+loan's own life. A proven settlement sitting at stage 4 with four segments unlit is finished, not
+stuck: refinance is opportunistic rather than a step, and repayment happens at the end of the term.
+Draw and repay are on the facility page.
 
 Two things surprise people, and both are deliberate:
 
