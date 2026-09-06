@@ -70,10 +70,34 @@ function etaRange(blocksToGo: number): string | null {
 export function SettlementActivity({
   race,
   onChanged,
+  onStatus,
+  hero = false,
 }: {
   race: PriorityRace;
   /** Called when a chain read shows the settlement has moved, so the page can refetch. */
   onChanged?: () => void;
+  /**
+   * Every poll's result, so the rest of the page can agree with this panel.
+   *
+   * @remarks The header and the stage timeline were reading the STORED phase, which for a live
+   * settlement stops at RACE_OPEN and never moves — nothing advances it, by design, because the
+   * scripted engine is refused on a live race. So the header announced "Financing window open ·
+   * competing financiers locking on Sepolia" directly above this panel reading "Attested · the
+   * proof can be submitted". Two contradictory claims about the same settlement, one screen apart,
+   * is worse for trust than either of them being merely stale.
+   */
+  onStatus?: (s: SettlementStatus) => void;
+  /**
+   * Render full width, above the two columns, rather than as one card in a rail.
+   *
+   * @remarks Not a cosmetic setting. In a rail this panel is 306px tall and its five attestation
+   * metrics stack as a five-row list; across the full width the same five lay out as one strip and
+   * the card is *shorter* as well as more prominent. Full width is also the only arrangement that
+   * cannot put it below the fold at some viewport, which is the failure it exists to prevent —
+   * a viewer who cannot see this panel cannot tell a settlement that is progressing from one that
+   * has stopped.
+   */
+  hero?: boolean;
 }) {
   const { address } = useAccount();
   const [s, setS] = useState<SettlementStatus | null>(null);
@@ -130,13 +154,14 @@ export function SettlementActivity({
       if (lastStage.current !== null && lastStage.current !== r.stage) onChanged?.();
       lastStage.current = r.stage;
       setS(r);
+      onStatus?.(r);
       setCheckedAt(performance.timeOrigin + performance.now());
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setPolling(false);
     }
-  }, [race.id, onChanged]);
+  }, [race.id, onChanged, onStatus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -254,7 +279,10 @@ export function SettlementActivity({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-semibold" style={{ color: head.tone }}>
+        <h3
+          className={hero ? "text-base font-semibold sm:text-lg" : "text-sm font-semibold"}
+          style={{ color: head.tone }}
+        >
           {head.title}
         </h3>
         {s.stage === "WINDOW_OPEN" ? (
@@ -329,6 +357,7 @@ export function SettlementActivity({
             smoothly.
           </p>
           <Grid
+            hero={hero}
             rows={[
               ["source block to attest", a.targetHeight.toLocaleString()],
               ["attestation frontier", a.attestedHeight.toLocaleString()],
@@ -448,7 +477,34 @@ function Bar({ value, max, tone }: { value: number; max: number; tone: string })
   );
 }
 
-function Grid({ rows }: { rows: [string, string][] }) {
+/**
+ * The attestation figures.
+ *
+ * @remarks Two shapes for the same data. In a rail there is no horizontal room, so it is a
+ * label-and-value list. Across the full width the five become tiles on one line, which reads as
+ * instrumentation rather than as a table and costs a third of the height.
+ */
+function Grid({ rows, hero }: { rows: [string, string][]; hero: boolean }) {
+  if (hero) {
+    return (
+      <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        {rows.map(([k, v]) => (
+          <div
+            key={k}
+            className="min-w-0 rounded-lg px-2.5 py-2"
+            style={{ background: "var(--bg-2)", border: "1px solid var(--border)" }}
+          >
+            <dt className="text-[10.5px] leading-tight" style={{ color: "var(--text-faint)" }}>
+              {k}
+            </dt>
+            <dd className="mono mt-0.5 truncate text-[13px] font-semibold" title={v}>
+              {v}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
   return (
     <dl className="mt-2.5 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-[11px]">
       {rows.map(([k, v]) => (

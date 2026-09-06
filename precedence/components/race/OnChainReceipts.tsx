@@ -21,6 +21,7 @@
 import { ExternalLink, Link2 } from "lucide-react";
 import type { PriorityRace } from "@/lib/precedence/types";
 import { Card, Eyebrow } from "@/components/ui";
+import { Fold } from "@/components/race/Fold";
 
 // The CC3 host that resolves. `explorer.cc3-testnet.creditcoin.network` does not.
 const CREDITCOIN_EXPLORER = "https://creditcoin-testnet.blockscout.com";
@@ -33,7 +34,21 @@ interface Receipt {
   chain: string;
 }
 
-export function OnChainReceipts({ race }: { race: PriorityRace }) {
+export function OnChainReceipts({
+  race,
+  folded = false,
+}: {
+  race: PriorityRace;
+  /**
+   * Collapse to a one-line summary carrying the count.
+   *
+   * @remarks Six 66-character hashes are 286px of the most valuable vertical space on the page,
+   * spent on audit artifacts rather than on the state a viewer is waiting to change. Folded, every
+   * hash stays complete, copyable and one click away, and the summary says how many there are so
+   * nobody has to open it to find out whether it is worth opening.
+   */
+  folded?: boolean;
+}) {
   const oc = race.onchain;
   if (!oc) return null;
 
@@ -65,15 +80,8 @@ export function OnChainReceipts({ race }: { race: PriorityRace }) {
 
   if (receipts.length === 0) return null;
 
-  return (
-    <Card>
-      <div className="flex items-center gap-2">
-        <Link2 size={14} style={{ color: "var(--accent)" }} />
-        <Eyebrow>On-chain receipts</Eyebrow>
-      </div>
-      <p className="mt-1.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
-        Every transaction this settlement rests on. Each opens on its own chain&rsquo;s explorer.
-      </p>
+  const list = (
+    <>
       <ul className="mt-2.5 flex flex-col divide-y" style={{ borderColor: "var(--border)" }}>
         {receipts.map((r) => (
           <li key={`${r.chain}-${r.hash}-${r.label}`} className="py-2 first:pt-0 last:pb-0">
@@ -102,6 +110,31 @@ export function OnChainReceipts({ race }: { race: PriorityRace }) {
         Vault <span className="mono">{oc.vaultAddress}</span> · race {oc.raceNonce} · obligor{" "}
         <span className="mono">{oc.obligor}</span>
       </p>
+    </>
+  );
+
+  if (folded) {
+    return (
+      <Fold
+        title="On-chain receipts"
+        count={`${receipts.length} tx`}
+        hint="Every transaction this settlement rests on. Each opens on its own chain's explorer."
+      >
+        {list}
+      </Fold>
+    );
+  }
+
+  return (
+    <Card>
+      <div className="flex items-center gap-2">
+        <Link2 size={14} style={{ color: "var(--accent)" }} />
+        <Eyebrow>On-chain receipts</Eyebrow>
+      </div>
+      <p className="mt-1.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
+        Every transaction this settlement rests on. Each opens on its own chain&rsquo;s explorer.
+      </p>
+      {list}
     </Card>
   );
 }
