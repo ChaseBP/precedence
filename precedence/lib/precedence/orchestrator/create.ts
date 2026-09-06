@@ -33,7 +33,7 @@ export async function createRace(params: CreateRaceParams): Promise<PriorityRace
     collateral = list[0];
   }
   if (!collateral) {
-    throw new Error("No collateral assets available to open a priority race");
+    throw new Error("No collateral assets available to open a settlement");
   }
 
   const requestedTotalUsd = params.requestedTotalUsd ?? collateral.financingRequestedUsd;

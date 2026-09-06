@@ -101,7 +101,7 @@ export const PHASE_STATUS_LINE: Record<LifecyclePhase, string> = {
   TERMINATED_DEFAULT: "Unwind complete · loss allocated · obligor flagged DEFAULT",
   BREACHED: "Collateral movement proven · all claims frozen · legal escalation",
   AUTO_REFUND: "Outpaced capital returned · no lien created",
-  ABORTED: "Priority race aborted",
+  ABORTED: "Priority settlement aborted",
 };
 
 /**

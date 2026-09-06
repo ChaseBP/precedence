@@ -87,7 +87,7 @@ export default function DashboardPage() {
               color="var(--rank-senior)"
               sub={
                 <span className="flex items-center gap-1">
-                  <TrendingUp size={12} /> across all priority races
+                  <TrendingUp size={12} /> across all settlements
                 </span>
               }
             />
@@ -114,7 +114,7 @@ export default function DashboardPage() {
         <Item>
           <Card>
             <Stat
-              label="Active Priority Races"
+              label="Active Settlements"
               value={<CountUp value={active} format={(n) => String(Math.round(n))} />}
               sub={
                 <span className="flex items-center gap-1">
@@ -162,7 +162,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="py-10 text-sm" style={{ color: "var(--text-faint)" }}>
-              Run priority races from Facilities to populate the trend graph.
+              Open facilities and settle them to populate the trend graph.
             </div>
           )}
         </Card>

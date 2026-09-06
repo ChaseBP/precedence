@@ -185,7 +185,7 @@ export class ChainCreditcoinClient implements CreditcoinClient {
     }
 
     throw new RequiresWorkerError(
-      "Settling a priority race",
+      "Settling priority",
       `cd worker && bun run src/cli.ts prove ${collateralId} --from-vault`,
     );
   }

@@ -193,7 +193,7 @@ export function Shell({ children }: { children: ReactNode }) {
   }, []);
 
   const reset = async () => {
-    if (!window.confirm("Reset demo state for EVERYONE viewing the app? This wipes all priority races and reseeds.")) {
+    if (!window.confirm("Reset demo state for EVERYONE viewing the app? This wipes all settlements and reseeds.")) {
       return;
     }
     const r = await api.reset();

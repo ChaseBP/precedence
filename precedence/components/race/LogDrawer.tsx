@@ -37,7 +37,7 @@ export function LogDrawer({ events }: { events: LifecycleEvent[] }) {
           }}
         >
           {!latest ? (
-            "awaiting priority race events…"
+            "awaiting settlement events…"
           ) : latest.level === "error" || latest.level === "warn" ? (
             latest.message
           ) : (

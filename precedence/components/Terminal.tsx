@@ -32,7 +32,7 @@ export function Terminal({ events }: { events: LifecycleEvent[] }) {
         className="mono max-h-[420px] min-h-[260px] overflow-y-auto px-4 py-3 text-[0.72rem] leading-relaxed"
       >
         {events.length === 0 ? (
-          <div style={{ color: "var(--text-faint)" }}>$ awaiting priority race…</div>
+          <div style={{ color: "var(--text-faint)" }}>$ awaiting settlement…</div>
         ) : (
           events.map((e) => (
             <motion.div
