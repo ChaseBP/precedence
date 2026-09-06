@@ -76,6 +76,21 @@ export interface SettlementStatus {
     blocksToGo: number;
   };
   proverCommand: string;
+  prover?: {
+    /** Whether this deployment can run the prover itself, or can only name the command. */
+    available: boolean;
+    unavailableReason?: string;
+    job?: {
+      state: "running" | "done" | "failed";
+      stage: string;
+      startedAt: string;
+      settleTxHash?: string;
+      explorerUrl?: string;
+      crossCheckAgrees?: boolean;
+      error?: string;
+      log: string[];
+    };
+  };
 }
 
 export interface PortfolioLending {
@@ -194,6 +209,16 @@ export const api = {
    */
   settlementStatus: (id: string) =>
     jget<SettlementStatus>(`/api/races/live/status?id=${encodeURIComponent(id)}`),
+
+  /**
+   * Submit the proof for a settlement that is ready for one.
+   *
+   * @remarks Returns as soon as the prover has STARTED. Progress arrives through
+   * `settlementStatus`, which the page is already polling — proving takes tens of seconds and a
+   * request that waits for it is a request that times out.
+   */
+  proveSettlement: (id: string) =>
+    jpost<{ ok: boolean; error?: string }>("/api/races/live/prove", { id }),
 
   // Attestations & proofs
   attestations: () => jget<{ ok: boolean; attestations: Attestation[] }>("/api/attestations"),

@@ -17,7 +17,9 @@
  * not of our configuration.
  */
 import { createPublicClient, http, type PublicClient } from "viem";
-import { CREDITCOIN_RPC_DEFAULT, getConfig } from "../../config";
+import type { Hex } from "../../types";
+import { CREDITCOIN_RPC_DEFAULT, getConfig, loadDeployedAddresses } from "../../config";
+import { CollateralRegistry_ABI } from "../generated/abis";
 
 /** Attestcoin's chainKey for Ethereum Sepolia. Docs-confirmed; mainnet is 3. */
 export const SEPOLIA_CHAIN_KEY = 1n;
@@ -128,4 +130,61 @@ export class AttestationReader {
       args: [chainKey, BigInt(height)],
     });
   }
+}
+
+/**
+ * Whether Creditcoin knows this collateral well enough for a proof to settle against it.
+ *
+ * @remarks A settlement can reach `PROOF_READY` on the strength of Sepolia alone — the locks are
+ * real, the block is attested, everything the *proof* needs exists — and then revert with
+ * `UnknownCollateral` because the asset was never registered on the Creditcoin registry. The two
+ * registrations are separate transactions on separate chains, and only the second one is what the
+ * engine settles against.
+ *
+ * Asked before the prover starts, so a missing registration is a sentence on screen rather than a
+ * reverted transaction and a spent fee. Returns the reason, not just a boolean, because "not
+ * registered" and "no terms posted" need different actions from different people.
+ */
+export async function creditcoinReadiness(
+  collateralId: Hex,
+): Promise<{ ok: true } | { ok: false; why: string }> {
+  const registry = loadDeployedAddresses().creditcoin?.CollateralRegistry;
+  if (!registry) {
+    return {
+      ok: false,
+      why:
+        "No Creditcoin registry is deployed (contracts/deployments/creditcoin.json is missing), " +
+        "so there is nothing for a proof to settle against.",
+    };
+  }
+  const client = createPublicClient({
+    transport: http(getConfig().creditcoinRpc || CREDITCOIN_RPC_DEFAULT),
+  });
+  const read = (functionName: "exists" | "hasFacilityTerms") =>
+    client.readContract({
+      address: registry,
+      abi: CollateralRegistry_ABI,
+      functionName,
+      args: [collateralId],
+    }) as Promise<boolean>;
+
+  const [exists, hasTerms] = await Promise.all([read("exists"), read("hasFacilityTerms")]);
+  if (!exists) {
+    return {
+      ok: false,
+      why:
+        "This asset is not registered on the Creditcoin registry, only on the Sepolia vault. " +
+        "Priority settles on Creditcoin, so the obligor has to register it there first — the " +
+        "registration wizard signs both.",
+    };
+  }
+  if (!hasTerms) {
+    return {
+      ok: false,
+      why:
+        "No facility terms are posted on Creditcoin for this asset, so there are no tranche caps " +
+        "to allocate the proven locks into.",
+    };
+  }
+  return { ok: true };
 }

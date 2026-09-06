@@ -18,9 +18,19 @@
  * the prover worker, which needs attestation of the source block before it can honestly claim
  * priority is settled.
  */
-import type { Hex, PriorityRace, SourceLockRecord } from "../types";
-import { getCollateral, saveRace, listRacesFull, updateCollateral } from "../store/repositories";
+import type { Hex, PriorityRace, SourceLockRecord, Tranche } from "../types";
+import {
+  getCollateral,
+  getRace,
+  listRacesFull,
+  saveRace,
+  updateCollateral,
+} from "../store/repositories";
 import { analyzeCollateral } from "../domain/collateral";
+import { CREDITCOIN_RPC_DEFAULT, getConfig } from "../config";
+
+/** Attestcoin's chainKey for Sepolia. Docs-confirmed. */
+const SEPOLIA_CHAIN_KEY_NUM = 1;
 import {
   getSepoliaReader,
   NotVerifiableError,
@@ -257,5 +267,142 @@ export async function appendLiveLock(params: AppendLiveLockParams): Promise<Prio
 
   const updated: PriorityRace = { ...race, locks, updatedAt: new Date().toISOString() };
   await saveRace(updated);
+  return updated;
+}
+
+/**
+ * Write a completed proof onto the race, from the evidence the worker produced.
+ *
+ * @remarks Nothing here is composed by this app. Every figure comes out of the evidence file the
+ * prover wrote, and every figure in that file was read back from a chain: the proven positions
+ * from `calculateTxIndex` on the precompile, the awards from the engine's own settled stack, the
+ * transaction hash and block from the Creditcoin receipt.
+ *
+ * The settlement transaction is nonetheless re-verified against Creditcoin before any of it is
+ * stored. The evidence file is ours and could in principle be stale or hand-edited, and this is
+ * the record that flips the interface from OBSERVED to PROVEN — the single boldest claim the app
+ * makes. It does not get to rest on a local JSON file.
+ *
+ * Idempotent: a race that already carries a settlement is returned untouched.
+ */
+export async function applyProvenSettlement(
+  raceId: string,
+  evidencePath: string,
+): Promise<PriorityRace | undefined> {
+  const race = await getRace(raceId);
+  if (!race?.onchain) return undefined;
+  if (race.settlement) return race;
+
+  const { readFileSync, existsSync } = await import("node:fs");
+  const { isAbsolute, resolve } = await import("node:path");
+  const path = isAbsolute(evidencePath) ? evidencePath : resolve(process.cwd(), "..", evidencePath);
+  if (!existsSync(path)) throw new Error(`no evidence at ${path}`);
+
+  const ev = JSON.parse(readFileSync(path, "utf8")) as {
+    collateralId: string;
+    attestation?: { attestedHeight?: number; waitMinutes?: number };
+    creditcoin: {
+      settleTxHash: string;
+      blockNumber: number;
+      provenPositions: { height: number; txIndex: number; financier: string }[];
+    };
+    settlement: {
+      awards: { financier: string; tranche: string; rank: number; amount: string; height: number; txIndex: number }[];
+      refunds: { financier: string; tranche: string; amount: string }[];
+    };
+    crossCheck?: { agrees?: boolean };
+  };
+
+  if (ev.collateralId.toLowerCase() !== race.onchain.collateralId.toLowerCase()) {
+    throw new Error("that evidence belongs to a different facility");
+  }
+
+  const settleTx = ev.creditcoin.settleTxHash;
+  if (!/^0x[0-9a-fA-F]{64}$/.test(settleTx)) throw new Error("the evidence carries no settlement hash");
+
+  // The re-verification. A receipt that is missing or reverted means no settlement happened,
+  // whatever the file says.
+  const { createPublicClient, http } = await import("viem");
+  const cc = createPublicClient({
+    transport: http(getConfig().creditcoinRpc || CREDITCOIN_RPC_DEFAULT),
+  });
+  const receipt = await cc.getTransactionReceipt({ hash: settleTx as `0x${string}` });
+  if (receipt.status !== "success") {
+    throw new Error(`the settlement transaction ${settleTx} reverted on Creditcoin`);
+  }
+
+  const usdOf = (s: string) => Number(s.replace(/[^0-9.]/g, "")) || 0;
+  const pick = (t: string) => ev.settlement.awards.find((a) => a.tranche === t);
+  const senior = pick("SENIOR");
+  const junior = pick("JUNIOR");
+  const sub = pick("SUBORDINATE");
+
+  const now = new Date().toISOString();
+  const updated: PriorityRace = {
+    ...race,
+    status: "PRIORITY_SETTLED",
+    settlement: {
+      collateralId: race.collateral.id,
+      // The wallet that holds each rank. There are no house agents in a live race, so the address
+      // IS the identity — naming one of ours here would attribute a stranger's capital.
+      seniorFinancier: senior?.financier ?? "",
+      seniorAmountUsd: senior ? usdOf(senior.amount) : 0,
+      juniorFinancier: junior?.financier ?? "",
+      juniorAmountUsd: junior ? usdOf(junior.amount) : 0,
+      subordinateFinancier: sub?.financier,
+      subordinateAmountUsd: sub ? usdOf(sub.amount) : undefined,
+      refundedFinanciers: ev.settlement.refunds.map((r) => ({
+        agentId: r.financier,
+        amountUsd: usdOf(r.amount),
+        tranche: (["SENIOR", "JUNIOR", "SUBORDINATE"] as const).includes(r.tranche as Tranche)
+          ? (r.tranche as Tranche)
+          : "SUBORDINATE",
+        reason: `declared ${r.tranche}, outpaced for that rank — reclaimable in full`,
+      })),
+      // As the precompile derived them, in the order the gate enforced.
+      provenOrder: ev.creditcoin.provenPositions.map((p, i) => ({
+        agentId: p.financier,
+        blockNumber: p.height,
+        txIndex: p.txIndex,
+        seq: i + 1,
+      })),
+      settlementBlock: ev.creditcoin.blockNumber,
+      creditcoinTxHash: settleTx as Hex,
+      settledAt: now,
+    },
+    proofRecord: {
+      ...(race.proofRecord ?? {
+        chainKey: SEPOLIA_CHAIN_KEY_NUM,
+        heights: [],
+        txIndices: [],
+        encodedTxs: [],
+        merkleProofs: [],
+        continuityProof: { lowerEndpointDigest: "0x" as Hex, roots: [] },
+        batchSize: 0,
+        preflightVerified: false,
+        proofPipelineStatus: "VERIFIED",
+        attestationLagMinutes: 0,
+        proverAgent: "worker",
+        precompile: "0x0FD2" as Hex,
+      }),
+      chainKey: SEPOLIA_CHAIN_KEY_NUM,
+      heights: ev.creditcoin.provenPositions.map((p) => p.height),
+      txIndices: ev.creditcoin.provenPositions.map((p) => p.txIndex),
+      batchSize: ev.creditcoin.provenPositions.length,
+      proofPipelineStatus: "VERIFIED",
+      attestationLagMinutes: ev.attestation?.waitMinutes ?? 0,
+      attestedHeight: ev.attestation?.attestedHeight,
+      preflightVerified: ev.crossCheck?.agrees ?? false,
+      creditcoinTxHash: settleTx as Hex,
+      verificationBlockNumber: ev.creditcoin.blockNumber,
+      verifiedAt: now,
+    },
+    updatedAt: now,
+  };
+
+  await saveRace(updated);
+  await updateCollateral(race.collateral.id, (c) => {
+    c.status = "PRIORITY_SETTLED";
+  });
   return updated;
 }

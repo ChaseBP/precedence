@@ -4,6 +4,8 @@ import {
 } from "@/lib/precedence/adapters/creditcoin/attestation-reader";
 import { getSepoliaReader } from "@/lib/precedence/adapters/sepolia/sepolia-reader";
 import { getRace } from "@/lib/precedence/store/repositories";
+import { applyProvenSettlement } from "@/lib/precedence/orchestrator/live-race";
+import { getProverJob, proverAvailable } from "@/lib/precedence/orchestrator/prover-job";
 
 /**
  * GET /api/races/live/status?id=… — what a live settlement is waiting for, right now.
@@ -39,8 +41,23 @@ export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return Response.json({ ok: false, error: "id is required" }, { status: 400 });
 
-  const race = await getRace(id);
+  let race = await getRace(id);
   if (!race) return Response.json({ ok: false, error: "no such settlement" }, { status: 404 });
+
+  // A prover that finished since the last poll writes its result here, on the request the page was
+  // already making. The alternative — the job reaching into the store from its own callback — puts
+  // a write on a path with no request to attribute it to and no way to report a failure.
+  const job = getProverJob(id);
+  if (job?.state === "done" && job.evidencePath && !race.settlement) {
+    try {
+      race = (await applyProvenSettlement(id, job.evidencePath)) ?? race;
+    } catch (e) {
+      // The proof is on Creditcoin regardless; only our record of it failed. Say so rather than
+      // failing the poll, which would blank the panel over a bookkeeping problem.
+      job.error = `settled on chain, but this app could not record it: ${(e as Error).message}`;
+    }
+  }
+
   if (!race.onchain) {
     return Response.json(
       { ok: false, error: "this is a scripted walkthrough — it has no on-chain state to report" },
@@ -85,6 +102,7 @@ export async function GET(req: Request) {
         blocksToGo: 0,
       },
       proverCommand: `cd worker && bun run src/cli.ts prove ${race.onchain.collateralId} --from-vault`,
+      prover: proverState(id),
     });
   }
 
@@ -156,5 +174,33 @@ export async function GET(req: Request) {
     },
     /** Named so the panel can print the exact command rather than "run the worker". */
     proverCommand: `cd worker && bun run src/cli.ts prove ${race.onchain.collateralId} --from-vault`,
+    prover: proverState(id),
   });
+}
+
+/**
+ * Whether this deployment can prove from the app, and how a running prover is getting on.
+ *
+ * @remarks `available` is reported rather than assumed so the UI offers the button only where
+ * pressing it would work — a hosted deployment with no worker checkout is a legitimate
+ * configuration, and there the command is the honest answer rather than a broken button.
+ */
+function proverState(raceId: string) {
+  const can = proverAvailable();
+  const job = getProverJob(raceId);
+  return {
+    available: can.ok,
+    unavailableReason: can.ok ? undefined : can.why,
+    job: job && {
+      state: job.state,
+      stage: job.stage,
+      startedAt: job.startedAt,
+      settleTxHash: job.settleTxHash,
+      explorerUrl: job.explorerUrl,
+      crossCheckAgrees: job.crossCheckAgrees,
+      error: job.error,
+      // The tail only. The whole log is for a terminal, not a card.
+      log: job.log.slice(-8),
+    },
+  };
 }
