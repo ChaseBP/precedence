@@ -107,6 +107,27 @@ print(rw if isinstance(rw, list) else rw['beforeFiles'])"
 # a flat list, or an empty beforeFiles, means the proxy is not in effect
 ```
 
+### `PRECEDENCE_API_ORIGIN` must be stored as CONFIG, not as a secret
+
+`vercel env add` stores a value as a **Secret** by default, and a secret is **redacted at build
+time**. `next.config.ts` has to *read* this variable to build the rewrite, so a secret makes the
+build fail with a message that never mentions secrets:
+
+```
+`destination` does not start with `/`, `http://`, or `https://` for route
+{"source":"/api/:path*","destination":"[SENSITIVE]/api/:path*"}
+Error: Invalid rewrite found
+```
+
+`[SENSITIVE]` is the whole clue. Add it readable:
+
+```bash
+vercel env add PRECEDENCE_API_ORIGIN production --no-sensitive --value https://<host>
+```
+
+The origin is a public hostname rather than a credential, so readable config is also the correct
+classification for it.
+
 ### The canary
 
 If `PRECEDENCE_API_ORIGIN` is set and `/api/config` still executes on Vercel, the rewrite did not

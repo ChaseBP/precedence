@@ -55,14 +55,33 @@ if [[ ! -f .vercel/project.json ]]; then
   vercel link -y --project precedence
 fi
 
+# `--no-sensitive` is not optional here, and getting it wrong fails the build in a way that names
+# nothing useful. `vercel env add` stores a value as a SECRET by default, and a secret is redacted
+# at build time — so `next.config.ts`, which must READ this to construct the rewrite, receives the
+# literal placeholder and next build dies with:
+#
+#     `destination` does not start with `/`, `http://`, or `https://` for route
+#     {"source":"/api/:path*","destination":"[SENSITIVE]/api/:path*"}
+#
+# The origin is a public hostname, not a credential, so storing it as readable config is also the
+# honest classification.
 echo "==> setting PRECEDENCE_API_ORIGIN (build-time: next.config.ts reads it)"
 for env in production preview; do
   vercel env rm PRECEDENCE_API_ORIGIN "$env" --yes >/dev/null 2>&1 || true
-  printf '%s' "$ORIGIN" | vercel env add PRECEDENCE_API_ORIGIN "$env" >/dev/null
+  vercel env add PRECEDENCE_API_ORIGIN "$env" --no-sensitive --value "$ORIGIN" >/dev/null
 done
 
-echo "==> deploying"
-vercel deploy --prod --yes
+# Built here, then uploaded as output. A remote build on this account has repeatedly stalled at
+# status UNKNOWN with no logs at all — including a --prebuilt deploy, which has nothing to build —
+# so keeping the build local means a failure is visible in this terminal instead of invisible on
+# theirs. It is also the pattern the Vercel CLI docs recommend for any pipeline that wants a gate
+# between build and deploy.
+echo "==> building locally with production env"
+vercel pull --yes --environment=production >/dev/null
+vercel build --prod
+
+echo "==> deploying the built output"
+vercel deploy --prebuilt --prod --yes
 
 # Verify against the project's stable ALIAS, not the deployment URL `vercel deploy` prints last.
 #
