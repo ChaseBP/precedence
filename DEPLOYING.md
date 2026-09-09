@@ -153,6 +153,14 @@ confirm the on-chain receipts open on Etherscan and Blockscout.
 - **The worker must be on the Azure box even though nothing imports it.** The prover route spawns
   `bun run src/cli.ts` in `../worker`. Without it, `proverAvailable()` reports the reason and the
   "Submit the proof" button is correctly disabled — but you lose the ability to settle.
+- **The browser has no public RPC of its own, on purpose.** `wagmi.ts` used to call `http()` with no
+  URL, so viem fell back to the chain default — `11155111.rpc.thirdweb.com` for Sepolia. That is
+  unauthenticated and shared, this app polls the vault every six seconds per open facility, and
+  visitors got their IP throttled. A throttled response from that host has **no CORS headers**, so
+  the browser reports `net::ERR_FAILED` and a missing `Access-Control-Allow-Origin` — which reads
+  like a bug in our app and is a rate limit two hops away. Reads now go to `/api/rpc/sepolia` and
+  `/api/rpc/creditcoin`, which forward to the server's real key. Read-only by allowlist: no method
+  that submits a transaction is proxied, because writes go through the user's own wallet.
 - **`evidence/` must be writable by the service user.** The prover writes its proof evidence there,
   and `applyProvenSettlement` reads it back to record the settlement.
 - **Do not run two dev servers.** A Turbopack dev server on this project holds ~3.2 GB. For a second

@@ -1,6 +1,6 @@
 "use client";
 
-import { createConfig, http } from "wagmi";
+import { createConfig, fallback, http } from "wagmi";
 import { injected, walletConnect } from "wagmi/connectors";
 import { creditcoinCc3, sepolia } from "./chains";
 
@@ -57,9 +57,34 @@ export const wagmiConfig = createConfig({
         ]
       : []),
   ],
+  /**
+   * Read transports. Our own proxy first, the public endpoint only as a backstop.
+   *
+   * @remarks `http()` with no URL was the bug. viem falls back to the chain's public default, which
+   * for Sepolia is `11155111.rpc.thirdweb.com` — unauthenticated and shared with the whole
+   * internet. This app polls the vault every six seconds per open facility, so visitors got their
+   * IP throttled, and a throttled response from that host arrives with NO CORS headers. The browser
+   * then reports `net::ERR_FAILED` and a missing `Access-Control-Allow-Origin`, which looks like
+   * our misconfiguration and is really a rate limit two hops away. Nothing about it was fixable
+   * from the client.
+   *
+   * `/api/rpc/*` forwards to the server's real key, which never reaches the browser. It is a
+   * relative URL, so it works on both the Vercel frontend (rewritten to the Azure backend) and on
+   * the backend itself, with no origin to configure and no CORS involved at all.
+   *
+   * `fallback` keeps the public endpoint behind it, so a backend restart degrades reads rather than
+   * breaking them. Only in the browser: a relative URL has nothing to resolve against during SSR,
+   * so the server-rendered pass uses the public transport directly.
+   */
   transports: {
-    [sepolia.id]: http(),
-    [creditcoinCc3.id]: http(),
+    [sepolia.id]:
+      typeof window === "undefined"
+        ? http()
+        : fallback([http("/api/rpc/sepolia"), http()]),
+    [creditcoinCc3.id]:
+      typeof window === "undefined"
+        ? http()
+        : fallback([http("/api/rpc/creditcoin"), http()]),
   },
   ssr: true,
 });
