@@ -128,6 +128,28 @@ vercel env add PRECEDENCE_API_ORIGIN production --no-sensitive --value https://<
 The origin is a public hostname rather than a credential, so readable config is also the correct
 classification for it.
 
+### The commit author's email must be on the GitHub account
+
+Vercel refuses a deployment whose commit author email it cannot match to a GitHub account:
+
+> The deployment was blocked because the commit email `you@example.com` could not be matched to a
+> GitHub account.
+
+This is worth knowing because of **how it fails**. The CLI reports the deployment as status
+`UNKNOWN` with a duration of `?`, `vercel logs` returns "No logs found", and
+`vercel inspect --logs` prints nothing — so from the terminal it is indistinguishable from a build
+that is simply slow. The reason is only visible on the dashboard. It applies to CLI deploys too,
+because the CLI attaches the local `HEAD` commit's metadata, and it applies to `--prebuilt`
+uploads that have nothing to build.
+
+The fix is to add that address at **github.com/settings/emails** and *verify it* — adding without
+clicking the verification link is not enough. Or commit under an address already on the account;
+`github.com/settings/emails` → "Keep my email addresses private" gives a
+`<id>+<user>@users.noreply.github.com` that always matches.
+
+A deployment already blocked **cannot be redeployed** — Vercel requires a fresh commit, so make one
+rather than hunting for a retry button.
+
 ### The canary
 
 If `PRECEDENCE_API_ORIGIN` is set and `/api/config` still executes on Vercel, the rewrite did not
