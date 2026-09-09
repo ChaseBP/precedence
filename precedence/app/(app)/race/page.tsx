@@ -229,7 +229,19 @@ function RaceInner() {
   // Spotlight: the playhead stage pops as a centered overlay, then docks back into the lane.
   const [spot, setSpot] = useState(false);
   const [hovering, setHovering] = useState(false); // hover = reading, so the dwell bar holds
-  const [wave, setWave] = useState<{ label: string; variant: "settle" | "breach" | "refinance" | "detected" } | null>(null);
+  /**
+   * The banner's content and whether it is up, kept together.
+   *
+   * @remarks `open` is separate from the wave existing so that clearing the banner does not also
+   * erase the text it is still displaying on its way out. The obvious alternative — remembering the
+   * last label in a ref — reads that ref during render, which is not reactive and is flagged for
+   * exactly that reason.
+   */
+  const [wave, setWave] = useState<{
+    label: string;
+    variant: "settle" | "breach" | "refinance" | "detected";
+    open: boolean;
+  } | null>(null);
   const reduced = useReducedMotion();
   /**
    * The live settlement's stage, as the chains report it.
@@ -339,8 +351,13 @@ function RaceInner() {
           refetch(id);
         }
         if (ev.phase === "PRIORITY_SETTLED" && ev.level === "success" && ev.message.includes("PRIORITY SETTLED")) {
-          setWave({ label: "Priority settled by proven ordering · Claims minted", variant: "settle" });
-          setTimeout(() => setWave(null), 4000);
+          setWave({
+            label: "Priority settled by proven ordering · Claims minted",
+            variant: "settle",
+            open: true,
+          });
+          // Closes it rather than deleting it, so the exit animation has something to render.
+          setTimeout(() => setWave((w) => (w ? { ...w, open: false } : null)), 4000);
         }
       },
       () => refetch(id),
@@ -885,7 +902,10 @@ function RaceInner() {
 
   return (
     <div className="flex flex-col gap-5">
-      {wave ? <WaveAlert show={!!wave} label={wave.label} variant={wave.variant} /> : null}
+      {/* Always mounted, so `show` going false plays the exit animation the banner defines.
+          Rendering it conditionally unmounted the component the instant a wave cleared, and
+          `AnimatePresence` lives inside it, so the exit never ran. */}
+      <WaveAlert show={!!wave?.open} label={wave?.label ?? ""} variant={wave?.variant} />
 
       {/* Summary Header & Timeline */}
       <FadeUp>

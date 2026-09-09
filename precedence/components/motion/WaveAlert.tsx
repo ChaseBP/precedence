@@ -12,6 +12,24 @@ interface WaveAlertProps {
   variant?: WaveVariant;
 }
 
+/**
+ * Dismissal is remembered PER WAVE, not as a boolean.
+ *
+ * @remarks This used to be `dismissed: boolean` kept in step with an effect —
+ * `useEffect(() => { if (show) setDismissed(false) }, [show, label])` — so that a fresh wave
+ * re-opened a banner the viewer had closed. That is state synchronised to a prop, which React 19
+ * flags as a cascading render: the effect fires after paint and schedules a second render pass to
+ * fix up state the first pass already had enough information to compute.
+ *
+ * Recording WHICH wave was dismissed removes the need to reset anything. A new wave has a
+ * different label, so `dismissedFor !== label` is true again on the very first render, with no
+ * effect and no second pass.
+ *
+ * It also lets the banner stay mounted, which is what makes its exit animation possible. The
+ * previous call site rendered it conditionally, so a cleared wave unmounted the component
+ * instantly and `AnimatePresence` — which lives inside it — never got to play the exit it defines.
+ */
+
 const CONFIG: Record<WaveVariant, { title: string; color: string; icon: typeof Radar }> = {
   settle: { title: "Priority Settled", color: "var(--proof-verified)", icon: Award },
   breach: { title: "Breach Detected", color: "var(--state-breached)", icon: ShieldAlert },
@@ -22,13 +40,8 @@ const CONFIG: Record<WaveVariant, { title: string; color: string; icon: typeof R
 export function WaveAlert({ show, label, variant = "detected" }: WaveAlertProps) {
   const cfg = CONFIG[variant] ?? CONFIG.detected;
   const Icon = cfg.icon;
-  const [dismissed, setDismissed] = useState(false);
-  const open = show && !dismissed;
-
-  // A fresh wave re-opens a banner the viewer had closed.
-  useEffect(() => {
-    if (show) setDismissed(false);
-  }, [show, label]);
+  const [dismissedFor, setDismissedFor] = useState<string | null>(null);
+  const open = show && dismissedFor !== label;
 
   /**
    * Tell the document a wave is up so the toast lane can move.
@@ -84,7 +97,7 @@ export function WaveAlert({ show, label, variant = "detected" }: WaveAlertProps)
             <div className="text-sm font-medium">{label}</div>
           </div>
           <button
-            onClick={() => setDismissed(true)}
+            onClick={() => setDismissedFor(label)}
             aria-label="Dismiss notification"
             className="btn-ghost ml-1 shrink-0 rounded-md p-1"
           >
