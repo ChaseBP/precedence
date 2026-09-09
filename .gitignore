@@ -40,3 +40,7 @@ evidence/.ux-store.json
 # The app's persistent store when PRECEDENCE_STORE_PATH points here. Runtime state, not evidence:
 # it churns on every action and holds whatever the machine was last looking at.
 evidence/.store.json
+
+# Delivery material for the video, not part of the submission.
+DEMO_SCRIPT.md
+precedence-full-chat.txt
