@@ -12,7 +12,7 @@
  *
  *   bun run ops/check-submission.ts
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "..");
@@ -25,11 +25,45 @@ const DOCS = [
 ];
 
 /**
+ * Every hex value in a machine-written record under `evidence/`, plus the deployment files.
+ *
+ * @remarks Derived rather than hand-listed, and that is the point. These files are written by the
+ * deploy scripts and by the worker from actual chain responses — a transaction hash in
+ * `evidence/race-*.json` is there because a receipt came back for it — so anything they contain is
+ * verifiable on an explorer by construction. Hand-maintaining the allowlist meant the front page
+ * could not cite its own deployed contracts without tripping this check, which is backwards: it
+ * pushed the docs away from the most checkable facts they have.
+ *
+ * `.store.json` and the other working caches are excluded. They hold app state including simulated
+ * fixtures, so they are not evidence of anything.
+ */
+function hexValuesFrom(dir: string, filter: (name: string) => boolean): string[] {
+  if (!existsSync(resolve(ROOT, dir))) return [];
+  const out: string[] = [];
+  for (const name of readdirSync(resolve(ROOT, dir))) {
+    if (!filter(name)) continue;
+    const full = resolve(ROOT, dir, name);
+    if (!statSync(full).isFile()) continue;
+    for (const m of readFileSync(full, "utf8").matchAll(/0x[0-9a-fA-F]{8,}/g)) out.push(m[0]);
+  }
+  return out;
+}
+
+const DERIVED_REAL_VALUES = [
+  // The deployed contracts, as the deploy scripts recorded them.
+  ...hexValuesFrom("contracts/deployments", (n) => n.endsWith(".json")),
+  // Settled races, the live precompile checks and the proof-path probe — all machine-written from
+  // chain responses. Deliberately NOT the `.store.json` caches, which contain fixtures.
+  ...hexValuesFrom("evidence", (n) => n.endsWith(".json") && !n.startsWith(".")),
+];
+
+/**
  * Values that are genuinely real and verifiable on a block explorer, or official Attestcoin
  * addresses. Anything else hex-shaped in the docs must be a visible SAMPLE.
  */
 const REAL_VALUES = new Set(
   [
+    ...DERIVED_REAL_VALUES,
     // funding transactions we actually broadcast
     "0x144bc395f407d98d722e780d805786125e07283e141006c6c9bfafa64c5f6f78",
     "0xc58e9177d4dea9a25dc205d80e458da11efb56635f73900e2ae413ad699f77cf",
@@ -96,7 +130,10 @@ for (const doc of DOCS) {
   if (!existsSync(p)) continue;
   const text = readFileSync(p, "utf8");
   for (const m of text.matchAll(/https?:\/\/[^\s)\]|`>"']+/g)) {
-    const u = m[0].replace(/[.,;:]+$/, "");
+    // Trailing markdown emphasis and punctuation are not part of the URL. A bold bare URL
+    // (`**https://…**`) was otherwise reported as unreachable, which is a false failure in the
+    // one check that must never cry wolf.
+    const u = m[0].replace(/[.,;:*_~]+$/, "");
     if (/SAMPLE/i.test(u)) continue;
     if (!urls.has(u)) urls.set(u, []);
     urls.get(u)!.push(doc);
