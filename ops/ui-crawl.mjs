@@ -2,7 +2,7 @@ import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 
 const BASE = "http://localhost:3117";
-const OUT = "/home/raven_bp/projects/ctc/analysis/ui/shots";
+const OUT = process.env.OUT_DIR ?? "./ui-shots";
 mkdirSync(OUT, { recursive: true });
 
 // /agents, /deals and /history were orphan re-exports of other pages and are deleted.

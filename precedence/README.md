@@ -55,6 +55,15 @@ name the documented Creditcoin explorer host that does not resolve.
 
 The 303 SDK tests cover the settlement mathematics directly — see `sdk/README.md`.
 
+A browser pass covers what a unit test cannot see. `ops/ui-crawl.mjs` drives every route at
+thirteen widths and asserts no horizontal overflow, no console errors and no blank pages — it needs
+Playwright, which is deliberately not a dependency of this repo:
+
+```bash
+bun add -d playwright && bunx playwright install chromium
+RACE_ID=<a settled race id> node ../ops/ui-crawl.mjs
+```
+
 Nothing in either suite touches a network. A unit test that could reach Sepolia would pass or fail
 on a throttled RPC or an unattested block rather than on the code, and telling a real regression
 apart from weather is the whole point. The live path is evidenced separately: `make

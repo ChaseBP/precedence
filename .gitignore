@@ -60,3 +60,13 @@ precedence/AGENTS.md
 analysis/attestation-latency-floor.md
 analysis/landing-*.md
 analysis/live-settlement-layout.md
+
+# UI review captures and the screenshot harness. Local QA output, and `evidence/` is for records
+# of what happened on chain — a screenshot of a scripted walkthrough sitting in there reads as
+# though simulated data were evidence.
+evidence/replay/
+ops/ux/
+ops/ui-header-measure.mjs
+
+# create-next-app placeholder assets. Nothing references them.
+precedence/public/

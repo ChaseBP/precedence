@@ -9,9 +9,11 @@
 # or loses a settlement, so they are excluded on the way in and never deleted.
 set -euo pipefail
 
-HOST="${PRECEDENCE_AZURE_HOST:-precedence-ctc-76d4b6.centralindia.cloudapp.azure.com}"
+# Required, with no default. A backend hostname and login baked in here would publish an SSH
+# target to anyone reading the repository, for no benefit to a reader who has their own host.
+HOST="${PRECEDENCE_AZURE_HOST:?set PRECEDENCE_AZURE_HOST to your backend hostname}"
 KEY="${PRECEDENCE_AZURE_KEY:-$HOME/.ssh/precedence_azure}"
-USER_AT="azureuser@$HOST"
+USER_AT="${PRECEDENCE_AZURE_USER:-azureuser}@$HOST"
 SSH=(ssh -i "$KEY" -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new "$USER_AT")
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 
