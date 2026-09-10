@@ -45,7 +45,7 @@ export const SETTLEMENT = {
     txHash: "0x1a61728c7fa29f1ec97736c7e4cbdbf4f0659ddf79e5c924d96ef60152163870",
   },
   /** Minutes from the source block being mined to it being attested. Measured, not documented. */
-  attestation: { minMinutes: 6.5, maxMinutes: 9.3, p50Minutes: 7.8, samples: 239 },
+  attestation: { minMinutes: 6.5, maxMinutes: 9.3, p50Minutes: 7.8, samples: 345 },
 } as const;
 
 export const EXPLORER = {

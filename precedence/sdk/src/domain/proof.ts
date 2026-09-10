@@ -43,19 +43,26 @@ export const MAX_BATCH_RANGE = 1000;
 /**
  * MEASURED attestation lag on Sepolia. Attestcoin does not document this figure anywhere, and the
  * ~8-10 min in `rohan-plan.md` §20 was unsourced, so it is sampled continuously instead; the
- * measured distribution is 6.5-9.3 min over n=239 (p50 7.8, p90 8.6).
+ * measured distribution is 6.54-9.35 min over n=345 (p50 7.75, p90 8.73, p99 9.02).
  *
  * Never quote a single number: attestation advances in BATCHES, so the lag sawtooths between the
  * bounds below rather than sitting at an average. And never imply the proof is instant.
  */
 export const MEASURED_ATTESTATION_LAG = {
+  /**
+   * The quoted band, deliberately rounded from a raw 6.54–9.35.
+   *
+   * @remarks `evidence/latency.jsonl` is the raw record and the front page prints the exact
+   * distribution beside this. Rounded here because this pair is what the interface renders, and a
+   * lender does not need two decimal places to understand that the wait is minutes.
+   */
   minMinutes: 6.5,
   maxMinutes: 9.3,
   p50Minutes: 7.8,
-  p90Minutes: 8.6,
+  p90Minutes: 8.7,
   p99Minutes: 9.0,
-  samples: 239,
-  measuredAt: "2026-09-02T15:16:33Z",
+  samples: 345,
+  measuredAt: "2026-09-02T17:02:32Z",
   /** Pre-stage source transactions at least this far ahead of a demo: p90 + a 3-minute buffer. */
   demoStagingMinutes: 12,
   source: "ops/measure-latency.ts -> evidence/latency.jsonl (run `--summary` for the current figure)",
