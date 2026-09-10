@@ -16,13 +16,13 @@ import type {
   PriorityRace,
   ProverCallRecord,
   SourceLockRecord,
-} from "../types";
+} from "@precedence/sdk/types";
 import type { PrecedenceDeps } from "../config";
-import { analyzeCollateral, rateFor, trancheSizing } from "../domain/collateral";
-import { settlePriorityLocks, sortByProvenOrder } from "../domain/lock";
-import { assertSeniorityRespected, computeWaterfall } from "../domain/waterfall";
-import { findRefinanceArbitrage } from "../domain/refinance";
-import { enforceDappSideChecks, HONEST_LATENCY_COPY } from "../domain/proof";
+import { analyzeCollateral, rateFor, trancheSizing } from "@precedence/sdk/domain/collateral";
+import { settlePriorityLocks, sortByProvenOrder } from "@precedence/sdk/domain/lock";
+import { assertSeniorityRespected, computeWaterfall } from "@precedence/sdk/domain/waterfall";
+import { findRefinanceArbitrage } from "@precedence/sdk/domain/refinance";
+import { enforceDappSideChecks, HONEST_LATENCY_COPY } from "@precedence/sdk/domain/proof";
 import {
   buildDefault,
   buildFreeze,
@@ -31,7 +31,7 @@ import {
   buildPcr,
   computePcr,
   DISTRESS_PARAMS,
-} from "../domain/distress";
+} from "@precedence/sdk/domain/distress";
 import { updateAgent, updateCollateral, upsertAttestation } from "../store/repositories";
 
 export interface PhaseCtx {

@@ -18,7 +18,7 @@ import type {
   PcrRecord,
   RefinanceRecord,
   SourceLockRecord,
-} from "../../types";
+} from "@precedence/sdk/types";
 
 export interface Cc3TxRef {
   tx: Hex;

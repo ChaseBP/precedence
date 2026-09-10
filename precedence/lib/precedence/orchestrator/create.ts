@@ -1,9 +1,9 @@
 /**
  * Create and initialize a priority race against a collateral asset.
  */
-import type { CollateralAsset, PriorityRace, RaceScenario } from "../types";
+import type { CollateralAsset, PriorityRace, RaceScenario } from "@precedence/sdk/types";
 import { getCollateral, listCollateral, saveRace } from "../store/repositories";
-import { analyzeCollateral } from "../domain/collateral";
+import { analyzeCollateral } from "@precedence/sdk/domain/collateral";
 import { runRace } from "./engine";
 
 export interface CreateRaceParams {

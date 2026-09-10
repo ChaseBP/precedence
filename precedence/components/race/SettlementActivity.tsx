@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import type { Address, Hex } from "viem";
-import type { PriorityRace } from "@/lib/precedence/types";
+import type { PriorityRace } from "@precedence/sdk/types";
 import { api, type SettlementStatus } from "@/lib/client/api";
 import { closeRaceOnVault } from "@/lib/client/vault";
 import { usd } from "@/lib/client/format";

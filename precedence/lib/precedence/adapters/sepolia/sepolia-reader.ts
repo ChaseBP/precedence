@@ -29,7 +29,7 @@ import {
 } from "viem";
 import { sepolia } from "viem/chains";
 import { getConfig, loadDeployedAddresses } from "../../config";
-import type { Hex, SourceLockRecord, Tranche } from "../../types";
+import type { Hex, SourceLockRecord, Tranche } from "@precedence/sdk/types";
 import { PriorityVault_ABI } from "../generated/abis";
 
 const TRANCHE_NAME: Tranche[] = ["SENIOR", "JUNIOR", "SUBORDINATE"];

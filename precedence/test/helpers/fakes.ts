@@ -31,7 +31,7 @@ import type {
 } from "@/lib/precedence/adapters/sepolia/sepolia-reader";
 import type { AttestationFrontier } from "@/lib/precedence/adapters/creditcoin/attestation-reader";
 import type { ProverJob } from "@/lib/precedence/orchestrator/prover-job";
-import type { Hex, PriorityRace, RegistrationProposal, SourceLockRecord } from "@/lib/precedence/types";
+import type { Hex, PriorityRace, RegistrationProposal, SourceLockRecord } from "@precedence/sdk/types";
 
 /** A stand-in vault address. Deliberately not any address this project has deployed. */
 export const FAKE_VAULT = "0x1111111111111111111111111111111111111111" as Address;

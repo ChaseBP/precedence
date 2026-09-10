@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Loader2 } from "lucide-react";
-import type { LifecyclePhase } from "@/lib/precedence/types";
+import type { LifecyclePhase } from "@precedence/sdk/types";
 import {
   DISTRESSED_SEQUENCE,
   isTerminal,

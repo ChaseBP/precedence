@@ -3,7 +3,7 @@
  */
 import type { Agent, AgentDecision, CollateralAnalysis, CollateralAsset, Hex,
   RegistrationProposal,
-} from "../../types";
+} from "@precedence/sdk/types";
 
 export interface DecideParams {
   agent: Agent;

@@ -5,7 +5,7 @@
  * minted as hash-unique NFTs on Creditcoin CC3.
  */
 import type { CollateralAnalysis, CollateralAsset, FacilityTerms, Hex, Tranche } from "../types";
-import { hashObject } from "../crypto/hash";
+import { hashObject } from "../hash";
 
 /** Generate canonical hash-unique identifier for a collateral asset on Creditcoin. */
 export function collateralDocumentHash(doc: {

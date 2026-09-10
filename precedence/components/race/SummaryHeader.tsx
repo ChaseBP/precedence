@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import { Badge, Eyebrow } from "@/components/ui";
 import { usd, pct } from "@/lib/client/format";
-import type { LifecyclePhase, PriorityRace } from "@/lib/precedence/types";
+import type { LifecyclePhase, PriorityRace } from "@precedence/sdk/types";
 import type { SettlementStatus } from "@/lib/client/api";
 import { PHASE_LABELS } from "@/lib/precedence/orchestrator/lifecycle";
 

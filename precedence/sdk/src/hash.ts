@@ -5,7 +5,7 @@
  * Attestcoin verification payloads, and deterministic source-lock commitments.
  */
 import { keccak256, toHex, stringToBytes } from "viem";
-import type { Hex } from "../types";
+import type { Hex } from "./types";
 
 /** Recursively sort object keys for a stable, canonical JSON string. */
 export function canonicalize(value: unknown): string {

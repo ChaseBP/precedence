@@ -18,7 +18,7 @@
  * the prover worker, which needs attestation of the source block before it can honestly claim
  * priority is settled.
  */
-import type { Hex, PriorityRace, SourceLockRecord, Tranche } from "../types";
+import type { Hex, PriorityRace, SourceLockRecord, Tranche } from "@precedence/sdk/types";
 import {
   getCollateral,
   getRace,
@@ -26,7 +26,7 @@ import {
   saveRace,
   updateCollateral,
 } from "../store/repositories";
-import { analyzeCollateral } from "../domain/collateral";
+import { analyzeCollateral } from "@precedence/sdk/domain/collateral";
 import { CREDITCOIN_RPC_DEFAULT, getConfig } from "../config";
 
 /** Attestcoin's chainKey for Sepolia. Docs-confirmed. */

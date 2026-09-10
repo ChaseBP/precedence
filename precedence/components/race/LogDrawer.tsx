@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Terminal as TerminalIcon, X, Scale } from "lucide-react";
-import type { LifecycleEvent } from "@/lib/precedence/types";
+import type { LifecycleEvent } from "@precedence/sdk/types";
 import { Terminal } from "@/components/Terminal";
 import { Eyebrow } from "@/components/ui";
 import { levelColor } from "@/lib/client/format";

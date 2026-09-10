@@ -19,7 +19,7 @@ const route = () => import("@/app/api/portfolio/route");
 
 /** The seeded settled race's participants. Derived, so a change to the derivation is caught. */
 async function addresses() {
-  const { financierAddress } = await import("@/lib/precedence/domain/lock");
+  const { financierAddress } = await import("@precedence/sdk/domain/lock");
   return {
     meridian: financierAddress("meridian"),
     vector: financierAddress("vector"),

@@ -24,7 +24,7 @@ import type { AgentRuntime } from "./adapters/agent/agent-runtime";
 import { LocalRuntime } from "./adapters/agent/local-runtime";
 import { LlmRuntime } from "./adapters/agent/llm-runtime";
 import { ProverWorker } from "./adapters/agent/prover-worker";
-import type { Hex } from "./types";
+import type { Hex } from "@precedence/sdk/types";
 
 // ───────────────────────────── verified network constants ─────────────────────────────
 

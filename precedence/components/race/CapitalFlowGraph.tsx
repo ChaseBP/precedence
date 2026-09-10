@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import type { FinancierBid, Tranche } from "@/lib/precedence/types";
+import type { FinancierBid, Tranche } from "@precedence/sdk/types";
 import { trancheColor } from "@/lib/client/format";
 
 /** Competing bidders. Rivals racing for a tranche, so there is no initiator. */

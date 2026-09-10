@@ -1,10 +1,10 @@
 /**
  * Local Deterministic Financier Policy Runtime for PRECEDENCE.
  */
-import type { AgentDecision, Hex } from "../../types";
+import type { AgentDecision, Hex } from "@precedence/sdk/types";
 import type { AgentRuntime, DecideParams } from "./agent-runtime";
-import { evaluate } from "../../domain/policy";
-import { deriveFinancierAccount } from "../../domain/lock";
+import { evaluate } from "@precedence/sdk/domain/policy";
+import { deriveFinancierAccount } from "@precedence/sdk/domain/lock";
 
 export class LocalRuntime implements AgentRuntime {
   async decide({ agent, collateral, analysis, requestedUsd }: DecideParams): Promise<AgentDecision> {

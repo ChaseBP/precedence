@@ -1,6 +1,6 @@
 "use client";
 
-import { PROTOCOL_STATES } from "../precedence/types";
+import { PROTOCOL_STATES } from "@precedence/sdk/types";
 import type {
   Agent,
   Attestation,
@@ -13,7 +13,7 @@ import type {
   RaceSummary,
   RefinanceOpportunity,
   RegistrationProposal,
-} from "../precedence/types";
+} from "@precedence/sdk/types";
 
 async function jget<T>(url: string): Promise<T> {
   const res = await fetch(url, { cache: "no-store" });

@@ -19,10 +19,10 @@
  * so the copy says so rather than implying the wait is bureaucracy.
  */
 
-import type { PriorityRace } from "@/lib/precedence/types";
+import type { PriorityRace } from "@precedence/sdk/types";
 import { Badge, Card, Eyebrow, Why } from "@/components/ui";
 import { trancheColor } from "@/lib/client/format";
-import { MEASURED_ATTESTATION_LAG } from "@/lib/precedence/domain/proof";
+import { MEASURED_ATTESTATION_LAG } from "@precedence/sdk/domain/proof";
 
 export function ProvenOrder({ race, settled }: { race: PriorityRace; settled: boolean }) {
   const locks = race.locks ?? [];

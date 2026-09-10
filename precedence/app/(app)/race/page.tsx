@@ -21,9 +21,9 @@ import {
   FileText,
   Maximize2,
 } from "lucide-react";
-import type { Agent, AgentDecision, PriorityRace, LifecyclePhase, ProverCallRecord } from "@/lib/precedence/types";
+import type { Agent, AgentDecision, PriorityRace, LifecyclePhase, ProverCallRecord } from "@precedence/sdk/types";
 import { api, streamRace, type SettlementStatus } from "@/lib/client/api";
-import type { LifecycleEvent } from "@/lib/precedence/types";
+import type { LifecycleEvent } from "@precedence/sdk/types";
 import { usd, pct, trancheColor } from "@/lib/client/format";
 import { Badge, Card, Dot, Eyebrow, SectionTitle, Why } from "@/components/ui";
 import { CopyHash } from "@/components/CopyHash";

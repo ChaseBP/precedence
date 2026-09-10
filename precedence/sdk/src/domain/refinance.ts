@@ -8,7 +8,7 @@
  *  - No gap. No double-pledge window.
  */
 import type { Hex, RefinanceOpportunity, RefinanceRecord } from "../types";
-import { hashObject } from "../crypto/hash";
+import { hashObject } from "../hash";
 
 export function findRefinanceArbitrage(
   collateralId: string,

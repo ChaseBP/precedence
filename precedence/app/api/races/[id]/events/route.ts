@@ -1,7 +1,7 @@
 import { getRace, getEventsSince } from "@/lib/precedence/store/repositories";
 import { subscribeEvents } from "@/lib/precedence/orchestrator/events";
 import { isTerminal } from "@/lib/precedence/orchestrator/lifecycle";
-import type { LifecycleEvent } from "@/lib/precedence/types";
+import type { LifecycleEvent } from "@precedence/sdk/types";
 
 /**
  * GET /api/races/:id/events — Server-Sent Events stream of lifecycle events.

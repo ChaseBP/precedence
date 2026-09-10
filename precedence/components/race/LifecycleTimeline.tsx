@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import type { LifecyclePhase } from "@/lib/precedence/types";
+import type { LifecyclePhase } from "@precedence/sdk/types";
 import { isTerminal } from "@/lib/precedence/orchestrator/lifecycle";
 
 export interface LifecycleStage {

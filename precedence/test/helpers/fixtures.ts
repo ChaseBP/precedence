@@ -8,14 +8,14 @@
  */
 import { addCollateral, resetStore, saveRace } from "@/lib/precedence/store/repositories";
 import { seedCollateral } from "@/lib/precedence/store/seed";
-import { analyzeCollateral } from "@/lib/precedence/domain/collateral";
+import { analyzeCollateral } from "@precedence/sdk/domain/collateral";
 import type {
   CollateralAsset,
   Hex,
   PriorityRace,
   SourceLockRecord,
   Tranche,
-} from "@/lib/precedence/types";
+} from "@precedence/sdk/types";
 import {
   FAKE_LENDER,
   FAKE_OBLIGOR,

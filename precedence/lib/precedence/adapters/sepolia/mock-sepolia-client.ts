@@ -9,10 +9,10 @@
  * locks likely, `blockHeight` alone cannot order them, and `calculateTxIndex` is what resolves it.
  * A mock that never produces a tie would hide the interesting path.
  */
-import type { Hex, SourceLockRecord } from "../../types";
+import type { Hex, SourceLockRecord } from "@precedence/sdk/types";
 import type { LockParams, RefundParams, RepayParams, SepoliaClient, TxRef } from "./sepolia-client";
-import { hashObject } from "../../crypto/hash";
-import { financierAddress } from "../../domain/lock";
+import { hashObject } from "@precedence/sdk/hash";
+import { financierAddress } from "@precedence/sdk/domain/lock";
 
 /** SAMPLE addresses — visibly not real, per the no-fabricated-evidence rule. */
 const SAMPLE_VAULT = "0xSAMPLE_SEPOLIA_PRIORITY_VAULT_000000000000" as Hex;

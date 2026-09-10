@@ -1,6 +1,6 @@
 import { listAgents } from "@/lib/precedence/store/repositories";
 import { getDeps } from "@/lib/precedence/config";
-import type { Hex } from "@/lib/precedence/types";
+import type { Hex } from "@precedence/sdk/types";
 
 export async function GET() {
   const agents = await listAgents();

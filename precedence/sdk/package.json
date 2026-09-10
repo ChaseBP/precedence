@@ -1,0 +1,33 @@
+{
+  "name": "@precedence/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lien priority by proven source-block position: the PRECEDENCE data model, its settlement mathematics, and its Attestcoin integration.",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./hash": "./src/hash.ts",
+    "./attestcoin": "./src/attestcoin.ts",
+    "./domain/*": "./src/domain/*.ts"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "viem": "^2.52.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.0",
+    "typescript": "^5",
+    "viem": "^2.52.2"
+  },
+  "//exports": "The entry points resolve to TypeScript source, not a build output. Consumers here are a Next app and a Bun worker, both of which compile the source directly, and shipping source keeps the definitions and their reasoning in one place — a `dist` would be a second copy that can be stale. `bun run typecheck` is what proves it compiles standalone; add a tsc build here before publishing to a registry."
+}

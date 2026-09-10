@@ -22,7 +22,7 @@ import type {
   SourceLockRecord,
   Tranche,
 } from "../types";
-import { hashString } from "../crypto/hash";
+import { hashString } from "../hash";
 
 const TRANCHE_ORDER: Tranche[] = ["SENIOR", "JUNIOR", "SUBORDINATE"];
 const RANK_OF: Record<Tranche, 1 | 2 | 3> = { SENIOR: 1, JUNIOR: 2, SUBORDINATE: 3 };
@@ -70,10 +70,6 @@ export interface TrancheSizing {
   seniorUsd: number;
   juniorUsd: number;
   subordinateUsd: number;
-}
-
-function sizingFor(t: Tranche, s: TrancheSizing): number {
-  return t === "SENIOR" ? s.seniorUsd : t === "JUNIOR" ? s.juniorUsd : s.subordinateUsd;
 }
 
 export interface SettlementResult {

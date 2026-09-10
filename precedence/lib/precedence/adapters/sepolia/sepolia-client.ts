@@ -8,7 +8,7 @@
  * Both the mock and the real (viem) implementation satisfy this interface — that is what makes the
  * `mock | chain` switch a swap rather than a rewrite.
  */
-import type { Hex, SourceLockRecord, Tranche } from "../../types";
+import type { Hex, SourceLockRecord, Tranche } from "@precedence/sdk/types";
 
 export interface LockParams {
   collateralId: string;

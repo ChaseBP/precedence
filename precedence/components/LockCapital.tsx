@@ -44,7 +44,7 @@ import {
 import { usd, pct, trancheColor } from "@/lib/client/format";
 import { api } from "@/lib/client/api";
 import { fetchAppConfig } from "@/lib/client/app-config";
-import type { CollateralAsset, CollateralState, Tranche } from "@/lib/precedence/types";
+import type { CollateralAsset, CollateralState, Tranche } from "@precedence/sdk/types";
 
 const TRANCHES: { name: Tranche; ordinal: 0 | 1 | 2 }[] = [
   { name: "SENIOR", ordinal: 0 },

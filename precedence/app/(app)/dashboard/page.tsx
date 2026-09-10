@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, TrendingUp, Users, Trophy, Activity, ShieldCheck, Scale, Award } from "lucide-react";
-import type { Agent, Attestation, RaceSummary } from "@/lib/precedence/types";
+import type { Agent, Attestation, RaceSummary } from "@precedence/sdk/types";
 import { api } from "@/lib/client/api";
 import { usd, dateOf } from "@/lib/client/format";
 import { Card, Eyebrow, Stat, SectionTitle, Badge } from "@/components/ui";

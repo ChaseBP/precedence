@@ -19,7 +19,20 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      // `@precedence/sdk` is a package in this repo, consumed by path rather than through
+      // node_modules. A `file:` dependency has Bun COPY the package in, so an edit to the SDK
+      // would not be seen until the next install; a path mapping keeps one live source.
+      //
+      // It sits INSIDE this directory rather than beside it, and that is Turbopack's requirement
+      // rather than a preference: an alias that resolves above the project root is refused
+      // outright ("aliased to relative '../sdk/src/types.ts' inside of [project]/"). The
+      // documented escape is `turbopack.root`, which also expands filesystem WATCHING to the
+      // whole repo — and this repo holds a second app checkout, the evidence archive and build
+      // output, on a machine where the dev server already costs 3.2 GB. Keeping the package in
+      // scope is cheaper than widening the scope.
+      "@precedence/sdk": ["./sdk/src/index.ts"],
+      "@precedence/sdk/*": ["./sdk/src/*.ts"]
     }
   },
   "include": [
@@ -30,5 +43,10 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    // The SDK typechecks itself against its own tsconfig, which targets a library rather than a
+    // Next app — no DOM lib, no JSX. Compiling it twice under two configs just doubles the noise.
+    "sdk"
+  ]
 }

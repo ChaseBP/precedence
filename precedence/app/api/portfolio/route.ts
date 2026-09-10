@@ -1,6 +1,6 @@
 import { getDeps } from "@/lib/precedence/config";
 import { listCollateral, listRaces, getRace } from "@/lib/precedence/store/repositories";
-import type { PriorityRace, Tranche } from "@/lib/precedence/types";
+import type { PriorityRace, Tranche } from "@precedence/sdk/types";
 
 /**
  * GET /api/portfolio?address=0x… — everything one wallet holds, on both sides of the book.

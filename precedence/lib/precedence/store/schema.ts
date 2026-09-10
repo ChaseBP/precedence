@@ -8,7 +8,7 @@ import type {
   LifecycleEvent,
   PriorityRace,
   RefinanceOpportunity,
-} from "../types";
+} from "@precedence/sdk/types";
 
 export interface DbShape {
   agents: Agent[];

@@ -9,7 +9,7 @@ import type {
   PriorityRace,
   RaceSummary,
   RefinanceOpportunity,
-} from "../types";
+} from "@precedence/sdk/types";
 import { getDb, persist, resetDb } from "./json-store";
 import { resetDeps } from "../config";
 import { toRaceSummary } from "./seed";

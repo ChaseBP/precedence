@@ -1,5 +1,5 @@
 import { getCollateral } from "@/lib/precedence/store/repositories";
-import { findRefinanceArbitrage } from "@/lib/precedence/domain/refinance";
+import { findRefinanceArbitrage } from "@precedence/sdk/domain/refinance";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

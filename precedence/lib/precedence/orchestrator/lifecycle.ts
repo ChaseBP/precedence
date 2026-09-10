@@ -17,7 +17,7 @@
  * Every distressed transition is a permissionless, timestamp-gated keeper poke — the unwind is a
  * property of the contract, not of our uptime (`DECISIONS.md` Q5).
  */
-import type { LifecyclePhase, RaceTrack } from "../types";
+import type { LifecyclePhase, RaceTrack } from "@precedence/sdk/types";
 
 /** The performing storyline, in order. Drives the stage rail in the UI. */
 export const PERFORMING_SEQUENCE: LifecyclePhase[] = [

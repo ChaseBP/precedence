@@ -6,9 +6,9 @@
  *
  * Synthetic transaction hashes and proof IDs are prefixed with 0xSAMPLE.
  */
-import type { Agent, Attestation, CollateralAsset, PriorityRace, RaceSummary } from "../types";
+import type { Agent, Attestation, CollateralAsset, PriorityRace, RaceSummary } from "@precedence/sdk/types";
 import { DbShape, emptyDb } from "./schema";
-import { financierAddress } from "../domain/lock";
+import { financierAddress } from "@precedence/sdk/domain/lock";
 
 const T0 = "2026-09-01T00:00:00.000Z";
 

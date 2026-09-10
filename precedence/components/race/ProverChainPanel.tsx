@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, ShieldCheck } from "lucide-react";
-import type { ProverCallRecord, SkillCallRecord } from "@/lib/precedence/types";
+import type { ProverCallRecord, SkillCallRecord } from "@precedence/sdk/types";
 import { Eyebrow } from "@/components/ui";
 import { ProverCall } from "./ProverCall";
 

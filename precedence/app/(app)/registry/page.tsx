@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Loader2, ChevronRight, ShieldCheck, FileText, CheckCircle2, Lock, Sparkles } from "lucide-react";
-import type { RaceSummary } from "@/lib/precedence/types";
+import type { RaceSummary } from "@precedence/sdk/types";
 import { api } from "@/lib/client/api";
 import { usd, pct, dateOf, encumbranceColor } from "@/lib/client/format";
 import { Badge, Card, Eyebrow } from "@/components/ui";

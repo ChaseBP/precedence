@@ -10,11 +10,11 @@ import { createRace } from "../lib/precedence/orchestrator/create";
 import { runRace } from "../lib/precedence/orchestrator/engine";
 import { getRace, getEventsSince, resetStore, listCollateral } from "../lib/precedence/store/repositories";
 import { isTerminal, PHASE_LABELS } from "../lib/precedence/orchestrator/lifecycle";
-import { assertSeniorityRespected } from "../lib/precedence/domain/waterfall";
-import { ratifyExtraction } from "../lib/precedence/domain/ratify";
-import { validateTerms } from "../lib/precedence/domain/collateral";
-import { checkSeqContiguity, checkStrictOrdering, sortByProvenOrder } from "../lib/precedence/domain/lock";
-import type { PriorityRace, RaceScenario } from "../lib/precedence/types";
+import { assertSeniorityRespected } from "@precedence/sdk/domain/waterfall";
+import { ratifyExtraction } from "@precedence/sdk/domain/ratify";
+import { validateTerms } from "@precedence/sdk/domain/collateral";
+import { checkSeqContiguity, checkStrictOrdering, sortByProvenOrder } from "@precedence/sdk/domain/lock";
+import type { PriorityRace, RaceScenario } from "@precedence/sdk/types";
 
 let failures = 0;
 function check(name: string, cond: boolean, detail = "") {

@@ -24,7 +24,7 @@ import type {
   ProofPipelineStatus,
   SourceLockRecord,
 } from "../types";
-import { hashObject } from "../crypto/hash";
+import { hashObject } from "../hash";
 
 /** Native Query Verifier (BlockProver) precompile. */
 export const ATTESTCOIN_PRECOMPILE = "0x0000000000000000000000000000000000000FD2" as const;

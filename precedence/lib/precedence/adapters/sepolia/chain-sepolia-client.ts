@@ -24,7 +24,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
-import type { Hex, SourceLockRecord, Tranche } from "../../types";
+import type { Hex, SourceLockRecord, Tranche } from "@precedence/sdk/types";
 import type { LockParams, RefundParams, RepayParams, SepoliaClient, TxRef } from "./sepolia-client";
 import { PriorityVault_ABI, PUSD_ABI } from "../generated/abis";
 

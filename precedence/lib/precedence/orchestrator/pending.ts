@@ -1,7 +1,7 @@
 /**
  * In-memory staging for pending reveals and unverified proofs.
  */
-import type { Hex } from "../types";
+import type { Hex } from "@precedence/sdk/types";
 
 interface PendingProof {
   raceId: string;

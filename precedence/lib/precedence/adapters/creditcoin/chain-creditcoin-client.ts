@@ -29,7 +29,7 @@ import type {
   PcrRecord,
   RefinanceRecord,
   SourceLockRecord,
-} from "../../types";
+} from "@precedence/sdk/types";
 import type { Cc3TxRef, CreditcoinClient, SettleRaceResult } from "./creditcoin-client";
 import { AttestationGate_ABI, CollateralRegistry_ABI, PriorityEngine_ABI } from "../generated/abis";
 import { CREDITCOIN_EXPLORER } from "../../config";

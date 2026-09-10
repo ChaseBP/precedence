@@ -1,6 +1,6 @@
 import { listRaces } from "@/lib/precedence/store/repositories";
 import { createRace } from "@/lib/precedence/orchestrator/create";
-import type { RaceScenario } from "@/lib/precedence/types";
+import type { RaceScenario } from "@precedence/sdk/types";
 
 const SCENARIOS: RaceScenario[] = ["performing", "default", "breach"];
 

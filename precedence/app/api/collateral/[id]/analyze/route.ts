@@ -1,5 +1,5 @@
 import { getCollateral } from "@/lib/precedence/store/repositories";
-import { analyzeCollateral } from "@/lib/precedence/domain/collateral";
+import { analyzeCollateral } from "@precedence/sdk/domain/collateral";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

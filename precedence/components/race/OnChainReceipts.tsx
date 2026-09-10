@@ -19,7 +19,7 @@
  */
 
 import { ExternalLink, Link2 } from "lucide-react";
-import type { PriorityRace } from "@/lib/precedence/types";
+import type { PriorityRace } from "@precedence/sdk/types";
 import { Card, Eyebrow } from "@/components/ui";
 import { Fold } from "@/components/race/Fold";
 

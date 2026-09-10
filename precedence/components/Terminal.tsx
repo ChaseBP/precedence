@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { motion } from "motion/react";
-import type { LifecycleEvent } from "@/lib/precedence/types";
+import type { LifecycleEvent } from "@precedence/sdk/types";
 import { levelColor, timeOf } from "@/lib/client/format";
 import { LogLine } from "@/components/LogLine";
 

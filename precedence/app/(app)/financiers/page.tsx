@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Loader2, Cpu, Wallet, Fingerprint, Award, ShieldCheck, Zap } from "lucide-react";
-import type { Agent, Hex } from "@/lib/precedence/types";
+import type { Agent, Hex } from "@precedence/sdk/types";
 import { api } from "@/lib/client/api";
 import { usd, pct, trancheColor } from "@/lib/client/format";
 import { AgentGlyph, Badge, Card, Eyebrow, ReputationBar } from "@/components/ui";

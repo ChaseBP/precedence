@@ -40,8 +40,8 @@ import type { Address } from "viem";
 import { useWallet } from "@/lib/client/wallet";
 import { registerCollateralOnChain, type RegisterStage } from "@/lib/client/registry";
 import { ConnectPrompt } from "@/components/ConnectPrompt";
-import { SUGGESTED_RATES } from "@/lib/precedence/domain/collateral";
-import type { CollateralAssetType, RegistrationProposal } from "@/lib/precedence/types";
+import { SUGGESTED_RATES } from "@precedence/sdk/domain/collateral";
+import type { CollateralAssetType, RegistrationProposal } from "@precedence/sdk/types";
 import { fetchAppConfig } from "@/lib/client/app-config";
 const ASSET_TYPES: { value: CollateralAssetType; label: string; hint: string }[] = [
   { value: "warehouse-receipt", label: "Warehouse receipt", hint: "Goods in a bonded store" },

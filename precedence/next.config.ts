@@ -118,7 +118,15 @@ const nextConfig: NextConfig = {
    * local build, and surfaces on a parallel CI build, which is the worst possible time to find it.
    * See rainbow-me/rainbowkit#2673.
    */
-  transpilePackages: ["@rainbow-me/rainbowkit", "wagmi", "@wagmi/core", "@wagmi/connectors"],
+  transpilePackages: [
+    "@rainbow-me/rainbowkit",
+    "wagmi",
+    "@wagmi/core",
+    "@wagmi/connectors",
+    // `@precedence/sdk` resolves to TypeScript source rather than a build output, so Next has to
+    // compile it. See the note in sdk/package.json for why it ships source.
+    "@precedence/sdk",
+  ],
 };
 
 export default nextConfig;

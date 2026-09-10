@@ -1,5 +1,5 @@
 import { getDeps } from "@/lib/precedence/config";
-import { analyzeCollateral } from "@/lib/precedence/domain/collateral";
+import { analyzeCollateral } from "@precedence/sdk/domain/collateral";
 import { getCollateral, listRaces } from "@/lib/precedence/store/repositories";
 
 /** GET /api/collateral/:id — one facility, its analysis, and any race already run against it. */

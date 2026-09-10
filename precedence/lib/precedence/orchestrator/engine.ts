@@ -8,7 +8,7 @@
  * REPAYMENT_PROOF when cured) and every transition is validated against `canTransition` so a
  * manual step cannot walk the race somewhere the protocol does not allow.
  */
-import type { Agent, EventLevel, LifecyclePhase, PriorityRace } from "../types";
+import type { Agent, EventLevel, LifecyclePhase, PriorityRace } from "@precedence/sdk/types";
 import { getSimulationDeps } from "../config";
 import { listAgents, getRace, saveRace } from "../store/repositories";
 import { emitEvent } from "./events";

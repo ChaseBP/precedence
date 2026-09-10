@@ -43,7 +43,7 @@ import {
   type VaultRaceState,
 } from "@/lib/client/vault";
 import { usd } from "@/lib/client/format";
-import type { CollateralAsset } from "@/lib/precedence/types";
+import type { CollateralAsset } from "@precedence/sdk/types";
 import { fetchAppConfig } from "@/lib/client/app-config";
 
 const TRANCHE_NAMES = ["SENIOR", "JUNIOR", "SUBORDINATE"] as const;

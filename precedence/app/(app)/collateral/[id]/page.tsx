@@ -19,7 +19,7 @@ import { LoadError } from "@/components/LoadError";
 import { LockCapital } from "@/components/LockCapital";
 import { OpenRace } from "@/components/OpenRace";
 import { ServiceFacility } from "@/components/ServiceFacility";
-import type { CollateralAsset, Tranche } from "@/lib/precedence/types";
+import type { CollateralAsset, Tranche } from "@precedence/sdk/types";
 
 /** The CC3 host that resolves; `explorer.cc3-testnet.creditcoin.network` does not. */
 const CREDITCOIN_EXPLORER = "https://creditcoin-testnet.blockscout.com";

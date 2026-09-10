@@ -5,7 +5,7 @@ import {
   recoverLiveRace,
 } from "@/lib/precedence/orchestrator/live-race";
 import { getCollateral } from "@/lib/precedence/store/repositories";
-import type { Hex } from "@/lib/precedence/types";
+import type { Hex } from "@precedence/sdk/types";
 
 /**
  * The live race for a facility, and the way one gets recorded.

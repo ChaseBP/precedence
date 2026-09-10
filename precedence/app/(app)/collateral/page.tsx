@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { Clock, FileText, Landmark, Layers, Loader2, Radar, ShieldCheck, Sparkles, TrendingUp, Warehouse } from "lucide-react";
-import type { Agent, CollateralAsset, RefinanceOpportunity } from "@/lib/precedence/types";
+import type { Agent, CollateralAsset, RefinanceOpportunity } from "@precedence/sdk/types";
 import { api } from "@/lib/client/api";
 import { usd, pct, riskColor, timeOf, encumbranceColor } from "@/lib/client/format";
 import { Badge, Card, Dot, Eyebrow } from "@/components/ui";

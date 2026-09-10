@@ -1,7 +1,7 @@
 import { getDeps } from "@/lib/precedence/config";
-import { collateralDocumentHash, validateTerms } from "@/lib/precedence/domain/collateral";
+import { collateralDocumentHash, validateTerms } from "@precedence/sdk/domain/collateral";
 import { addCollateral } from "@/lib/precedence/store/repositories";
-import type { CollateralAsset, CollateralAssetType, Hex } from "@/lib/precedence/types";
+import type { CollateralAsset, CollateralAssetType, Hex } from "@precedence/sdk/types";
 
 /**
  * POST /api/collateral/register — record an asset a borrower has described.

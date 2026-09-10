@@ -18,7 +18,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { AlertTriangle, ArrowRight, ExternalLink, Loader2, Radio } from "lucide-react";
 import type { Address, Hex } from "viem";
-import type { CollateralAsset } from "@/lib/precedence/types";
+import type { CollateralAsset } from "@precedence/sdk/types";
 import { api } from "@/lib/client/api";
 import { fetchAppConfig } from "@/lib/client/app-config";
 import { Badge, Card, Eyebrow } from "@/components/ui";

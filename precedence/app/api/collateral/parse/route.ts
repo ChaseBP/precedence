@@ -1,5 +1,5 @@
 import { getConfig, getDeps } from "@/lib/precedence/config";
-import type { RegistrationProposal } from "@/lib/precedence/types";
+import type { RegistrationProposal } from "@precedence/sdk/types";
 
 /**
  * POST /api/collateral/parse — read a collateral document and propose form values.

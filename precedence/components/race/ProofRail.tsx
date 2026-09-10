@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import { Check, ExternalLink, Clock, Cpu, ShieldCheck } from "lucide-react";
-import type { Hex, PriorityRace } from "@/lib/precedence/types";
+import type { Hex, PriorityRace } from "@precedence/sdk/types";
 import { Badge, Card, Eyebrow } from "@/components/ui";
 
 // explorer.cc3-testnet.creditcoin.network does not resolve (HTTP 000, checked 2026-09-02).

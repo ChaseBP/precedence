@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    // ES2020, not ES2017: viem is BigInt-native and ES2017 predates BigInt. The app's tsconfig
+    // makes the same choice for the same reason.
+    "target": "ES2020",
+    "lib": ["esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": false,
+    "types": ["bun"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

@@ -32,11 +32,11 @@ import type {
   DocumentExtraction,
   Hex,
   RegistrationProposal,
-} from "../../types";
+} from "@precedence/sdk/types";
 import type { AgentRuntime, DecideParams } from "./agent-runtime";
-import { evaluate } from "../../domain/policy";
-import { deriveFinancierAccount } from "../../domain/lock";
-import { ratifyExtraction, sanitizeNarration, type RatificationResult } from "../../domain/ratify";
+import { evaluate } from "@precedence/sdk/domain/policy";
+import { deriveFinancierAccount } from "@precedence/sdk/domain/lock";
+import { ratifyExtraction, sanitizeNarration, type RatificationResult } from "@precedence/sdk/domain/ratify";
 
 export const GEMINI_MODEL = "gemini-3.5-flash-lite";
 

@@ -15,7 +15,7 @@
  * Step 4 matters: the precompile exposes a view-only `verify` alongside `verifyAndEmit`, so a bad
  * proof can be caught for zero gas before we pay to submit it.
  */
-import type { AttestcoinProofRecord, SourceLockRecord } from "../../types";
+import type { AttestcoinProofRecord, SourceLockRecord } from "@precedence/sdk/types";
 import {
   ATTESTCOIN_CHAININFO,
   ATTESTCOIN_PRECOMPILE,
@@ -29,8 +29,8 @@ import {
   enforceDappSideChecks,
   estimateVerifyCostCtc,
   midpointLagMinutes,
-} from "../../domain/proof";
-import { checkSeqContiguity, checkStrictOrdering, sortByProvenOrder } from "../../domain/lock";
+} from "@precedence/sdk/domain/proof";
+import { checkSeqContiguity, checkStrictOrdering, sortByProvenOrder } from "@precedence/sdk/domain/lock";
 
 export type ProverStep =
   | "chain_info"

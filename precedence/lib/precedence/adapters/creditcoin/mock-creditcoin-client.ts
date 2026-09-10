@@ -19,9 +19,9 @@ import type {
   PcrRecord,
   RefinanceRecord,
   SourceLockRecord,
-} from "../../types";
+} from "@precedence/sdk/types";
 import type { Cc3TxRef, CreditcoinClient, SettleRaceResult } from "./creditcoin-client";
-import { hashObject } from "../../crypto/hash";
+import { hashObject } from "@precedence/sdk/hash";
 import { CREDITCOIN_EXPLORER } from "../../config";
 
 export class MockCreditcoinClient implements CreditcoinClient {

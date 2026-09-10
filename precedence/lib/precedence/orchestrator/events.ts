@@ -1,7 +1,7 @@
 /**
  * Event bus and subscription for priority settlement lifecycle events.
  */
-import type { EventLevel, LifecycleEvent, LifecyclePhase, RaceId } from "../types";
+import type { EventLevel, LifecycleEvent, LifecyclePhase, RaceId } from "@precedence/sdk/types";
 import { appendEvent, getEventsSince } from "../store/repositories";
 
 export type EventSubscriber = (ev: LifecycleEvent) => void;

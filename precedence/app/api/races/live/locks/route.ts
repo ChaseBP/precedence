@@ -1,5 +1,5 @@
 import { NotVerifiableError, appendLiveLock } from "@/lib/precedence/orchestrator/live-race";
-import type { Hex } from "@/lib/precedence/types";
+import type { Hex } from "@precedence/sdk/types";
 
 /**
  * POST /api/races/live/locks — record a lock the lender has already signed.

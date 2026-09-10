@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { Loader2, ShieldCheck, TrendingUp, AlertTriangle } from "lucide-react";
 import { AgentGlyph, Badge } from "@/components/ui";
-import type { AgentDecision, DecisionVerb } from "@/lib/precedence/types";
+import type { AgentDecision, DecisionVerb } from "@precedence/sdk/types";
 import { trancheColor } from "@/lib/client/format";
 
 const VERB_ICON: Record<string, typeof ShieldCheck> = {
