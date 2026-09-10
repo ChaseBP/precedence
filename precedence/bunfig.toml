@@ -1,0 +1,5 @@
+# Bun's config. `preload` is the load-bearing line: test/setup.ts pins the environment and
+# installs the chain seams before any test module is imported. See its header for why that has
+# to happen in a preload rather than per-file.
+[test]
+preload = ["./test/setup.ts"]
