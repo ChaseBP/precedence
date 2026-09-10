@@ -27,15 +27,45 @@ bun run build
 ### Verification — prove it, do not assert it
 
 ```bash
+bun test                    # 995 tests — 692 API route, 303 SDK
 bun run scripts/smoke.ts    # 3 protocol tracks + the invariants; must print ALL CHECKS PASSED
 bunx tsc --noEmit           # clean
 bun run build               # clean
 ```
 
-`scripts/smoke.ts` is the one that matters. It drives all three storylines end to end and asserts
-the properties the protocol's claims rest on: strict seniority (a junior tranche must never be paid
-while a senior one is short), first loss landing on the most subordinate tranche, `seq` contiguity,
-strictly increasing `(height, txIndex)`, and that the same-block tie-break is actually exercised.
+`scripts/smoke.ts` drives all three storylines end to end and asserts the properties the protocol's
+claims rest on: strict seniority (a junior tranche must never be paid while a senior one is short),
+first loss landing on the most subordinate tranche, `seq` contiguity, strictly increasing
+`(height, txIndex)`, and that the same-block tie-break is actually exercised.
+
+`bun test` covers what a chain cannot check for us.
+
+**All 23 API routes**, one suite each, tested for the answer they give when a chain says no — and
+for what they refuse to accept. A lender's rank IS `(blockHeight, txIndex)`, so these routes decode
+those two numbers from a receipt fetched by hash rather than accepting them from the party they
+rank; the tests assert the recorded position comes from the decoded receipt *even when the request
+says otherwise*. `422` and `502` are held apart deliberately — the chain answered and refused,
+versus we could not ask it — because retrying is right in only one of them.
+
+Provenance gets its own group, because overclaiming is the failure this project cannot afford.
+`mode` is derived from what each adapter reports about itself and never from the env var that was
+requested, so asking for `chain` with nothing deployed still reads `mock`. The misrouting canary
+fires *ahead* of that derivation, so a live adapter cannot mask a routing failure. No response may
+name the documented Creditcoin explorer host that does not resolve.
+
+The 303 SDK tests cover the settlement mathematics directly — see `sdk/README.md`.
+
+Nothing in either suite touches a network. A unit test that could reach Sepolia would pass or fail
+on a throttled RPC or an unattested block rather than on the code, and telling a real regression
+apart from weather is the whole point. The live path is evidenced separately: `make
+verify-precompile` against CC3, and `../evidence/` for what actually happened on chain.
+
+### `sdk/` — the protocol without the web app
+
+`@precedence/sdk` holds the data model, the settlement mathematics and the Attestcoin ChainInfo
+client, with `viem` as its only peer dependency. It is what someone integrating proven-order
+priority would import; the app consumes it through a `tsconfig` path mapping. See `sdk/README.md`
+for the API and for why the package sits inside this directory rather than beside it.
 
 ---
 

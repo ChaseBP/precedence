@@ -125,9 +125,10 @@ is why we always quote a range.
 
 | Path | What it is |
 | --- | --- |
-| `contracts/` | Foundry. Seven contracts, **88 tests + 4 fork tests** |
+| `contracts/` | Foundry. Seven contracts, **98 tests + 4 fork tests** |
 | `worker/` | the readability worker — ethers v6 + `@gluwa/usc-sdk`. **20 tests** |
-| `precedence/` | Next.js command centre (UI scaffolding is prior work — see Provenance) |
+| `precedence/` | Next.js command centre. 23 API routes, **692 route tests** (UI scaffolding is prior work — see Provenance) |
+| `precedence/sdk/` | `@precedence/sdk` — the protocol without the web app: data model, settlement mathematics, Attestcoin client. **303 tests** |
 | `ops/` | key generation, funding, latency sampling, live precompile verification |
 | `evidence/` | generated, judge-verifiable records — never hand-written |
 | `ATTESTCOIN_INTEGRATION.md` | how the protocol is used, and what we do not claim |
@@ -221,16 +222,45 @@ reverse. Every design decision follows from that constraint.
 ## Verification
 
 ```bash
-cd contracts && make test              # 88 tests, incl. one passing rejection per attack
-cd contracts && make test-fork         # 4 tests against a live CC3 fork
-cd worker    && bun test               # 20 tests
+cd contracts  && make test             # 98 tests, incl. one passing rejection per attack
+cd contracts  && make test-fork        # 4 tests against a live CC3 fork
+cd worker     && bun test              # 20 tests
+cd precedence && bun test              # 995 tests — 692 API route, 303 SDK
 cd precedence && bun run scripts/smoke.ts    # 3 protocol tracks + invariants
 ```
+
+**1,113 tests that need no network**, across four packages — plus 4 fork tests and 10 live
+precompile checks that do.
 
 The security controls are **tests, not comments**. `contracts/test/PriorityProofLib.t.sol` has one
 passing rejection per attack: look-alike vault, reverted source transaction, prover reordering,
 omitting a middle lock, omitting the *first* lock, splicing two races, a vault whose `seq`
 contradicts the proof, wrong denomination.
+
+The 995 tests under `precedence/` are about the two things a chain cannot check for us.
+
+**Every one of the 23 API routes** is tested for the answer it gives when a chain says no. A
+lender's rank IS `(blockHeight, txIndex)`, so the routes decode those from a receipt rather than
+accepting them from the party they rank — and the tests assert the recorded position comes from
+the decoded receipt even when the request says otherwise. `422` and `502` are held apart on
+purpose: the chain answered and refused, versus we could not ask it. Retrying is right in only
+one, so collapsing them would leave someone submitting a stranger's receipt retrying forever.
+
+**Provenance cannot overclaim.** `mode` is derived from what each adapter reports about itself and
+never from the env var that was *requested*, so asking for `chain` with nothing deployed still
+reads `mock`. No response may name the documented Creditcoin explorer host that does not resolve.
+An unsigned registration is labelled a simulation and carries no explorer link at all.
+
+The SDK's 303 tests cover the settlement mathematics directly: the same-block tie the whole design
+exists for, the outpaced senior bid that is refunded in full rather than demoted into risk it
+never priced, first loss landing on the most subordinate holder at every shortfall size, and the
+two checks the precompile does *not* perform — `receipt.status`, and which contract emitted the
+event.
+
+None of them touch a network. A unit test that could reach Sepolia would pass or fail on a
+throttled RPC or an unattested block rather than on the code, and the live path is evidenced
+separately: `make verify-precompile` against CC3, and `evidence/` for what actually happened on
+chain.
 
 ---
 
