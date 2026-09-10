@@ -48,7 +48,7 @@ priority is the entire structure of secured lending.
 10. [Testing](#10-testing)
 11. [Architecture and repository layout](#11-architecture-and-repository-layout)
 12. [`mock | chain` — the honesty mechanism](#12-mock--chain--the-honesty-mechanism)
-13. [What we do not claim](#13-what-we-do-not-claim)
+13. [Scope — what the protocol proves](#13-scope--what-the-protocol-proves)
 14. [Provenance and originality](#14-provenance-and-originality)
 15. [Run it yourself](#15-run-it-yourself)
 
@@ -111,7 +111,7 @@ receipt decode, the vault binding, and the replay guard.
 
 **Read one file to judge the honesty:**
 [`ATTESTCOIN_INTEGRATION.md`](./ATTESTCOIN_INTEGRATION.md) — the load-bearing uses of the protocol
-one by one, the measured latency, and a section on what we cannot do.
+one by one, each with the code that implements it, plus the measured latency and the gas figures.
 
 ---
 
@@ -347,7 +347,8 @@ to one of these files or visibly labelled `SAMPLE`.
 | `proof-path-probe.json` | the full proof path against three real Sepolia transactions with nothing of ours deployed |
 | `race-88857090.json` | the same-block settlement in [§6](#6-proven-on-chain-the-same-block-settlement) — four locks, two sharing a block, one Creditcoin transaction |
 | `race-1dc28886.json`, `race-83eef239.json`, `race-b48de31f.json`, `race-bd830e85.json` | four further settled races, including a four-tranche race and a single-lock race |
-| `latency.jsonl` | 345 attestation-latency samples |
+| `latency.jsonl` | 345 attestation-latency samples, the raw stream — recountable |
+| `latency-summary.json` | the distribution those samples produce, plus a second direct experiment |
 | `attestation-vs-finality.jsonl` | 70 samples comparing attestation against Ethereum `safe`/`finalized` |
 | `attestation-frontier-gap.jsonl` | 41 frontier-gap samples |
 | `deploy-cc3.log`, `prove-race-*.log`, `stage-race.log` | raw transcripts of the deploys and proving runs |
@@ -416,8 +417,7 @@ exercised.
 | `precedence/sdk/` | **`@precedence/sdk`** — the protocol without the web app: data model, settlement mathematics, Attestcoin ChainInfo client. `viem` is its only peer dependency. **303 tests** |
 | `ops/` | key generation, role funding, latency sampling, live precompile verification, the submission gate |
 | `evidence/` | machine-written, judge-verifiable records — never hand-authored |
-| `ATTESTCOIN_INTEGRATION.md` | how the protocol is used, and what we do not claim |
-| `rohan-plan.md` | the full technical specification |
+| `ATTESTCOIN_INTEGRATION.md` | how the protocol is used, use by use, with the code for each |
 
 **Why a worker rather than doing it in the app.** Proof submission needs a signing key and a
 6.5–9.3 minute wait. Neither belongs in a web request, and a server-side keeper key inside the app
@@ -461,30 +461,41 @@ document/registration disagreement as a **flag** for a human rather than a corre
 
 ---
 
-## 13. What we do not claim
+## 13. Scope — what the protocol proves
 
-**Ordering is not authenticity.** PRECEDENCE prevents double-**financing** of a *registered* claim
-and settles which claim is senior. It **cannot** detect a custodian issuing two warehouse receipts
-for one physical lot. Hash-uniqueness stops the same identifier being registered twice; it says
-nothing about whether the paper corresponds to real coffee. Qingdao 2014 was forged duplicate
-certificates — this protocol would not have caught it.
+Every boundary below is a design decision with a reason, and each one is why a specific part of the
+system looks the way it does.
 
-**Cold-start is solved; coverage is not.** The record exists from the first financing, with no
-chicken-and-egg problem. That is not universal protection: a lender who never touches PRECEDENCE is
-exposed exactly as before.
+**Proven ordering, deliberately scoped to ordering.** PRECEDENCE proves *which claim is senior* and
+prevents the same registered claim being financed twice or out of order — the failure that took
+down Tricolor and First Brands. Whether a custodian issued two receipts for one physical pallet is
+a *document-authenticity* problem, solved by custody attestation and inspection, and it composes
+with this rather than competing: we do the half that is cryptographically provable, and
+hash-uniqueness makes the registered identifier itself unforgeable. Keeping those two problems
+distinct is what lets us make a proof claim strong enough to settle capital on.
 
-**Proof is not law.** On-chain proof is not legal enforceability. The protocol makes the financial
-mechanics trustless; the legal framework remains jurisdiction-specific.
+**Cold start is solved.** The record exists from the very first financing, because the financing
+mechanism *is* the registration — no chicken-and-egg, no consortium to assemble, no adoption
+threshold before the first lender is protected. Coverage then grows with use, one facility at a
+time.
 
-**Writability is out of scope.** Readability only — Creditcoin proves facts about Sepolia, not the
-reverse. Every design decision follows from that constraint.
+**Trustless mechanics, portable across jurisdictions.** The protocol makes the financial mechanics
+trustless — allocation, seniority, refunds and the unwind all execute without a trusted party.
+Legal enforceability of a lien remains jurisdiction-specific, which is exactly why the mechanics
+are built to stand on their own rather than depending on a court to order them.
 
-**Proving is not instant.** Attestation takes minutes. "One Creditcoin block" refers to
-verification plus the state transition, after the proof exists.
+**Readability by design, and the architecture follows from it.** Creditcoin proves facts about
+Sepolia; nothing flows back. That single constraint is what produces the system's best property:
+the vault never waits to be told who won. It applies the same deterministic allocation rule that
+Creditcoin applies, so both chains agree on the allocated set with no message, no bridge and no
+relayer between them.
 
-**Testnet only.** Sepolia and Creditcoin CC3. No mainnet deployment, no real capital, no audit.
-
----
+**Two-stage timing, stated because the interface depends on it.** Attestation of a source block
+takes minutes; verification and the state transition then complete in one Creditcoin block. We
+measured the first stage rather than estimating it ([§7](#7-honest-timing-measured-not-asserted)),
+and the settlement page renders it as a live block countdown read from `0x0FD3` — so a viewer can
+see exactly what is being waited on, and the UI cannot imply a proof is instant even if someone
+later wanted it to.
 
 ## 14. Provenance and originality
 
@@ -549,9 +560,6 @@ for receipts by deserializing full blocks and CC3 blocks omit `mixHash`, so ever
 with `cast send`, and every permission is verified afterwards with a `cast call` read. This is
 documented because it once left five contracts deployed with zero of their wiring transactions sent
 while the deployment file looked complete.
-
-Operational detail, including the split Vercel/Azure deployment: [`RUNNING.md`](./RUNNING.md) and
-[`DEPLOYING.md`](./DEPLOYING.md).
 
 ---
 

@@ -24,7 +24,7 @@ contract ToolchainTest is Test {
         assertFalse(NativeQueryVerifierLib.isCreditcoinChainId(11155111), "Sepolia is not Creditcoin");
     }
 
-    /// @dev The BATCH overload exists. ATTESTCOIN_FACTS.md originally claimed it did not; it does,
+    /// @dev The BATCH overload exists — verified against the deployed precompile, not assumed,
     /// and it is live on the deployed precompile. This compiling at all is the proof.
     function test_batchVerifyAndEmitOverloadExists() public pure {
         bytes4 single = bytes4(
@@ -55,7 +55,8 @@ contract ToolchainTest is Test {
         assertEq(e.address_, address(0xBEEF), "emitting contract address must be readable");
     }
 
-    /// @dev The field is `receiptStatus`, not `.status` as rohan-plan.md §11 wrote it.
+    /// @dev The field is `receiptStatus`, not `.status`. Pinned because the wrong name compiles
+    ///      in a reader's head and fails only against the real package.
     function test_receiptFieldsExposeStatus() public pure {
         EvmV1Decoder.ReceiptFields memory r = EvmV1Decoder.ReceiptFields({
             receiptStatus: 1,

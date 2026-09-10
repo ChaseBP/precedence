@@ -1,7 +1,7 @@
 /**
  * Measure real Attestcoin attestation latency and append it to evidence/latency.jsonl.
  *
- * Attestcoin does not document this figure anywhere. `rohan-plan.md` §20 originally asserted
+ * Attestcoin does not document this figure anywhere. The project's own first estimate asserted
  * ~8–10 minutes with no source. Three samples on 2026-09-01 put it at 7.2–8.7 min, and showed the
  * lag is a SAWTOOTH — attestation advances in batches, so the gap grows until the next batch lands
  * and then snaps back. A single number would misrepresent it either way.

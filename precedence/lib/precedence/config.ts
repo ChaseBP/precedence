@@ -9,7 +9,8 @@
  *  - Selecting `chain` without deployed addresses does not throw and does not silently pretend.
  *    It falls back to the mock and records WHY in `modeNotes`, which `/api/config` exposes.
  *
- * All network constants below were verified live — see `../../ATTESTCOIN_FACTS.md` §0.
+ * All network constants below were verified live against both precompiles; the record is
+ * `evidence/precompile.json`, written by `ops/verify-precompile.ts`.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";

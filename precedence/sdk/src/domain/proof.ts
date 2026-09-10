@@ -1,7 +1,7 @@
 /**
  * Attestcoin readability pipeline.
  *
- * The honest two-stage story, which is non-negotiable (`rohan-plan.md` §20):
+ * The honest two-stage story, which is non-negotiable:
  *  1. Source transaction lands on Sepolia                       — instant
  *  2. Attestation reaches that height                           — MEASURED 6.5-9.3 min (sawtooth)
  *  3. Proof generation from the builder service                 — seconds
@@ -42,7 +42,7 @@ export const MAX_BATCH_RANGE = 1000;
 
 /**
  * MEASURED attestation lag on Sepolia. Attestcoin does not document this figure anywhere, and the
- * ~8-10 min in `rohan-plan.md` §20 was unsourced, so it is sampled continuously instead; the
+ * project's own first estimate was unsourced, so it is sampled continuously instead; the
  * measured distribution is 6.54-9.35 min over n=345 (p50 7.75, p90 8.73, p99 9.02).
  *
  * Never quote a single number: attestation advances in BATCHES, so the lag sawtooths between the

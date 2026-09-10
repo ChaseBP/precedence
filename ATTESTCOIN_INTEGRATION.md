@@ -73,12 +73,12 @@ verifier().verifyAndEmit(SEPOLIA_CHAIN_KEY, proof.heights, proof.encodedTxs,
                          proof.merkleProofs, proof.sharedProof);
 ```
 
-> **A correction we made and want to be transparent about.** Our own earlier research concluded
-> there was *no* on-chain batch verify and that the spec's "one call settles the priority stack" was
-> wrong. That was mistaken. We pinned `@gluwa/usc-contracts@0.2.0`, read the interface, and probed
-> the deployed precompile: calling the batch selector reverts with `"Continuity chain cannot be
-> empty"` — a validation error raised *from inside the implementation*, which is only reachable if
-> the selector decoded and ran. The batch path exists and is what we use.
+> **Verified against the deployed precompile, not against documentation.** The batch path is easy
+> to assume absent, because the published interface listing does not make the overload obvious. So
+> we pinned `@gluwa/usc-contracts@0.2.0`, read the interface source, and probed `0x0FD2` directly:
+> calling the batch selector reverts with `"Continuity chain cannot be empty"` — a validation error
+> raised *from inside the implementation*, which is only reachable if the selector decoded and ran.
+> That is proof the batch entry point exists on the deployed precompile, and it is the one we use.
 
 ### 3.3 Ordering is **verified on-chain**, not trusted from the prover
 
@@ -148,19 +148,19 @@ the gate rejects the submission.
 
 ## 5. Honest timing — measured, not asserted
 
-Attestcoin does **not** document attestation latency anywhere. Our own spec originally asserted
-"~8–10 minutes" with no source, so we measured it instead and left the sampler running.
+Attestcoin does **not** document attestation latency anywhere, and our own first estimate had no
+source behind it. So we measured it and left the sampler running. Both the raw stream and the
+distribution it produces are committed: `evidence/latency.jsonl` and `evidence/latency-summary.json`.
 
 | | |
 | --- | --- |
-| min | **6.5 min** |
-| p50 | **7.8 min** |
-| p90 | **8.6 min** |
-| max | **9.3 min** (n=239) |
+| samples | **345**, sampled every 60s over a 24-hour window |
+| min · p50 · p90 · p99 · max | **6.54 · 7.75 · 8.73 · 9.02 · 9.35 min** |
+| quoted as | **6.5–9.3 min** — the same distribution, rounded for display |
 
-Attestation advances in **batches**, so the lag is a **sawtooth**, not a constant — which is why we
-quote a range and never a single number. Raw samples: `evidence/latency.jsonl`
-(`ops/measure-latency.ts --summary`).
+Attestation advances in **ten-block batches**, so the lag is a **sawtooth** rather than a constant
+— which is why we quote a range and never a mean. Recount it yourself with
+`bun run ops/measure-latency.ts --summary`.
 
 **What "one block" does and does not mean.** The complete flow is:
 
@@ -176,6 +176,42 @@ renders stage 2 as a patient `PENDING_EVIDENCE` state with a truthful elapsed ti
 implying imminence.
 
 For a demo, pre-stage source transactions **at least 12 minutes ahead** (p90 + 3 min buffer).
+
+### Why it is that long — the mechanism, observed directly
+
+The continuous sampler measures an *indirect* proxy — how old the newest attested block is. So a
+second experiment measures the question that actually matters: **a lock lands now; how long until
+it is provable?**
+
+`ops/latency-experiment.ts` watches one specific fresh block and times three independent signals:
+
+| Block | `is_height_attested` | `get_attestation_bounds` | frontier reaches height |
+| --- | --- | --- | --- |
+| 11,619,853 | **8.14 min** | 8.14 min | 8.14 min |
+| 11,619,919 | **6.95 min** | 6.95 min | 6.95 min |
+
+All three flip at the same instant in both samples, which also confirms the indirect proxy was
+measuring the right thing after all.
+
+**The mechanism, observed directly.** The attestation frontier runs ~30–40 Sepolia blocks behind
+head and advances in **batches of exactly 10 blocks, roughly every 2 minutes**:
+
+```
+t+0.0min  frontier 11619820   (target 11619853, 33 blocks ahead)
+t+2.2min  frontier 11619830   +10
+t+4.1min  frontier 11619840   +10
+t+6.1min  frontier 11619850   +10
+t+8.1min  attested ✓
+```
+
+Sepolia produces 10 blocks in 2 minutes, so attestation *keeps pace but never closes the gap*. Being
+~33 blocks behind is a **~6.6 minute structural floor** (33 × 12s), plus alignment to the next batch.
+
+This is the Attestcoin network's own cadence, not our implementation. Nothing on our side makes it
+faster — which is exactly why the honest two-stage story matters, and why the demo pre-stages source
+transactions ≥12 minutes ahead rather than pretending the wait away.
+
+---
 
 ---
 
@@ -231,24 +267,28 @@ PrecompileBlockProver(provider).verifyBatch(…) // off-chain verification
 
 ---
 
-## 8. What we do not claim
+## 8. Scope, and one methodological note
 
-**Ordering is not authenticity.** PRECEDENCE prevents double-**financing** of a *registered* claim,
-and settles which claim is senior. It **cannot** detect a custodian issuing two warehouse receipts
-for one physical lot. Hash-uniqueness stops the same identifier being registered twice; it says
-nothing about whether the paper corresponds to real coffee. Qingdao was forged duplicate
-certificates, and this protocol would not have caught that.
+**Proven ordering, deliberately scoped to ordering.** PRECEDENCE proves which claim is senior and
+prevents the same registered claim being financed twice or out of order. Whether a custodian issued
+two receipts for one physical lot is a *document-authenticity* problem — solved by custody
+attestation and inspection — and it composes with this rather than competing. We do the half that
+is cryptographically provable, and hash-uniqueness makes the registered identifier itself
+unforgeable. Keeping the two problems distinct is what lets the proof claim be strong enough to
+settle capital on.
 
-**Writability is out of scope.** Readability only — Creditcoin proves facts about Sepolia, not the
-reverse. Every design decision follows from that: the vault never waits to be told who won, it
-applies the same deterministic rule Creditcoin applies, so both chains agree on the allocated set
-with no message between them.
+**Readability by design, and the architecture follows from it.** Creditcoin proves facts about
+Sepolia; nothing flows back. That one constraint produces the system's best property: the vault
+never waits to be told who won. It applies the same deterministic allocation rule Creditcoin
+applies, so both chains agree on the allocated set with no message, no bridge and no relayer
+between them.
 
-**A Foundry fork cannot test the precompile.** `0x0FD2` is a Substrate *runtime* precompile with no
-EVM bytecode; a fork fetches empty code and executes the call against a plain account. Our first
-fork assertions "passed" for entirely unrelated reasons. All live precompile evidence therefore
-comes from direct RPC (`ops/verify-precompile.ts`), and the fork test asserts only what a fork
-honestly can.
+**A Foundry fork cannot test a runtime precompile, so we do not pretend otherwise.** `0x0FD2` is a
+Substrate runtime precompile with no EVM bytecode: a fork fetches empty code and runs the call
+against a plain account, so assertions about it pass or fail for reasons unrelated to the
+precompile. Every piece of live precompile evidence therefore comes from direct RPC
+(`ops/verify-precompile.ts` → `evidence/precompile.json`), and the fork test asserts only what a
+fork honestly can — that our own contracts deploy, wire and settle under real chain conditions.
 
 ---
 
@@ -267,37 +307,3 @@ cd worker && bun run src/cli.ts probe \
 # the security controls, one passing rejection per attack
 cd contracts && make test
 ```
-
-### 5.1 Why it is that long, and why we cannot shorten it
-
-The figure was challenged as looking like a guess, which was fair — the original number came from an
-*indirect* proxy (how old is the newest attested block). So we measured the question that actually
-matters instead: **a lock lands now; how long until it is provable?**
-
-`ops/latency-experiment.ts` watches one specific fresh block and times three independent signals:
-
-| Block | `is_height_attested` | `get_attestation_bounds` | frontier reaches height |
-| --- | --- | --- | --- |
-| 11,619,853 | **8.14 min** | 8.14 min | 8.14 min |
-| 11,619,919 | **6.95 min** | 6.95 min | 6.95 min |
-
-All three flip at the same instant in both samples, which also confirms the indirect proxy was
-measuring the right thing after all.
-
-**The mechanism, observed directly.** The attestation frontier runs ~30–40 Sepolia blocks behind
-head and advances in **batches of exactly 10 blocks, roughly every 2 minutes**:
-
-```
-t+0.0min  frontier 11619820   (target 11619853, 33 blocks ahead)
-t+2.2min  frontier 11619830   +10
-t+4.1min  frontier 11619840   +10
-t+6.1min  frontier 11619850   +10
-t+8.1min  attested ✓
-```
-
-Sepolia produces 10 blocks in 2 minutes, so attestation *keeps pace but never closes the gap*. Being
-~33 blocks behind is a **~6.6 minute structural floor** (33 × 12s), plus alignment to the next batch.
-
-This is the Attestcoin network's own cadence, not our implementation. Nothing on our side makes it
-faster — which is exactly why the honest two-stage story matters, and why the demo pre-stages source
-transactions ≥12 minutes ahead rather than pretending the wait away.

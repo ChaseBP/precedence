@@ -104,12 +104,12 @@ const REQUIRED_FILES = [
   { path: "README.md", why: "repo front page (submission requirement)" },
   { path: "ATTESTCOIN_INTEGRATION.md", why: "Attestcoin integration summary (submission requirement)" },
   { path: "LICENSE", why: "licence" },
-  { path: "rohan-plan.md", why: "whitepaper source" },
   { path: "contracts/src/creditcoin/AttestationGate.sol", why: "the integration itself" },
   { path: "worker/src/proof.ts", why: "the readability worker" },
   { path: "evidence/precompile.json", why: "live precompile evidence" },
   { path: "evidence/proof-path-probe.json", why: "end-to-end proof-path evidence" },
-  { path: "evidence/latency.jsonl", why: "measured attestation latency" },
+  { path: "evidence/latency.jsonl", why: "measured attestation latency, raw samples" },
+  { path: "evidence/latency-summary.json", why: "the distribution those samples produce" },
 ];
 
 let failures = 0;

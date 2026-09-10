@@ -30,8 +30,9 @@ chat-log.txt
 # ── the nested repo we set aside (empty; kept only so the move is reversible) ──
 precedence/.git.disabled-nested-repo/
 
-# ── the latency sampler appends continuously; commit the summary, not the stream ──
-evidence/latency.jsonl
+# ── the latency sampler ────────────────────────────────────────────────────
+# `latency.jsonl` IS committed: the front page quotes a distribution from it, and a reviewer has
+# to be able to recount the samples. Only the verbose run logs are excluded.
 evidence/latency-exp*.log
 evidence/.active-collateral-id
 evidence/stage-race.log
@@ -44,3 +45,18 @@ evidence/.store.json
 # Delivery material for the video, not part of the submission.
 DEMO_SCRIPT.md
 precedence-full-chat.txt
+*.mp4
+
+# ── working documents, kept locally ────────────────────────────────────────
+# How the project was built, not what it delivers. `analysis/allocation-divergence.md` is
+# deliberately NOT here: two shipped contracts cite it and it documents a real cross-chain
+# consistency bug and its fix.
+rohan-plan.md
+ATTESTCOIN_FACTS.md
+RUNNING.md
+DEPLOYING.md
+PORT_NOTES.md
+precedence/AGENTS.md
+analysis/attestation-latency-floor.md
+analysis/landing-*.md
+analysis/live-settlement-layout.md

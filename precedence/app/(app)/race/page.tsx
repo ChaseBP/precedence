@@ -976,7 +976,7 @@ function RaceInner() {
           of nothing, and a rail where the only element that moves sat 928px down — below the fold
           at 1440x900. A viewer waiting out the attestation had to scroll to find the one thing
           that would tell them the app was not hung, and lost sight of it when they scrolled back.
-          Measurements and the rejected alternatives are in analysis/live-settlement-layout.md. */}
+          Measurements and the rejected alternatives were recorded during the layout pass. */}
       {live ? (
         <div className="flex flex-col gap-5">
           {/* Full width, and that is load-bearing rather than cosmetic. It cannot fall below the
