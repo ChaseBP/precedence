@@ -44,6 +44,7 @@ evidence/.store.json
 
 # Delivery material for the video, not part of the submission.
 DEMO_SCRIPT.md
+DORAHACKS_DETAILS.md
 precedence-full-chat.txt
 *.mp4
 
